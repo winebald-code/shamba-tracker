@@ -21,11 +21,7 @@ COPY . .
 # Persist SQLite + uploads on a mounted volume in production if desired
 RUN mkdir -p /app/uploads
 
-RUN chmod +x entrypoint.sh
-
 EXPOSE 8080
 
-# entrypoint.sh is a real shell script, so $PORT is always expanded at
-# container start regardless of whether the platform invokes CMD in
-# shell form or exec/array form.
-ENTRYPOINT ["./entrypoint.sh"]
+# gunicorn serves the WSGI app object defined in app.py
+CMD gunicorn --bind 0.0.0.0:${PORT} --workers 2 --timeout 120 app:app
