@@ -1,0 +1,113 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Users{% endblock %}
+{% block heading %}Users{% endblock %}
+{% block subheading %}<p class="text-[12.5px] text-dove">{{ users|length }} team member{{ '' if users|length==1 else 's' }}.</p>{% endblock %}
+{% block topbar_actions %}
+<button onclick="document.getElementById('addUser').showModal()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition">{{ icon('plus','w-4 h-4') }} <span class="hidden sm:inline">Add user</span></button>
+{% endblock %}
+
+{% block content %}
+<div class="glass-solid rounded-xl2 overflow-hidden">
+  <div class="overflow-x-auto">
+    <table class="w-full border-collapse min-w-[640px]">
+      <thead>
+        <tr class="text-left text-[10.5px] font-bold uppercase tracking-wider text-dove">
+          <th class="px-5 py-3.5 border-b border-silver">Name</th>
+          <th class="px-5 py-3.5 border-b border-silver">Email</th>
+          <th class="px-5 py-3.5 border-b border-silver">Role</th>
+          <th class="px-5 py-3.5 border-b border-silver">Status</th>
+          <th class="px-5 py-3.5 border-b border-silver text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr class="border-b border-silver last:border-0">
+          <td class="px-5 py-3.5">
+            <div class="flex items-center gap-3">
+              <span class="w-9 h-9 rounded-full bg-sagesoft text-sagedeep grid place-items-center font-bold text-[12px]">{{ u.initials }}</span>
+              <span class="font-bold text-[13.5px]">{{ u.name }}{% if u.id == current_user.id %} <span class="text-dove font-medium text-[11px]">(you)</span>{% endif %}</span>
+            </div>
+          </td>
+          <td class="px-5 py-3.5 text-[13px] text-dove">{{ u.email }}</td>
+          <td class="px-5 py-3.5">
+            <span class="text-[11.5px] font-bold px-2.5 py-1 rounded-full {{ 'bg-ink text-white' if u.role=='admin' else 'bg-sagesoft text-sagedeep' }}">{{ u.role_label }}</span>
+          </td>
+          <td class="px-5 py-3.5">
+            {% if u.active %}<span class="inline-flex items-center gap-1.5 text-[12px] font-semibold text-sagedeep">{{ icon('check-circle','w-4 h-4') }} Active</span>
+            {% else %}<span class="inline-flex items-center gap-1.5 text-[12px] font-semibold text-dove">{{ icon('clock','w-4 h-4') }} Inactive</span>{% endif %}
+          </td>
+          <td class="px-5 py-3.5">
+            <div class="flex items-center justify-end gap-1">
+              <button onclick="editUser({{ u.id }}, '{{ u.name|e }}', '{{ u.role }}')" class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Edit">{{ icon('edit','w-4 h-4') }}</button>
+              {% if u.id != current_user.id %}
+              <form method="post" action="{{ url_for('user_toggle', user_id=u.id) }}"><button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="{{ 'Deactivate' if u.active else 'Activate' }}">{{ icon('clock','w-4 h-4') }}</button></form>
+              <form method="post" action="{{ url_for('user_delete', user_id=u.id) }}" onsubmit="return confirm('Remove {{ u.name }}?')"><button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Remove">{{ icon('trash','w-4 h-4') }}</button></form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- add user modal -->
+<dialog id="addUser" class="rounded-xl2 p-0 w-full max-w-md backdrop:bg-ink/40 shadow-2xl">
+  <form method="post" action="{{ url_for('user_new') }}" class="bg-white">
+    <div class="px-6 py-4 border-b border-silver flex items-center justify-between">
+      <h3 class="text-[16px] font-extrabold">Add user</h3>
+      <button type="button" onclick="document.getElementById('addUser').close()" class="text-dove hover:text-ink text-xl leading-none">&times;</button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div><label class="block text-[12px] font-semibold mb-1.5">Full name</label><input name="name" required class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
+      <div><label class="block text-[12px] font-semibold mb-1.5">Email</label><input name="email" type="email" required class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
+      <div>
+        <label class="block text-[12px] font-semibold mb-1.5">Role</label>
+        <select name="role" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px] font-semibold">
+          {% for r, lbl in ROLE_LABELS.items() %}<option value="{{ r }}">{{ lbl }}</option>{% endfor %}
+        </select>
+      </div>
+      <div><label class="block text-[12px] font-semibold mb-1.5">Temporary password</label><input name="password" required minlength="6" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
+    </div>
+    <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
+      <button type="button" onclick="document.getElementById('addUser').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
+      <button class="px-5 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 flex items-center gap-2">{{ icon('check','w-4 h-4') }} Add user</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- edit user modal -->
+<dialog id="editUser" class="rounded-xl2 p-0 w-full max-w-md backdrop:bg-ink/40 shadow-2xl">
+  <form method="post" id="editUserForm" class="bg-white">
+    <div class="px-6 py-4 border-b border-silver flex items-center justify-between">
+      <h3 class="text-[16px] font-extrabold">Edit user</h3>
+      <button type="button" onclick="document.getElementById('editUser').close()" class="text-dove hover:text-ink text-xl leading-none">&times;</button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div><label class="block text-[12px] font-semibold mb-1.5">Full name</label><input name="name" id="euName" required class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
+      <div>
+        <label class="block text-[12px] font-semibold mb-1.5">Role</label>
+        <select name="role" id="euRole" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px] font-semibold">
+          {% for r, lbl in ROLE_LABELS.items() %}<option value="{{ r }}">{{ lbl }}</option>{% endfor %}
+        </select>
+      </div>
+      <div><label class="block text-[12px] font-semibold mb-1.5">Reset password <span class="text-dove font-normal">(optional)</span></label><input name="password" type="password" placeholder="Leave blank to keep current" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
+    </div>
+    <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
+      <button type="button" onclick="document.getElementById('editUser').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
+      <button class="px-5 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 flex items-center gap-2">{{ icon('check','w-4 h-4') }} Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+  function editUser(id, name, role){
+    document.getElementById('editUserForm').action = '/users/' + id + '/edit';
+    document.getElementById('euName').value = name;
+    document.getElementById('euRole').value = role;
+    document.getElementById('editUser').showModal();
+  }
+</script>
+{% endblock %}

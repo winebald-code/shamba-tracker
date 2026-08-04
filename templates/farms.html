@@ -1,0 +1,46 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Farms{% endblock %}
+{% block heading %}Farms &amp; flights{% endblock %}
+{% block subheading %}<p class="text-[12.5px] text-dove">{{ farms|length }} farm{{ '' if farms|length==1 else 's' }} on record.</p>{% endblock %}
+{% block topbar_actions %}
+<button onclick="document.getElementById('addFarm').showModal()"
+        class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition">
+  {{ icon('plus','w-4 h-4') }} <span class="hidden sm:inline">Add farm</span>
+</button>
+{% endblock %}
+
+{% block content %}
+{% if farms %}
+<div class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+  {% for farm in farms %}
+  <a href="{{ url_for('farm_detail', farm_id=farm.id) }}" class="glass-solid rounded-xl2 p-5 hover:border-sage transition group">
+    <div class="flex items-start justify-between">
+      <span class="w-11 h-11 rounded-xl bg-sagesoft text-sagedeep grid place-items-center">{{ icon('farm','w-6 h-6') }}</span>
+      <span class="text-dove group-hover:text-ink transition">{{ icon('chevron','w-5 h-5') }}</span>
+    </div>
+    <h3 class="mt-4 text-[16px] font-extrabold">{{ farm.name }}</h3>
+    <p class="text-[12.5px] text-dove mt-0.5">
+      {{ farm.crop or 'Crop not set' }}{% if farm.acreage %} · {{ farm.acreage|round(0)|int }} ac{% endif %}{% if farm.location %} · {{ farm.location }}{% endif %}
+    </p>
+    <div class="mt-4 pt-4 border-t border-silver flex items-center gap-4 text-[12px] text-dove">
+      <span class="flex items-center gap-1.5">{{ icon('drone','w-4 h-4') }} {{ farm.flights|length }} flight{{ '' if farm.flights|length==1 else 's' }}</span>
+      {% if farm.farmer_name %}<span class="flex items-center gap-1.5 truncate">{{ icon('users','w-4 h-4') }} {{ farm.farmer_name }}</span>{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="glass-solid rounded-xl2 py-16 text-center">
+  <span class="inline-grid place-items-center w-14 h-14 rounded-2xl bg-sagesoft text-sagedeep mb-4">{{ icon('farm','w-7 h-7') }}</span>
+  <h3 class="text-[17px] font-extrabold">Add your first farm</h3>
+  <p class="text-[13px] text-dove mt-1.5 max-w-sm mx-auto">A farm holds its flights, findings and the farmer&rsquo;s contact details for delivery.</p>
+  <button onclick="document.getElementById('addFarm').showModal()"
+          class="mt-6 inline-flex items-center gap-2 px-5 py-3 rounded-xl2 bg-sage text-ink font-bold hover:bg-sage/80 transition">
+    {{ icon('plus','w-5 h-5') }} Add farm
+  </button>
+</div>
+{% endif %}
+
+{% include '_farm_form.html' %}
+{% endblock %}

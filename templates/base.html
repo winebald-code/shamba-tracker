@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}SHAMBA Tracker{% endblock %} · Acre Insights</title>
+<link rel="icon" href="{{ url_for('static', filename='img/acre-logo.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: '#030920', dove: '#6C6C6C', silver: '#D6DBD5',
+          sage: '#B0D48C', sagedeep: '#7FB65E', sagesoft: '#E7F1DB',
+          canvas: '#F2F5EF',
+        },
+        fontFamily: { sans: ['Montserrat', 'system-ui', 'sans-serif'] },
+        borderRadius: { xl2: '1.1rem' },
+      }
+    }
+  }
+</script>
+<style>
+  html{ -webkit-text-size-adjust:100%; }
+  body{ font-family:'Montserrat',system-ui,sans-serif; letter-spacing:-0.006em; -webkit-font-smoothing:antialiased; }
+  .glass{ background:rgba(255,255,255,0.66); backdrop-filter:saturate(140%) blur(14px); -webkit-backdrop-filter:saturate(140%) blur(14px); border:1px solid rgba(3,9,32,0.08); }
+  .glass-solid{ background:#fff; border:1px solid #D6DBD5; }
+  .tnum{ font-variant-numeric:tabular-nums; }
+  .field{ transition:.15s; }
+  .field:focus{ outline:none; border-color:#B0D48C; box-shadow:0 0 0 3px rgba(176,212,140,.35); }
+  /* editable cells in the review table */
+  .cell{ transition:.15s; border:1px solid transparent; border-radius:8px; }
+  .cell:hover{ background:rgba(3,9,32,.03); }
+  .cell:focus{ outline:none; background:#fff; border-color:#B0D48C; box-shadow:0 0 0 3px rgba(176,212,140,.35); }
+  .flash-enter{ animation:flashIn .3s ease both; }
+  @keyframes flashIn{ from{opacity:0; transform:translateY(-6px)} to{opacity:1; transform:none} }
+  ::-webkit-scrollbar{ height:10px; width:10px; }
+  ::-webkit-scrollbar-thumb{ background:#D6DBD5; border-radius:99px; }
+  @media print{ .no-print{ display:none !important; } body{ background:#fff; } }
+</style>
+{% block head %}{% endblock %}
+</head>
+<body class="bg-canvas text-ink min-h-screen">
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="fixed top-4 right-4 z-50 space-y-2 no-print" id="flashwrap">
+  {% for cat, msg in messages %}
+  <div class="flash-enter glass rounded-xl2 px-4 py-3 max-w-sm shadow-sm flex items-start gap-3
+              {{ 'border-sagedeep/40' if cat=='ok' else '' }}">
+    <span class="mt-0.5 shrink-0 {{ 'text-sagedeep' if cat=='ok' else 'text-ink' }}">
+      {% if cat=='ok' %}
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9.2"/><path d="M8 12.3 11 15.3 16.3 9.2"/></svg>
+      {% else %}
+      <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16h.01"/></svg>
+      {% endif %}
+    </span>
+    <p class="text-sm font-medium leading-snug">{{ msg }}</p>
+  </div>
+  {% endfor %}
+</div>
+<script>setTimeout(()=>{const f=document.getElementById('flashwrap'); if(f){f.style.transition='opacity .5s'; f.style.opacity='0'; setTimeout(()=>f.remove(),500);}}, 4200);</script>
+{% endif %}
+{% endwith %}
+
+{% block body %}{% endblock %}
+</body>
+</html>

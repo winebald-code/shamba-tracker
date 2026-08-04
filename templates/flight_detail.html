@@ -1,0 +1,270 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ flight.farm.name }} · Flight {{ flight.flight_number }}{% endblock %}
+{% block heading %}{{ flight.farm.name }} · Flight {{ flight.flight_number }}<span class="text-dove font-semibold">/{{ flight.flights_planned }}</span>{% endblock %}
+{% block subheading %}<p class="text-[12.5px] text-dove">{{ flight.season }} · {{ flight.crop or flight.farm.crop or 'crop not set' }}{% if flight.flight_date %} · {{ flight.flight_date.strftime('%d %b %Y') }}{% endif %}</p>{% endblock %}
+{% block topbar_actions %}
+<div class="flex items-center gap-2">
+  {% if flight.report_generated %}
+  <a href="{{ url_for('flight_report', flight_id=flight.id) }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition">{{ icon('report','w-4 h-4') }} <span class="hidden sm:inline">View report</span></a>
+  {% endif %}
+  <button id="genBtn" onclick="document.getElementById('genForm').submit()" {% if not flight.can_generate %}disabled{% endif %}
+      class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold transition
+             {{ 'bg-sage text-ink hover:bg-sage/80' if flight.can_generate else 'bg-canvas text-dove cursor-not-allowed' }}">
+    {{ icon('check','w-4 h-4') }} <span class="hidden sm:inline">Generate report</span>
+  </button>
+  <form id="genForm" method="post" action="{{ url_for('flight_generate', flight_id=flight.id) }}" class="hidden"></form>
+</div>
+{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('farm_detail', farm_id=flight.farm.id) }}" class="inline-flex items-center gap-1.5 text-[12.5px] text-dove hover:text-ink mb-5 transition">← {{ flight.farm.name }}</a>
+
+<div class="grid lg:grid-cols-3 gap-5 mb-5">
+  <!-- ingestion -->
+  <div class="glass-solid rounded-xl2 p-5">
+    <h3 class="text-[14px] font-bold flex items-center gap-2">{{ icon('upload','w-4 h-4') }} DroneDeploy import</h3>
+    <p class="text-[12px] text-dove mt-1.5">Upload the annotation CSV export. Re-uploading replaces the findings below.</p>
+    <form method="post" action="{{ url_for('flight_upload_csv', flight_id=flight.id) }}" enctype="multipart/form-data" class="mt-3">
+      <label class="block">
+        <input type="file" name="csv" accept=".csv" required onchange="this.form.submit()"
+               class="block w-full text-[12px] text-dove file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12px] file:cursor-pointer cursor-pointer">
+      </label>
+    </form>
+    {% if flight.csv_filename %}<p class="mt-2.5 text-[11.5px] text-dove flex items-center gap-1.5"><span class="text-sagedeep">{{ icon('check','w-3.5 h-3.5') }}</span> {{ flight.csv_filename }} · {{ flight.findings|length }} pin(s)</p>{% endif %}
+    {% if flight.dronedeploy_project_url %}<a href="{{ flight.dronedeploy_project_url }}" target="_blank" class="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-sagedeep hover:underline">{{ icon('external','w-4 h-4') }} Open project in DroneDeploy</a>{% endif %}
+  </div>
+
+  <!-- map -->
+  <div class="glass-solid rounded-xl2 p-5">
+    <h3 class="text-[14px] font-bold flex items-center gap-2">{{ icon('pin','w-4 h-4') }} Map snapshot</h3>
+    <p class="text-[12px] text-dove mt-1.5">The annotated field image for the report.</p>
+    {% if flight.map_image %}
+    <div class="mt-3 rounded-xl overflow-hidden border border-silver">
+      <img src="{{ url_for('uploaded', name=flight.map_image) }}" alt="Annotated map" class="w-full h-32 object-cover">
+    </div>
+    {% endif %}
+    <form method="post" action="{{ url_for('flight_upload_map', flight_id=flight.id) }}" enctype="multipart/form-data" class="mt-3">
+      <label class="block">
+        <input type="file" name="map" accept="image/*" required onchange="this.form.submit()"
+               class="block w-full text-[12px] text-dove file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12px] file:cursor-pointer cursor-pointer">
+      </label>
+    </form>
+  </div>
+
+  <!-- status -->
+  <div class="glass-solid rounded-xl2 p-5">
+    <h3 class="text-[14px] font-bold flex items-center gap-2">{{ icon('clock','w-4 h-4') }} Status</h3>
+    <form method="post" action="{{ url_for('flight_status', flight_id=flight.id) }}" class="mt-3">
+      <select name="status" onchange="this.form.submit()" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold">
+        {% for s in ['Draft','Ready for Review','Approved','Sent'] %}
+        <option value="{{ s }}" {{ 'selected' if flight.status==s }}>{{ s }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    <div class="mt-3 space-y-2 text-[12px]">
+      <div class="flex items-center gap-2 {{ 'text-sagedeep font-semibold' if flight.report_generated else 'text-dove' }}">{{ icon('check','w-4 h-4') }} Report {{ 'generated' if flight.report_generated else 'not yet generated' }}</div>
+      {% if flight.sent_email or flight.sent_whatsapp %}<div class="flex items-center gap-2 text-sagedeep font-semibold">{{ icon('send','w-4 h-4') }} Sent {{ flight.sent_at.strftime('%d %b') if flight.sent_at }}</div>{% endif %}
+      {% if flight.acknowledged %}<div class="flex items-center gap-2 text-sagedeep font-semibold">{{ icon('check-circle','w-4 h-4') }} Acknowledged {{ flight.acknowledged_at.strftime('%d %b, %H:%M') if flight.acknowledged_at }}</div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- completeness banner -->
+<div id="banner" class="rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3
+     {{ 'bg-sagesoft border border-sage/50' if flight.can_generate else 'glass-solid' }}">
+  <span id="bannerIcon" class="{{ 'text-sagedeep' if flight.can_generate else 'text-dove' }}">
+    {{ icon('check-circle','w-5 h-5') if flight.can_generate else icon('alert','w-5 h-5') }}
+  </span>
+  <p id="bannerText" class="text-[13px] font-semibold">
+    {% if not flight.findings %}Import a DroneDeploy CSV to load the annotations, or add findings by hand.
+    {% elif flight.can_generate %}All {{ flight.findings|length }} findings are complete. You can generate the report.
+    {% else %}<span id="incCount">{{ flight.incomplete_count }}</span> of {{ flight.findings|length }} findings still need an observation, likely cause and recommendation.{% endif %}
+  </p>
+</div>
+
+<!-- findings table -->
+<div class="glass-solid rounded-xl2 overflow-hidden">
+  <div class="px-5 py-4 border-b border-silver flex items-center justify-between gap-3">
+    <div>
+      <h3 class="text-[15px] font-bold">Findings &amp; recommendations</h3>
+      <p class="text-[11.5px] text-dove mt-0.5">Edit inline — changes save automatically. Categories are suggested from the pin colour; correct any that are off.</p>
+    </div>
+    <form method="post" action="{{ url_for('finding_add', flight_id=flight.id) }}">
+      <button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl glass-solid text-[12.5px] font-bold hover:border-sage transition whitespace-nowrap">{{ icon('plus','w-4 h-4') }} Add finding</button>
+    </form>
+  </div>
+
+  {% if flight.findings %}
+  <div class="overflow-x-auto">
+    <table class="w-full border-collapse min-w-[980px]">
+      <thead>
+        <tr class="text-left text-[10.5px] font-bold uppercase tracking-wider text-dove">
+          <th class="px-3 py-3 border-b border-silver">Pin</th>
+          <th class="px-3 py-3 border-b border-silver">Colour</th>
+          <th class="px-3 py-3 border-b border-silver">Area</th>
+          <th class="px-3 py-3 border-b border-silver w-40">Category</th>
+          <th class="px-3 py-3 border-b border-silver">Observation</th>
+          <th class="px-3 py-3 border-b border-silver">Likely cause</th>
+          <th class="px-3 py-3 border-b border-silver">Recommendation</th>
+          <th class="px-3 py-3 border-b border-silver"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in flight.findings %}
+        <tr id="f{{ f.id }}" data-fid="{{ f.id }}" class="finding-row align-top border-b border-silver last:border-0
+             {{ '' if f.is_complete else 'incomplete' }}">
+          <td class="px-3 py-3">
+            <div class="flex items-center gap-2">
+              <span class="w-1.5 h-8 rounded-full status-bar {{ 'bg-sage' if f.is_complete else '' }}" style="{{ '' if f.is_complete else 'background:#D64550' }}"></span>
+              <span class="font-bold text-[13px] tnum">{{ loop.index }}</span>
+            </div>
+          </td>
+          <td class="px-3 py-3">
+            <div class="flex items-center gap-2 whitespace-nowrap">
+              <span class="w-3.5 h-3.5 rounded-full border border-ink/10 shrink-0" style="background: {{ f.colour_swatch }}"></span>
+              <span class="text-[11px] font-semibold text-dove">{{ f.colour_meaning }}</span>
+            </div>
+            {% if f.label_hex %}<span class="text-[10px] text-dove/70 tnum">{{ f.label_hex }}</span>{% endif %}
+          </td>
+          <td class="px-3 py-3 text-[12.5px] font-semibold tnum whitespace-nowrap">{{ f.area_text or '—' }}</td>
+          <td class="px-3 py-3">
+            <select data-field="category" class="cell w-full text-[12.5px] font-semibold px-2 py-1.5 bg-transparent">
+              {% for c in CATEGORIES %}<option value="{{ c }}" {{ 'selected' if f.category==c }}>{{ c }}</option>{% endfor %}
+            </select>
+          </td>
+          <td class="px-3 py-3 min-w-[190px]">
+            <textarea data-field="observation" rows="2" placeholder="What did you see?" class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.observation }}</textarea>
+          </td>
+          <td class="px-3 py-3 min-w-[180px]">
+            <textarea data-field="likely_cause" rows="2" placeholder="Working diagnosis" class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.likely_cause }}</textarea>
+          </td>
+          <td class="px-3 py-3 min-w-[190px]">
+            <textarea data-field="recommendation" rows="2" placeholder="Next step" class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.recommendation }}</textarea>
+          </td>
+          <td class="px-3 py-3">
+            <div class="flex items-center gap-1">
+              {% if f.annotation_link %}<a href="{{ f.annotation_link }}" target="_blank" title="View pin in DroneDeploy" class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition">{{ icon('external','w-4 h-4') }}</a>{% endif %}
+              <form method="post" action="{{ url_for('finding_delete', finding_id=f.id) }}" onsubmit="return confirm('Delete this finding?')">
+                <button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Delete">{{ icon('trash','w-4 h-4') }}</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="py-14 text-center">
+    <span class="inline-grid place-items-center w-12 h-12 rounded-xl bg-canvas text-dove mb-3">{{ icon('pin','w-6 h-6') }}</span>
+    <h3 class="text-[15px] font-bold">No findings yet</h3>
+    <p class="text-[12.5px] text-dove mt-1">Import a DroneDeploy CSV above, or add a finding by hand.</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- agronomist note + danger -->
+<div class="grid lg:grid-cols-3 gap-5 mt-5">
+  <form method="post" action="{{ url_for('flight_note', flight_id=flight.id) }}" class="lg:col-span-2 glass-solid rounded-xl2 p-5">
+    <label class="block text-[14px] font-bold mb-2">Note to the farmer <span class="text-dove font-medium text-[12px]">(optional — appears on the report)</span></label>
+    <textarea name="note" rows="3" placeholder="A short, plain-language summary in Acre's voice…" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[13.5px] leading-relaxed resize-none">{{ flight.agronomist_note }}</textarea>
+    <div class="mt-3 flex justify-end"><button class="px-4 py-2 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition flex items-center gap-2">{{ icon('check','w-4 h-4') }} Save note</button></div>
+  </form>
+  <div class="glass-solid rounded-xl2 p-5 flex flex-col">
+    <h3 class="text-[14px] font-bold">Remove flight</h3>
+    <p class="text-[12.5px] text-dove mt-1.5 leading-relaxed">Deletes this flight and its findings. This cannot be undone.</p>
+    <form method="post" action="{{ url_for('flight_delete', flight_id=flight.id) }}" onsubmit="return confirm('Delete this flight and all its findings?')" class="mt-auto pt-4">
+      <button class="text-[12.5px] text-dove hover:text-ink font-semibold flex items-center gap-2 transition">{{ icon('trash','w-4 h-4') }} Delete flight</button>
+    </form>
+  </div>
+</div>
+
+<script>
+  const UPDATE_URL = fid => `/findings/${fid}/update`;
+  const rows = () => document.querySelectorAll('.finding-row');
+  const val = (row, field) => {
+    const el = row.querySelector(`[data-field="${field}"]`);
+    return el ? el.value.trim() : '';
+  };
+  const rowComplete = row =>
+    !!(val(row,'category') && val(row,'observation') && val(row,'likely_cause') && val(row,'recommendation'));
+
+  const CHECK = '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9.2"/><path d="M8 12.3 11 15.3 16.3 9.2"/></svg>';
+  const ALERT = '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16h.01"/></svg>';
+
+  function markRow(row, complete){
+    const bar = row.querySelector('.status-bar');
+    if (!bar) return;
+    if (complete){ bar.style.background=''; bar.classList.add('bg-sage'); row.classList.remove('incomplete'); }
+    else { bar.style.background='#D64550'; bar.classList.remove('bg-sage'); row.classList.add('incomplete'); }
+  }
+
+  function setBanner(incomplete, total){
+    const banner = document.getElementById('banner');
+    const bt = document.getElementById('bannerText');
+    const bi = document.getElementById('bannerIcon');
+    const genBtn = document.getElementById('genBtn');
+    const canGenerate = total > 0 && incomplete === 0;
+    if (!banner) return;
+    if (total === 0){
+      banner.className = 'rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3 glass-solid';
+      bi.className = 'text-dove'; bi.innerHTML = ALERT;
+      bt.innerHTML = 'Import a DroneDeploy CSV to load the annotations, or add findings by hand.';
+    } else if (canGenerate){
+      banner.className = 'rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3 bg-sagesoft border border-sage/50';
+      bi.className = 'text-sagedeep'; bi.innerHTML = CHECK;
+      bt.innerHTML = `All ${total} findings are complete. You can generate the report.`;
+    } else {
+      banner.className = 'rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3 glass-solid';
+      bi.className = 'text-dove'; bi.innerHTML = ALERT;
+      bt.innerHTML = `<span class="tnum">${incomplete}</span> of ${total} finding${total===1?'':'s'} still need an observation, likely cause and recommendation.`;
+    }
+    if (genBtn){
+      genBtn.disabled = !canGenerate;
+      genBtn.className = 'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold transition '
+        + (canGenerate ? 'bg-sage text-ink hover:bg-sage/80' : 'bg-canvas text-dove cursor-not-allowed');
+    }
+  }
+
+  // Instant, client-side recount — runs on EVERY keystroke so the banner and the
+  // row markers react the moment a field is filled or emptied.
+  function recount(){
+    const all = rows();
+    let incomplete = 0;
+    all.forEach(row => {
+      const c = rowComplete(row);
+      markRow(row, c);
+      if (!c) incomplete++;
+    });
+    setBanner(incomplete, all.length);
+  }
+
+  // Debounced persistence to the server (separate from the instant UI update).
+  const timers = {};
+  function persist(el){
+    const row = el.closest('.finding-row');
+    const fid = row.dataset.fid;
+    const field = el.dataset.field;
+    clearTimeout(timers[fid+field]);
+    timers[fid+field] = setTimeout(() => {
+      fetch(UPDATE_URL(fid), {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ [field]: el.value })
+      }).catch(e => console.error('save failed', e));
+    }, 500);
+  }
+
+  document.querySelectorAll('.cell').forEach(el => {
+    const ev = el.tagName === 'SELECT' ? 'change' : 'input';
+    el.addEventListener(ev, () => { recount(); persist(el); });
+    if (el.tagName === 'TEXTAREA'){
+      const grow = () => { el.style.height='auto'; el.style.height=(el.scrollHeight)+'px'; };
+      el.addEventListener('input', grow); grow();
+    }
+  });
+
+  // sync once on load so the count is always right after an import
+  recount();
+</script>
+{% endblock %}

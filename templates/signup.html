@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Create your account{% endblock %}
+
+{% block body %}
+<div class="min-h-screen grid lg:grid-cols-2">
+  <div class="hidden lg:flex flex-col justify-between bg-ink text-white p-12 relative overflow-hidden">
+    <div class="absolute -bottom-24 -right-16 w-96 h-96 rounded-full bg-sage/20 blur-3xl"></div>
+    <a href="{{ url_for('home') }}" class="relative"><img src="{{ url_for('static', filename='img/acre-logo-white.png') }}" class="h-7" alt="Acre Insights"></a>
+    <div class="relative">
+      <h2 class="text-4xl font-extrabold tracking-tight leading-tight">Join the team.</h2>
+      <p class="mt-4 text-white/60 text-[15px] max-w-md leading-relaxed">Create your SHAMBA Tracker account to start turning flights into farmer-ready reports.</p>
+      <ul class="mt-8 space-y-3">
+        {% for t in ['Import DroneDeploy flights in one click','Complete findings in a shared review portal','Send branded reports over email and WhatsApp'] %}
+        <li class="flex items-center gap-3 text-white/80 text-[14px]"><span class="text-sage">{{ icon('check-circle','w-5 h-5') }}</span>{{ t }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    <p class="relative text-white/40 text-[12px]">Built by Africans, for the continent.</p>
+  </div>
+
+  <div class="flex items-center justify-center p-6 sm:p-12">
+    <div class="w-full max-w-sm">
+      <div class="lg:hidden mb-8"><img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-7" alt="Acre Insights"></div>
+      <h1 class="text-2xl font-extrabold tracking-tight">Create your account</h1>
+      <p class="mt-1.5 text-[14px] text-dove">A minute to set up.</p>
+
+      <form method="post" class="mt-8 space-y-4">
+        <div>
+          <label class="block text-[12.5px] font-semibold mb-1.5">Full name</label>
+          <input name="name" required autofocus placeholder="Jane Wanjiru"
+                 class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+        </div>
+        <div>
+          <label class="block text-[12.5px] font-semibold mb-1.5">Email</label>
+          <input name="email" type="email" required placeholder="you@acre-insights.com"
+                 class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+        </div>
+        <div>
+          <label class="block text-[12.5px] font-semibold mb-1.5">Password</label>
+          <input name="password" type="password" required minlength="6" placeholder="At least 6 characters"
+                 class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+        </div>
+        <button class="w-full py-3.5 rounded-xl2 font-bold bg-sage text-ink hover:bg-sage/80 transition flex items-center justify-center gap-2">
+          {{ icon('check','w-5 h-5') }} Create account
+        </button>
+      </form>
+
+      <p class="mt-6 text-[13px] text-dove text-center">Already have an account?
+        <a href="{{ url_for('login') }}" class="text-sagedeep font-semibold hover:underline">Sign in</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

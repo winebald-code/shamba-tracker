@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+
+{% block body %}
+<div class="flex min-h-screen">
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="fixed lg:static z-40 -translate-x-full lg:translate-x-0 transition-transform
+              w-64 shrink-0 h-screen lg:h-auto bg-ink text-white/90 flex flex-col">
+    <div class="px-5 pt-6 pb-5">
+      <div class="flex items-center gap-2.5">
+        <img src="{{ url_for('static', filename='img/acre-logo-white.png') }}" alt="Acre Insights" class="h-6">
+      </div>
+      <div class="mt-4 flex items-center gap-2">
+        <span class="text-[15px] font-bold tracking-wide text-white">SHAMBA Tracker</span>
+      </div>
+      <p class="text-[10.5px] uppercase tracking-[0.16em] text-white/45 mt-0.5">Flight Report Automation</p>
+    </div>
+
+    <nav class="px-3 space-y-1 flex-1">
+      {% set navs = [('dashboard','Dashboard','dashboard'),('farms','Farms','farm'),('farms','',None)] %}
+      {% macro navlink(endpoint, label, ic) %}
+        {% set active = request.endpoint == endpoint or (endpoint=='farms' and request.endpoint in ['farm_detail','flight_detail','farm_new']) %}
+        <a href="{{ url_for(endpoint) }}"
+           class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] font-semibold transition
+                  {{ 'bg-white/10 text-white' if active else 'text-white/70 hover:bg-white/5 hover:text-white' }}">
+          <span class="{{ 'text-sage' if active else 'text-white/55' }}">{{ icon(ic,'w-[18px] h-[18px]') }}</span>{{ label }}
+        </a>
+      {% endmacro %}
+      {{ navlink('dashboard','Dashboard','dashboard') }}
+      {{ navlink('farms','Farms & flights','farm') }}
+      {% if current_user.role == 'admin' %}
+      {{ navlink('users','Users','users') }}
+      {% endif %}
+    </nav>
+
+    <div class="p-3 border-t border-white/10">
+      <div class="flex items-center gap-3 px-2 py-2">
+        <div class="w-9 h-9 rounded-full bg-sage text-ink grid place-items-center font-bold text-[13px]">{{ current_user.initials }}</div>
+        <div class="min-w-0 flex-1">
+          <p class="text-[13px] font-semibold text-white truncate">{{ current_user.name }}</p>
+          <p class="text-[11px] text-white/50">{{ current_user.role_label }}</p>
+        </div>
+        <a href="{{ url_for('logout') }}" class="text-white/50 hover:text-white p-1.5" title="Sign out">{{ icon('logout','w-[18px] h-[18px]') }}</a>
+      </div>
+    </div>
+  </aside>
+  <div id="scrim" class="fixed inset-0 bg-ink/40 z-30 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+  <!-- Main -->
+  <div class="flex-1 min-w-0">
+    <header class="sticky top-0 z-20 glass border-b border-ink/5 px-5 lg:px-8 h-16 flex items-center gap-4">
+      <button class="lg:hidden text-ink" onclick="toggleSidebar()">{{ icon('menu','w-6 h-6') }}</button>
+      <div class="flex-1">
+        <h1 class="text-[17px] font-bold tracking-tight">{% block heading %}{% endblock %}</h1>
+        {% block subheading %}{% endblock %}
+      </div>
+      {% block topbar_actions %}{% endblock %}
+    </header>
+
+    <main class="px-5 lg:px-8 py-6 lg:py-8 max-w-[1200px]">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<script>
+  function toggleSidebar(){
+    const s=document.getElementById('sidebar'), sc=document.getElementById('scrim');
+    s.classList.toggle('-translate-x-full'); sc.classList.toggle('hidden');
+  }
+</script>
+{% endblock %}

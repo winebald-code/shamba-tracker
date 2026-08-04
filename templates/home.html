@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}SHAMBA Tracker{% endblock %}
+
+{% block body %}
+<div class="min-h-screen flex flex-col">
+
+  <!-- nav -->
+  <header class="glass sticky top-0 z-30 border-b border-ink/5">
+    <div class="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <img src="{{ url_for('static', filename='img/acre-logo.png') }}" alt="Acre Insights" class="h-7">
+        <span class="hidden sm:block w-px h-6 bg-silver"></span>
+        <span class="hidden sm:block text-[14px] font-bold tracking-wide">SHAMBA Tracker</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="{{ url_for('login') }}" class="px-4 py-2 rounded-xl text-[13.5px] font-semibold text-ink hover:bg-ink/5 transition">Sign in</a>
+        <a href="{{ url_for('signup') }}" class="px-4 py-2 rounded-xl text-[13.5px] font-bold bg-sage text-ink hover:bg-sage/80 transition">Get started</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- hero -->
+  <section class="relative overflow-hidden">
+    <div class="absolute -top-24 -right-24 w-[520px] h-[520px] rounded-full bg-sage/20 blur-3xl"></div>
+    <div class="max-w-6xl mx-auto px-5 pt-16 pb-14 lg:pt-24 lg:pb-20 relative grid lg:grid-cols-2 gap-12 items-center">
+      <div>
+        <span class="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-dove">
+          {{ icon('drone','w-4 h-4') }} A product of Acre Insights
+        </span>
+        <h1 class="mt-5 text-4xl lg:text-[52px] font-extrabold leading-[1.03] tracking-tight">
+          From drone flight to a report the farmer <span class="text-sagedeep">actually reads.</span>
+        </h1>
+        <p class="mt-5 text-[16px] lg:text-[17px] text-dove leading-relaxed max-w-xl">
+          SHAMBA Tracker turns a finished DroneDeploy scouting flight into a clean, Acre-branded field report —
+          generated the same day, delivered over email and WhatsApp, and confirmed with a tap. No re-keying, no manual formatting.
+        </p>
+        <div class="mt-8 flex flex-wrap items-center gap-3">
+          <a href="{{ url_for('signup') }}" class="px-6 py-3.5 rounded-xl2 font-bold bg-sage text-ink hover:bg-sage/80 transition flex items-center gap-2">
+            {{ icon('check','w-5 h-5') }} Create your account
+          </a>
+          <a href="{{ url_for('login') }}" class="px-6 py-3.5 rounded-xl2 font-semibold glass-solid text-ink hover:border-dove transition">
+            Sign in
+          </a>
+        </div>
+        <p class="mt-4 text-[12.5px] text-dove">Measured, not marketed. Built for African smallholders, on the continent.</p>
+      </div>
+
+      <!-- report peek -->
+      <div class="relative">
+        <div class="glass rounded-xl2 p-3 shadow-xl">
+          <div class="rounded-xl overflow-hidden border border-silver bg-white">
+            <div class="flex items-center justify-between px-4 py-3 border-b-2 border-ink">
+              <img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-5" alt="">
+              <span class="text-[10px] font-bold uppercase tracking-[0.14em] text-dove">Field Scouting Report</span>
+            </div>
+            <img src="{{ url_for('static', filename='img/hero-map.jpg') }}" onerror="this.style.display='none'"
+                 alt="Annotated field" class="w-full h-44 object-cover">
+            <div class="p-4 space-y-2.5">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full" style="background:#D64550"></span>
+                <span class="text-[12px] font-semibold">5 crop-stress zones</span>
+                <span class="ml-auto text-[11px] text-dove tnum">flight 1 of 12</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full" style="background:#2F6FDB"></span>
+                <span class="text-[12px] font-semibold">1 area for follow-up</span>
+              </div>
+              <div class="h-px bg-silver my-2"></div>
+              <p class="text-[11.5px] text-dove leading-relaxed">Each zone comes with what we saw, the likely cause, and the next step — in plain language.</p>
+            </div>
+          </div>
+        </div>
+        <div class="absolute -bottom-4 -left-4 glass rounded-xl px-4 py-3 flex items-center gap-2.5 shadow-lg">
+          <span class="text-sagedeep">{{ icon('check-circle','w-5 h-5') }}</span>
+          <span class="text-[12.5px] font-semibold">Receipt confirmed by the farmer</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- how it works -->
+  <section class="bg-white border-y border-silver">
+    <div class="max-w-6xl mx-auto px-5 py-16">
+      <div class="max-w-2xl">
+        <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-dove">How a flight becomes a report</span>
+        <h2 class="mt-3 text-3xl font-extrabold tracking-tight">Six steps, end to end</h2>
+      </div>
+      <div class="mt-10 grid md:grid-cols-3 gap-5">
+        {% set steps = [
+          ('upload','Fly &amp; upload','Field operator flies the farm and uploads imagery to the DroneDeploy project.'),
+          ('pin','Annotate','Scout logs what they see; the agronomist adds the likely cause and the recommended action.'),
+          ('report','Import &amp; complete','Export the annotations to SHAMBA Tracker; review and finish each finding in one place.'),
+          ('check-circle','Generate','One click produces the Acre-branded PDF — map, findings, colour code and all.'),
+          ('send','Deliver','Send by email and WhatsApp, with the report attached and a message in Acre&rsquo;s voice.'),
+          ('shield','Acknowledge','The farmer taps to confirm receipt — and it logs straight back to your dashboard.')
+        ] %}
+        {% for ic,title,desc in steps %}
+        <div class="glass-solid rounded-xl2 p-5">
+          <div class="flex items-center gap-3">
+            <span class="w-10 h-10 rounded-xl bg-sagesoft text-sagedeep grid place-items-center">{{ icon(ic,'w-[22px] h-[22px]') }}</span>
+            <span class="text-[10px] font-bold text-dove tnum">0{{ loop.index }}</span>
+          </div>
+          <h3 class="mt-4 text-[15px] font-bold">{{ title|safe }}</h3>
+          <p class="mt-1.5 text-[13px] text-dove leading-relaxed">{{ desc|safe }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- colour code strip -->
+  <section class="max-w-6xl mx-auto px-5 py-16">
+    <div class="grid lg:grid-cols-2 gap-10 items-center">
+      <div>
+        <span class="text-[11px] font-bold uppercase tracking-[0.18em] text-dove">The annotation colour code</span>
+        <h2 class="mt-3 text-3xl font-extrabold tracking-tight">A shared language on every map</h2>
+        <p class="mt-4 text-[15px] text-dove leading-relaxed max-w-lg">
+          Every pin carries a colour with a fixed meaning, so the farmer can read the field at a glance —
+          and the same code drives the report automatically.
+        </p>
+      </div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        {% for meaning, meta in COLOUR_CODE.items() if meaning != 'Pending review' %}
+        <div class="glass-solid rounded-xl2 p-4 flex items-start gap-3">
+          <span class="w-5 h-5 rounded-full mt-0.5 shrink-0" style="background:{{ meta.swatch }}"></span>
+          <div>
+            <p class="text-[13.5px] font-bold">{{ meaning }}</p>
+            <p class="text-[12px] text-dove leading-snug mt-0.5">{{ meta.note }}</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="max-w-6xl mx-auto px-5 pb-20">
+    <div class="rounded-xl2 bg-ink text-white p-10 lg:p-14 relative overflow-hidden">
+      <div class="absolute -bottom-20 -right-16 w-80 h-80 rounded-full bg-sage/20 blur-3xl"></div>
+      <div class="relative max-w-2xl">
+        <h2 class="text-3xl lg:text-4xl font-extrabold tracking-tight">Give your farmers a report worth reading.</h2>
+        <p class="mt-4 text-white/70 text-[15px] leading-relaxed">Set up your farms, import a flight, and generate the first report in minutes.</p>
+        <a href="{{ url_for('signup') }}" class="mt-7 inline-flex items-center gap-2 px-6 py-3.5 rounded-xl2 font-bold bg-sage text-ink hover:bg-sage/80 transition">
+          {{ icon('check','w-5 h-5') }} Get started
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="border-t border-silver">
+    <div class="max-w-6xl mx-auto px-5 py-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-[12.5px] text-dove">
+      <div class="flex items-center gap-2.5">
+        <img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-5" alt="Acre Insights">
+        <span>· Nature meets intelligence</span>
+      </div>
+      <p>© {{ now.year }} Acre Insights · Naromoru, Kenya</p>
+    </div>
+  </footer>
+</div>
+{% endblock %}

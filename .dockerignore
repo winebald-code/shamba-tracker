@@ -1,0 +1,11 @@
+.git
+.gitignore
+__pycache__/
+*.pyc
+*.db
+.env
+instance/
+uploads/*
+!uploads/.gitkeep
+.DS_Store
+README.md

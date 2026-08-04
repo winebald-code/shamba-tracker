@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Sign in{% endblock %}
+
+{% block body %}
+<div class="min-h-screen grid lg:grid-cols-2">
+  <!-- brand panel -->
+  <div class="hidden lg:flex flex-col justify-between bg-ink text-white p-12 relative overflow-hidden">
+    <div class="absolute -top-24 -left-16 w-96 h-96 rounded-full bg-sage/20 blur-3xl"></div>
+    <a href="{{ url_for('home') }}" class="relative"><img src="{{ url_for('static', filename='img/acre-logo-white.png') }}" class="h-7" alt="Acre Insights"></a>
+    <div class="relative">
+      <h2 class="text-4xl font-extrabold tracking-tight leading-tight">Field intelligence,<br>delivered.</h2>
+      <p class="mt-4 text-white/60 text-[15px] max-w-md leading-relaxed">Sign in to review flights, complete findings, and send farmers a report they can read and act on.</p>
+    </div>
+    <p class="relative text-white/40 text-[12px]">Nature meets intelligence · Acre Insights</p>
+  </div>
+
+  <!-- form -->
+  <div class="flex items-center justify-center p-6 sm:p-12">
+    <div class="w-full max-w-sm">
+      <div class="lg:hidden mb-8"><img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-7" alt="Acre Insights"></div>
+      <h1 class="text-2xl font-extrabold tracking-tight">Welcome back</h1>
+      <p class="mt-1.5 text-[14px] text-dove">Sign in to SHAMBA Tracker.</p>
+
+      <form method="post" class="mt-8 space-y-4">
+        <div>
+          <label class="block text-[12.5px] font-semibold mb-1.5">Email</label>
+          <input name="email" type="email" required autofocus placeholder="you@acre-insights.com"
+                 class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+        </div>
+        <div>
+          <label class="block text-[12.5px] font-semibold mb-1.5">Password</label>
+          <input name="password" type="password" required placeholder="••••••••"
+                 class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+        </div>
+        <button class="w-full py-3.5 rounded-xl2 font-bold bg-sage text-ink hover:bg-sage/80 transition flex items-center justify-center gap-2">
+          {{ icon('logout','w-5 h-5') }} Sign in
+        </button>
+      </form>
+
+      <p class="mt-6 text-[13px] text-dove text-center">New here?
+        <a href="{{ url_for('signup') }}" class="text-sagedeep font-semibold hover:underline">Create an account</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

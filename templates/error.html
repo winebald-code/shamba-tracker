@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ code }}{% endblock %}
+{% block body %}
+<div class="min-h-screen flex items-center justify-center p-6">
+  <div class="text-center max-w-sm">
+    <img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-7 mx-auto mb-8" alt="Acre Insights">
+    <p class="text-6xl font-extrabold tracking-tight">{{ code }}</p>
+    <p class="mt-3 text-[15px] text-dove">{{ msg }}</p>
+    <a href="{{ url_for('home') }}" class="mt-7 inline-flex items-center gap-2 px-5 py-3 rounded-xl2 bg-sage text-ink font-bold hover:bg-sage/80 transition">← Back home</a>
+  </div>
+</div>
+{% endblock %}
