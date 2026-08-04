@@ -187,7 +187,6 @@
         <span class="text-dove">{{ icon('whatsapp','w-5 h-5') }}</span>
         <span class="text-[13px] font-semibold flex-1">WhatsApp {% if farm.farmer_phone %}<span class="text-dove font-normal block text-[11.5px]">{{ farm.farmer_phone }}</span>{% else %}<span class="text-dove font-normal block text-[11.5px]">No phone on file</span>{% endif %}</span>
       </label>
-      <p class="text-[11px] text-dove leading-relaxed">Add provider API keys in the environment to send for real. Without them, sends are simulated so you can demo the full flow.</p>
     </div>
     <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
       <button type="button" onclick="document.getElementById('sendPanel').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
@@ -209,6 +208,15 @@
       }
     }catch(e){ console.error(e); }
   }
+</script>
+{% endif %}
+
+{% if request.args.get('print') %}
+<script>
+  // Reached when server-side PDF isn't available: give the browser a clean,
+  // correctly-named page to "Save as PDF".
+  document.title = "{{ flight.slug }}";
+  window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 500); });
 </script>
 {% endif %}
 {% endblock %}

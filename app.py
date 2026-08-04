@@ -14,6 +14,7 @@ from flask import (Flask, render_template, request, redirect, url_for, flash,
 from flask_login import (LoginManager, login_user, logout_user, login_required,
                          current_user)
 from werkzeug.utils import secure_filename
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from models import db, User, Farm, Flight, Finding, ROLES, ROLE_LABELS, slugify
 import parsing
@@ -34,6 +35,9 @@ def create_app():
     db_url = os.environ.get("DATABASE_URL", "sqlite:///" + os.path.join(BASE_DIR, "shamba.db"))
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    # SQLite: wait on the lock instead of failing immediately when workers overlap.
+    if db_url.startswith("sqlite"):
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"connect_args": {"timeout": 15}}
     app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024   # 25 MB uploads
     app.config["UPLOAD_DIR"] = UPLOAD_DIR
 
@@ -60,22 +64,45 @@ def create_app():
     register_routes(app)
 
     with app.app_context():
-        db.create_all()
-        seed_admin()
+        init_db()
 
     return app
 
 
+def init_db():
+    """
+    Create tables and seed the first admin — safely, even when several gunicorn
+    workers start at once against a fresh database. Table creation is ordered,
+    so the worker that wins the first CREATE completes them all; the others hit
+    "already exists" (OperationalError) and simply move on.
+    """
+    try:
+        db.create_all()
+    except OperationalError:
+        db.session.rollback()   # another worker created the tables first
+    seed_admin()
+
+
 def seed_admin():
-    """Create the first admin (Cathy) if there are no users yet."""
-    if User.query.count() > 0:
-        return
+    """
+    Create the first admin (Cathy) if there are no users yet.
+
+    Safe under multiple gunicorn workers booting at once: if another worker
+    inserts the same admin a moment earlier, the duplicate insert raises
+    IntegrityError, which we roll back and ignore instead of crashing the worker.
+    """
     email = os.environ.get("ADMIN_EMAIL", "cathy@acre-insights.com")
+    if User.query.first() is not None or User.query.filter_by(email=email).first() is not None:
+        return
     pw = os.environ.get("ADMIN_PASSWORD", "AcreInsights2026")
     cathy = User(name=os.environ.get("ADMIN_NAME", "Cathy"), email=email, role="admin", active=True)
     cathy.set_password(pw)
     db.session.add(cathy)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()   # another worker already seeded — that's fine
+        return
     print("=" * 64)
     print(" Seeded first admin user")
     print(f"   email:    {email}")
@@ -479,7 +506,7 @@ def register_routes(app):
     @login_required
     def flight_report_pdf(flight_id):
         flight = db.get_or_404(Flight, flight_id)
-        return _serve_pdf(flight)
+        return _serve_pdf(flight, url_for("flight_report", flight_id=flight.id, print=1))
 
     @app.route("/flights/<int:flight_id>/send", methods=["POST"])
     @login_required
@@ -534,7 +561,7 @@ def register_routes(app):
     @app.route("/r/<token>/report.pdf")
     def public_report_pdf(token):
         flight = Flight.query.filter_by(share_token=token).first_or_404()
-        return _serve_pdf(flight)
+        return _serve_pdf(flight, url_for("public_report", token=flight.share_token, print=1))
 
     # ---- users management (admin) ----
     @app.route("/users")
@@ -637,16 +664,21 @@ def _map_path(flight):
 
 
 def _pdf_bytes(flight):
-    """Render the report to PDF bytes, or None if PDF isn't available."""
+    """Render the report to PDF bytes, or None if PDF can't be produced here."""
     if not pdf_gen.PDF_AVAILABLE:
         return None
-    from flask import current_app
-    logo = os.path.join(BASE_DIR, "static", "img", "acre-logo.png")
-    html = render_template("report_pdf.html",
-                           logo_uri=pdf_gen.data_uri(logo),
-                           map_uri=pdf_gen.data_uri(_map_path(flight)),
-                           **report_context(flight))
-    return pdf_gen.render_pdf(html, base_url=BASE_DIR)
+    try:
+        logo = os.path.join(BASE_DIR, "static", "img", "acre-logo.png")
+        html = render_template("report_pdf.html",
+                               logo_uri=pdf_gen.data_uri(logo),
+                               map_uri=pdf_gen.data_uri(_map_path(flight)),
+                               **report_context(flight))
+        return pdf_gen.render_pdf(html, base_url=BASE_DIR)
+    except Exception as exc:                      # never 500 on a report download
+        import traceback
+        print("PDF render failed:", exc)
+        traceback.print_exc()
+        return None
 
 
 def _build_pdf(flight):
@@ -660,12 +692,14 @@ def _build_pdf(flight):
     return True
 
 
-def _serve_pdf(flight):
+def _serve_pdf(flight, fallback_url):
     data = _pdf_bytes(flight)
     filename = f"{flight.slug}.pdf"
     if data is None:
-        # PDF engine unavailable locally: fall back to the print-friendly web report
-        return redirect(url_for("flight_report", flight_id=flight.id))
+        # Server-side PDF isn't available (e.g. WeasyPrint libraries missing on
+        # this host): fall back to the print-optimised report, which the browser
+        # can save as a correctly-named PDF.
+        return redirect(fallback_url)
     return Response(data, mimetype="application/pdf",
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 

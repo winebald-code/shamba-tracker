@@ -65,27 +65,46 @@ generate.
 
 ## Deploy to Railway
 
-Railway auto-detects the **Dockerfile**.
+This project ships with a **Dockerfile**, which is the recommended way to deploy
+because it installs the system libraries WeasyPrint needs to generate the PDF
+report. `railway.json` already tells Railway to use the Dockerfile builder.
 
 1. Push this folder to a GitHub repo.
 2. In Railway: **New Project → Deploy from GitHub repo** → pick the repo.
-3. Under **Variables**, set the values from `.env.example`. At minimum:
+3. Confirm the build is using the **Dockerfile** (Settings → Build → Builder =
+   Dockerfile). If Railway previously set a custom **Start Command**, clear it so
+   the Dockerfile's command is used.
+4. Under **Variables**, set the values from `.env.example`. At minimum:
    - `SECRET_KEY` — a long random string
    - `PUBLIC_BASE_URL` — your Railway URL, e.g. `https://shamba-tracker.up.railway.app` (used to build the shareable links in messages)
-4. Deploy. The first boot creates the DB and seeds Cathy.
+5. Deploy. The first boot creates the DB and seeds Cathy.
+
+> **If "Download PDF" doesn't download a file**, the app is almost certainly
+> running without the Dockerfile (e.g. a Nixpacks build), so WeasyPrint's
+> libraries aren't installed. Deploy with the Dockerfile as above. As a safety
+> net the app will otherwise open a print-ready page so the browser can still
+> "Save as PDF" — but the Dockerfile gives you the proper server-generated file.
 
 **Persisting data:** SQLite and uploads live on the container filesystem. For
 durable storage across deploys, add a Railway **Volume** mounted at `/app`
 (or `/app/uploads`), or set `DATABASE_URL` to a Railway Postgres instance.
 
 ### Turning on real delivery
-Sends are **simulated** until you add provider keys (the full flow is
-demonstrable without them). Add whichever you use to Railway Variables:
+Add the keys for whichever providers you use to Railway **Variables** — no code
+changes needed.
 
-- **Email:** `RESEND_API_KEY` *(or)* `SENDGRID_API_KEY`, plus `MAIL_FROM`
-- **WhatsApp:** `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_WHATSAPP_FROM` *(or)* `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID`
+- **Email:** `RESEND_API_KEY` *(or)* `SENDGRID_API_KEY`, plus `MAIL_FROM`.
+  - Resend returns **403** if `MAIL_FROM` uses a domain you haven't verified.
+    Verify your domain at resend.com/domains, or leave `MAIL_FROM` blank to use
+    Resend's test sender (delivers to the account owner's address).
+- **WhatsApp:** `TWILIO_ACCOUNT_SID` + `TWILIO_AUTH_TOKEN` + `TWILIO_WHATSAPP_FROM`
+  *(or)* `WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID`.
+  - Twilio returns **401** if the SID/Auth Token are wrong or have trailing
+    spaces. With the sandbox, each recipient must first send the `join <code>`
+    message to the sandbox number.
 
-No code changes needed — the integrations pick up the keys automatically.
+If a send fails, the on-screen message now shows the provider's own explanation
+(e.g. "domain is not verified") so you can fix it quickly.
 
 ---
 
