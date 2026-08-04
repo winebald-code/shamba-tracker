@@ -23,6 +23,5 @@ RUN mkdir -p /app/uploads
 
 EXPOSE 8080
 
-# Port is resolved inside gunicorn.conf.py from $PORT, so no shell expansion is
-# needed here — this avoids the "'$PORT' is not a valid port number" error.
-CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:app"]
+# gunicorn serves the WSGI app object defined in app.py
+CMD gunicorn --bind 0.0.0.0:${PORT} --workers 2 --timeout 120 app:app

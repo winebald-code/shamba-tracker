@@ -14,7 +14,6 @@ from flask import (Flask, render_template, request, redirect, url_for, flash,
 from flask_login import (LoginManager, login_user, logout_user, login_required,
                          current_user)
 from werkzeug.utils import secure_filename
-from sqlalchemy.exc import IntegrityError, OperationalError
 
 from models import db, User, Farm, Flight, Finding, ROLES, ROLE_LABELS, slugify
 import parsing
@@ -35,9 +34,6 @@ def create_app():
     db_url = os.environ.get("DATABASE_URL", "sqlite:///" + os.path.join(BASE_DIR, "shamba.db"))
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    # SQLite: wait on the lock instead of failing immediately when workers overlap.
-    if db_url.startswith("sqlite"):
-        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"connect_args": {"timeout": 15}}
     app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024   # 25 MB uploads
     app.config["UPLOAD_DIR"] = UPLOAD_DIR
 
@@ -64,45 +60,22 @@ def create_app():
     register_routes(app)
 
     with app.app_context():
-        init_db()
+        db.create_all()
+        seed_admin()
 
     return app
 
 
-def init_db():
-    """
-    Create tables and seed the first admin — safely, even when several gunicorn
-    workers start at once against a fresh database. Table creation is ordered,
-    so the worker that wins the first CREATE completes them all; the others hit
-    "already exists" (OperationalError) and simply move on.
-    """
-    try:
-        db.create_all()
-    except OperationalError:
-        db.session.rollback()   # another worker created the tables first
-    seed_admin()
-
-
 def seed_admin():
-    """
-    Create the first admin (Cathy) if there are no users yet.
-
-    Safe under multiple gunicorn workers booting at once: if another worker
-    inserts the same admin a moment earlier, the duplicate insert raises
-    IntegrityError, which we roll back and ignore instead of crashing the worker.
-    """
-    email = os.environ.get("ADMIN_EMAIL", "cathy@acre-insights.com")
-    if User.query.first() is not None or User.query.filter_by(email=email).first() is not None:
+    """Create the first admin (Cathy) if there are no users yet."""
+    if User.query.count() > 0:
         return
+    email = os.environ.get("ADMIN_EMAIL", "cathy@acre-insights.com")
     pw = os.environ.get("ADMIN_PASSWORD", "AcreInsights2026")
     cathy = User(name=os.environ.get("ADMIN_NAME", "Cathy"), email=email, role="admin", active=True)
     cathy.set_password(pw)
     db.session.add(cathy)
-    try:
-        db.session.commit()
-    except IntegrityError:
-        db.session.rollback()   # another worker already seeded — that's fine
-        return
+    db.session.commit()
     print("=" * 64)
     print(" Seeded first admin user")
     print(f"   email:    {email}")
