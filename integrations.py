@@ -53,6 +53,9 @@ def _http_error(provider, e):
         hint = " — check the API key / credentials are correct and have no extra spaces."
     elif code == 403 and provider.startswith(("Resend", "SendGrid")):
         hint = " — set MAIL_FROM to an address on a domain you've verified with the provider (a domain you own, not a free mailbox)."
+    elif code == 400 and provider.startswith("Twilio"):
+        hint = (" — set TWILIO_CONTENT_SID to an approved WhatsApp template SID; "
+                "business-initiated messages require an approved Content Template, not free text.")
     elif code == 422 and provider.startswith("Twilio"):
         hint = (" — Twilio trial accounts can only message verified numbers. Verify the recipient in the "
                 "Twilio console, or use the WhatsApp sandbox and have the recipient send the join code first.")
@@ -152,11 +155,11 @@ def send_email(to_addr, subject, body, pdf_bytes=None, pdf_name=None):
 
 
 # ---------------------------------------------------------------- whatsapp
-def send_whatsapp(to_phone, body):
+def send_whatsapp(to_phone, body, template_vars=None):
     twilio_sid = _env("TWILIO_ACCOUNT_SID")
     twilio_token = _env("TWILIO_AUTH_TOKEN")
     twilio_from = _env("TWILIO_WHATSAPP_FROM")
-    twilio_content_sid = _env("TWILIO_CONTENT_SID")   # NEW
+    twilio_content_sid = _env("TWILIO_CONTENT_SID")
     meta_token = _env("WHATSAPP_TOKEN", "META_WHATSAPP_TOKEN")
     meta_phone_id = _env("WHATSAPP_PHONE_NUMBER_ID")
 
@@ -168,14 +171,15 @@ def send_whatsapp(to_phone, body):
         try:
             import urllib.parse
             frm = twilio_from if twilio_from.startswith("whatsapp:") else f"whatsapp:{twilio_from}"
-
-            fields = {"From": frm, "To": f"whatsapp:{to_phone}"}
+            fields = {
+                "From": frm,
+                "To": f"whatsapp:{to_phone}",
+            }
             if twilio_content_sid:
                 fields["ContentSid"] = twilio_content_sid
-                fields["ContentVariables"] = json.dumps({"1": body})
+                fields["ContentVariables"] = json.dumps(template_vars or {"1": body})
             else:
                 fields["Body"] = body
-
             data = urllib.parse.urlencode(fields).encode()
             url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
             auth = base64.b64encode(f"{twilio_sid}:{twilio_token}".encode()).decode()
@@ -187,3 +191,26 @@ def send_whatsapp(to_phone, body):
             return False, _http_error("Twilio", e)
         except urllib.error.URLError as e:
             return False, f"Twilio connection error: {getattr(e, 'reason', e)}"
+
+    if meta_token and meta_phone_id:
+        try:
+            payload = {
+                "messaging_product": "whatsapp",
+                "to": to_phone.lstrip("+"),
+                "type": "text",
+                "text": {"body": body},
+            }
+            url = f"https://graph.facebook.com/v20.0/{meta_phone_id}/messages"
+            req = urllib.request.Request(
+                url, data=json.dumps(payload).encode(),
+                headers={"Authorization": f"Bearer {meta_token}",
+                         "Content-Type": "application/json"},
+            )
+            urllib.request.urlopen(req, timeout=20)
+            return True, "Sent via Meta WhatsApp Cloud API."
+        except urllib.error.HTTPError as e:
+            return False, _http_error("Meta WhatsApp", e)
+        except urllib.error.URLError as e:
+            return False, f"Meta WhatsApp connection error: {getattr(e, 'reason', e)}"
+
+    return True, f"WhatsApp prepared for {to_phone} (no WhatsApp provider key set)."
