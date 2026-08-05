@@ -1,0 +1,101 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% from '_dash.html' import stat, flightlist, channels %}
+{% block title %}Admin dashboard{% endblock %}
+{% block heading %}Admin dashboard{% endblock %}
+{% block subheading %}<p class="text-[12.5px] text-dove truncate">The whole workspace: people, farms, flights and delivery.</p>{% endblock %}
+
+{% block content %}
+
+{% if awaiting %}
+<!-- approval queue first: it blocks other people from working -->
+<div class="rounded-xl2 bg-ink text-white overflow-hidden mb-5">
+  <div class="px-5 py-4 flex items-center gap-3 border-b border-white/10">
+    <span class="w-9 h-9 rounded-lg bg-sage text-ink grid place-items-center shrink-0">{{ icon('hourglass','w-5 h-5') }}</span>
+    <div class="flex-1 min-w-0">
+      <h2 class="text-[15px] font-bold">{{ awaiting|length }} account{{ '' if awaiting|length==1 else 's' }} waiting for you</h2>
+      <p class="text-[12px] text-white/60">Nobody can sign in until you approve them.</p>
+    </div>
+    <a href="{{ url_for('users') }}" class="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sage text-ink text-[12.5px] font-bold hover:bg-sage/80 transition whitespace-nowrap">Review all {{ icon('arrow-right','w-4 h-4') }}</a>
+  </div>
+  <div class="divide-y divide-white/10">
+    {% for u in awaiting[:4] %}
+    <div class="px-5 py-3.5 flex items-center gap-3">
+      <span class="w-9 h-9 rounded-full bg-white/10 grid place-items-center text-[12px] font-bold shrink-0">{{ u.initials }}</span>
+      <div class="min-w-0 flex-1">
+        <p class="text-[13.5px] font-semibold truncate">{{ u.name }}</p>
+        <p class="text-[11.5px] text-white/55 truncate">{{ u.email }} · asked for {{ u.requested_role_label }}</p>
+      </div>
+      <form method="post" action="{{ url_for('user_approve', user_id=u.id) }}" class="shrink-0">
+        <input type="hidden" name="role" value="{{ u.requested_role or 'agronomist' }}">
+        <button class="px-3.5 py-2 rounded-xl bg-sage text-ink text-[12px] font-bold hover:bg-sage/80 transition">Approve</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  <a href="{{ url_for('users') }}" class="sm:hidden block px-5 py-3.5 text-[12.5px] font-bold text-sage border-t border-white/10">Review all requests →</a>
+</div>
+{% endif %}
+
+<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+  {{ stat('farm', 'Farms', stats.farms, href=url_for('farms')) }}
+  {{ stat('drone', 'Flights', stats.flights) }}
+  {{ stat('pin', 'Issues found', stats.issues) }}
+  {{ stat('report', 'Reports', stats.reports) }}
+  {{ stat('send', 'Delivered', stats.sent) }}
+  {{ stat('check-circle', 'Acknowledged', stats.acknowledged, tone='good') }}
+</div>
+
+<div class="grid lg:grid-cols-3 gap-5 mt-5">
+  <div class="glass-solid rounded-xl2 p-5 lg:col-span-2">
+    <div class="flex items-center justify-between">
+      <h2 class="text-[15px] font-bold">Issues by category</h2>
+      <span class="eyebrow text-dove">All seasons</span>
+    </div>
+    {% if cat_counts %}
+    {% set maxc = cat_counts.values()|max %}
+    <div class="mt-5 space-y-3">
+      {% for cat, n in cat_counts.items()|sort(attribute='1', reverse=true) %}
+      <div>
+        <div class="flex items-center justify-between text-[12.5px] mb-1">
+          <span class="font-semibold">{{ cat }}</span>
+          <span class="text-dove inst font-semibold">{{ n }}</span>
+        </div>
+        <div class="h-2.5 rounded-full bg-canvas overflow-hidden">
+          <div class="h-full rounded-full bg-sage" style="width: {{ (n / maxc * 100)|round(0, 'floor') }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="mt-6 py-12 text-center">
+      <span class="inline-grid place-items-center w-12 h-12 rounded-xl bg-canvas text-dove mb-3">{{ icon('report','w-6 h-6') }}</span>
+      <p class="text-[13.5px] font-semibold">No findings yet</p>
+      <p class="text-[12.5px] text-dove mt-1">Add a farm and import a flight to see issues appear here.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="space-y-5">
+    <div class="glass-solid rounded-xl2 p-5">
+      <div class="flex items-center justify-between">
+        <h2 class="text-[15px] font-bold">The team</h2>
+        <a href="{{ url_for('users') }}" class="text-[12px] font-bold text-sagedeep hover:underline">Manage</a>
+      </div>
+      <div class="mt-4 space-y-2.5">
+        {% for r in ROLES %}
+        <div class="flex items-center gap-3">
+          <span class="text-[12.5px] font-semibold flex-1">{{ ROLE_LABELS[r] }}</span>
+          <span class="inst text-[13px] font-bold">{{ role_counts.get(r, 0) }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {{ channels(providers) }}
+  </div>
+</div>
+
+<div class="mt-5">
+  {{ flightlist('Recent flights', recent, 'Your first flight will appear here once you create one.', 'Open') }}
+</div>
+{% endblock %}

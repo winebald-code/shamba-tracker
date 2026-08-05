@@ -8,11 +8,38 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
 
-ROLES = ["admin", "agronomist", "customer_success"]
+# --------------------------------------------------------------------- roles
+ROLES = ["admin", "agronomist", "customer_success", "field_operator"]
+
 ROLE_LABELS = {
     "admin": "Admin",
     "agronomist": "Agronomist",
     "customer_success": "Customer Success",
+    "field_operator": "Field Operator",
+}
+
+# Shown on the approval screen and the role picker so an admin knows what
+# they are granting before they grant it.
+ROLE_BLURB = {
+    "admin": "Full access, plus approving new accounts and managing people.",
+    "agronomist": "Completes findings, writes the cause and the recommendation, generates reports.",
+    "customer_success": "Reviews finished reports and delivers them to the farmer.",
+    "field_operator": "Records flights and uploads the map and the DroneDeploy export.",
+}
+
+# Which dashboard each role lands on after signing in.
+ROLE_DASHBOARD = {
+    "admin": "dashboard_admin",
+    "agronomist": "dashboard_agronomist",
+    "customer_success": "dashboard_cs",
+    "field_operator": "dashboard_operator",
+}
+
+STATUSES = ["pending", "approved", "rejected"]
+STATUS_LABELS = {
+    "pending": "Awaiting approval",
+    "approved": "Approved",
+    "rejected": "Declined",
 }
 
 
@@ -26,6 +53,22 @@ class User(UserMixin, db.Model):
     active = db.Column(db.Boolean, default=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # ---- profile ----
+    phone = db.Column(db.String(60), default="")
+    job_title = db.Column(db.String(120), default="")
+    location = db.Column(db.String(160), default="")
+    bio = db.Column(db.Text, default="")
+
+    # ---- approval workflow ----
+    status = db.Column(db.String(20), default="pending", nullable=False, index=True)
+    requested_role = db.Column(db.String(30), default="agronomist")
+    approved_at = db.Column(db.DateTime)
+    approved_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    decision_note = db.Column(db.Text, default="")
+    last_login_at = db.Column(db.DateTime)
+
+    approved_by = db.relationship("User", remote_side=[id], uselist=False)
+
     def set_password(self, pw):
         self.password_hash = generate_password_hash(pw)
 
@@ -34,17 +77,33 @@ class User(UserMixin, db.Model):
 
     @property
     def role_label(self):
-        return ROLE_LABELS.get(self.role, self.role.title())
+        return ROLE_LABELS.get(self.role, self.role.replace("_", " ").title())
+
+    @property
+    def requested_role_label(self):
+        return ROLE_LABELS.get(self.requested_role, "Agronomist")
+
+    @property
+    def status_label(self):
+        return STATUS_LABELS.get(self.status, self.status.title())
 
     @property
     def initials(self):
-        parts = [p for p in self.name.split() if p]
+        parts = [p for p in (self.name or "").split() if p]
         return "".join(p[0].upper() for p in parts[:2]) or "U"
 
-    # Flask-Login: inactive users can't log in
+    @property
+    def is_admin(self):
+        return self.role == "admin"
+
+    @property
+    def dashboard_endpoint(self):
+        return ROLE_DASHBOARD.get(self.role, "dashboard_agronomist")
+
+    # Flask-Login: only approved, active accounts may hold a session.
     @property
     def is_active(self):
-        return self.active
+        return bool(self.active and self.status == "approved")
 
 
 class Farm(db.Model):
@@ -90,6 +149,7 @@ class Flight(db.Model):
     sent_email = db.Column(db.Boolean, default=False)
     sent_whatsapp = db.Column(db.Boolean, default=False)
     sent_at = db.Column(db.DateTime)
+    delivery_method = db.Column(db.String(40), default="")     # "api" or "handoff"
     acknowledged = db.Column(db.Boolean, default=False)
     acknowledged_at = db.Column(db.DateTime)
 
@@ -116,6 +176,10 @@ class Flight(db.Model):
     @property
     def can_generate(self):
         return len(self.findings) > 0 and self.incomplete_count == 0
+
+    @property
+    def is_delivered(self):
+        return bool(self.sent_email or self.sent_whatsapp)
 
     def category_counts(self):
         counts = {}

@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Waiting for approval{% endblock %}
+
+{% block body %}
+<div class="min-h-screen grid lg:grid-cols-2">
+  <div class="hidden lg:flex flex-col justify-between bg-ink text-white p-12 relative overflow-hidden">
+    <img src="{{ url_for('static', filename='img/field-aerial.jpg') }}" alt=""
+         class="absolute inset-0 w-full h-full object-cover opacity-25">
+    <div class="absolute inset-0 bg-gradient-to-br from-ink via-ink/85 to-ink/40"></div>
+    <a href="{{ url_for('home') }}" class="relative"><img src="{{ url_for('static', filename='img/acre-logo-white.png') }}" class="h-7" alt="Acre Insights"></a>
+    <div class="relative">
+      <h2 class="text-4xl font-extrabold tracking-tight leading-tight">One approval away.</h2>
+      <p class="mt-4 text-white/65 text-[15px] max-w-md leading-relaxed">
+        SHAMBA Tracker holds real farm records and farmer contact details, so an admin confirms
+        every new account and sets the role before it can sign in.
+      </p>
+    </div>
+    <p class="relative text-white/40 text-[12px]">Nature meets intelligence · Acre Insights</p>
+  </div>
+
+  <div class="flex items-center justify-center p-6 sm:p-12">
+    <div class="w-full max-w-md">
+      <div class="lg:hidden mb-8"><a href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-7" alt="Acre Insights"></a></div>
+
+      <span class="inline-grid place-items-center w-14 h-14 rounded-2xl bg-sagesoft text-sagedeep">{{ icon('hourglass','w-7 h-7') }}</span>
+      <h1 class="mt-5 text-2xl font-extrabold tracking-tight">Your request is with the admin</h1>
+      <p class="mt-2.5 text-[14px] text-dove leading-relaxed">
+        {% if pending_user %}
+        We have your request{% if pending_user.name %}, {{ pending_user.name.split()[0] }}{% endif %}. You will get an email at
+        <span class="font-semibold text-ink break-all">{{ pending_user.email }}</span> the moment it is approved, then you can sign in.
+        {% else %}
+        We have your request. You will get an email the moment it is approved, then you can sign in.
+        {% endif %}
+      </p>
+
+      {% if pending_user %}
+      <div class="mt-6 glass-solid rounded-xl2 p-5 space-y-3">
+        <div class="flex items-center gap-3">
+          <span class="w-10 h-10 rounded-full bg-canvas text-ink grid place-items-center text-[13px] font-bold shrink-0">{{ pending_user.initials }}</span>
+          <div class="min-w-0">
+            <p class="text-[13.5px] font-bold truncate">{{ pending_user.name }}</p>
+            <p class="text-[12px] text-dove truncate">{{ pending_user.email }}</p>
+          </div>
+        </div>
+        <div class="pt-3 border-t border-silver space-y-2 text-[12.5px]">
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-dove">Role requested</span>
+            <span class="font-semibold">{{ pending_user.requested_role_label }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-dove">Status</span>
+            <span class="font-bold px-2.5 py-1 rounded-full text-[11px]
+              {{ 'bg-sagesoft text-sagedeep' if pending_user.status=='approved' else ('bg-canvas text-dove' if pending_user.status=='pending' else 'bg-ink text-white') }}">
+              {{ pending_user.status_label }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <span class="text-dove">Requested on</span>
+            <span class="font-semibold inst">{{ pending_user.created_at.strftime('%d %b %Y') if pending_user.created_at else '—' }}</span>
+          </div>
+        </div>
+      </div>
+
+      {% if pending_user.status == 'approved' %}
+      <a href="{{ url_for('login') }}" class="mt-6 w-full py-3.5 rounded-xl2 font-bold bg-sage text-ink hover:bg-sage/80 transition flex items-center justify-center gap-2">
+        {{ icon('check','w-5 h-5') }} You're approved — sign in
+      </a>
+      {% endif %}
+      {% endif %}
+
+      <div class="mt-6 flex flex-wrap items-center gap-3">
+        <a href="{{ url_for('login') }}" class="px-5 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition">Try signing in</a>
+        <a href="{{ url_for('home') }}" class="px-5 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-ink/5 transition">Back to the site</a>
+      </div>
+
+      <p class="mt-8 text-[12px] text-dove leading-relaxed">
+        Waiting longer than a working day? Ask your workspace admin to open
+        <span class="font-semibold text-ink">People</span> in SHAMBA Tracker and approve the request.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

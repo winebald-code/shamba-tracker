@@ -5,60 +5,82 @@
 <div class="flex min-h-screen">
 
   <!-- Sidebar -->
-  <aside id="sidebar" class="fixed lg:static z-40 -translate-x-full lg:translate-x-0 transition-transform
-              w-64 shrink-0 h-screen lg:h-auto bg-ink text-white/90 flex flex-col">
+  <aside id="sidebar" class="fixed lg:sticky lg:top-0 z-40 -translate-x-full lg:translate-x-0 transition-transform
+              w-64 shrink-0 h-screen bg-ink text-white/90 flex flex-col">
     <div class="px-5 pt-6 pb-5">
-      <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2.5 hover:opacity-90 transition" aria-label="Go to dashboard">
-        <img src="{{ url_for('static', filename='img/acre-logo-white.png') }}" alt="Acre Insights" class="h-6">
-      </a>
+      <div class="flex items-start justify-between">
+        <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2.5 hover:opacity-90 transition" aria-label="Go to dashboard">
+          <img src="{{ url_for('static', filename='img/acre-logo-white.png') }}" alt="Acre Insights" class="h-6">
+        </a>
+        <button class="lg:hidden text-white/60 hover:text-white -mr-1" onclick="toggleSidebar()" aria-label="Close menu">{{ icon('x','w-5 h-5') }}</button>
+      </div>
       <div class="mt-4 flex items-center gap-2">
         <span class="text-[15px] font-bold tracking-wide text-white">SHAMBA Tracker</span>
       </div>
-      <p class="text-[10.5px] uppercase tracking-[0.16em] text-white/45 mt-0.5">Flight Report Automation</p>
+      <p class="eyebrow text-white/45 mt-1">Flight report automation</p>
     </div>
 
-    <nav class="px-3 space-y-1 flex-1">
-      {% set navs = [('dashboard','Dashboard','dashboard'),('farms','Farms','farm'),('farms','',None)] %}
-      {% macro navlink(endpoint, label, ic) %}
-        {% set active = request.endpoint == endpoint or (endpoint=='farms' and request.endpoint in ['farm_detail','flight_detail','farm_new']) %}
+    <nav class="px-3 space-y-1 flex-1 overflow-y-auto">
+      {% macro navlink(endpoint, label, ic, badge=0, matches=[]) %}
+        {% set active = request.endpoint == endpoint or request.endpoint in matches %}
         <a href="{{ url_for(endpoint) }}"
            class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] font-semibold transition
                   {{ 'bg-white/10 text-white' if active else 'text-white/70 hover:bg-white/5 hover:text-white' }}">
-          <span class="{{ 'text-sage' if active else 'text-white/55' }}">{{ icon(ic,'w-[18px] h-[18px]') }}</span>{{ label }}
+          <span class="{{ 'text-sage' if active else 'text-white/55' }}">{{ icon(ic,'w-[18px] h-[18px]') }}</span>
+          <span class="flex-1">{{ label }}</span>
+          {% if badge %}<span class="inst text-[10.5px] font-semibold px-1.5 py-0.5 rounded-full bg-sage text-ink">{{ badge }}</span>{% endif %}
         </a>
       {% endmacro %}
-      {{ navlink('dashboard','Dashboard','dashboard') }}
-      {{ navlink('farms','Farms & flights','farm') }}
+
+      {{ navlink('dashboard', 'Dashboard', 'dashboard',
+                 matches=['dashboard_admin','dashboard_agronomist','dashboard_cs','dashboard_operator']) }}
+      {{ navlink('farms', 'Farms & flights', 'farm',
+                 matches=['farm_detail','flight_detail','flight_report']) }}
       {% if current_user.role == 'admin' %}
-      {{ navlink('users','Users','users') }}
+      {{ navlink('users', 'People', 'users', badge=pending_count) }}
       {% endif %}
+      {{ navlink('profile', 'My profile', 'user') }}
+
+      <div class="pt-4 mt-4 border-t border-white/10">
+        <p class="eyebrow text-white/35 px-3 pb-2">Signed in as</p>
+        <div class="px-3">
+          <p class="text-[12.5px] font-semibold text-white leading-tight">{{ current_user.role_label }}</p>
+          <p class="text-[11.5px] text-white/45 leading-snug mt-1">{{ ROLE_BLURB.get(current_user.role, '') }}</p>
+        </div>
+      </div>
     </nav>
 
     <div class="p-3 border-t border-white/10">
       <div class="flex items-center gap-3 px-2 py-2">
-        <div class="w-9 h-9 rounded-full bg-sage text-ink grid place-items-center font-bold text-[13px]">{{ current_user.initials }}</div>
+        <a href="{{ url_for('profile') }}" class="w-9 h-9 rounded-full bg-sage text-ink grid place-items-center font-bold text-[13px] hover:bg-sage/80 transition shrink-0" title="My profile">{{ current_user.initials }}</a>
         <div class="min-w-0 flex-1">
           <p class="text-[13px] font-semibold text-white truncate">{{ current_user.name }}</p>
-          <p class="text-[11px] text-white/50">{{ current_user.role_label }}</p>
+          <p class="text-[11px] text-white/50 truncate">{{ current_user.email }}</p>
         </div>
         <a href="{{ url_for('logout') }}" class="text-white/50 hover:text-white p-1.5" title="Sign out">{{ icon('logout','w-[18px] h-[18px]') }}</a>
       </div>
     </div>
   </aside>
-  <div id="scrim" class="fixed inset-0 bg-ink/40 z-30 hidden lg:hidden" onclick="toggleSidebar()"></div>
+  <div id="scrim" class="fixed inset-0 bg-ink/50 z-30 hidden lg:hidden" onclick="toggleSidebar()"></div>
 
   <!-- Main -->
   <div class="flex-1 min-w-0">
-    <header class="sticky top-0 z-20 glass border-b border-ink/5 px-5 lg:px-8 h-16 flex items-center gap-4">
-      <button class="lg:hidden text-ink" onclick="toggleSidebar()">{{ icon('menu','w-6 h-6') }}</button>
-      <div class="flex-1">
-        <h1 class="text-[17px] font-bold tracking-tight">{% block heading %}{% endblock %}</h1>
+    <header class="sticky top-0 z-20 glass border-b border-ink/5 px-4 sm:px-5 lg:px-8 h-16 flex items-center gap-3 sm:gap-4">
+      <button class="lg:hidden text-ink shrink-0" onclick="toggleSidebar()" aria-label="Open menu" aria-controls="sidebar">{{ icon('menu','w-6 h-6') }}</button>
+      <div class="flex-1 min-w-0">
+        <h1 class="text-[16px] sm:text-[17px] font-bold tracking-tight truncate">{% block heading %}{% endblock %}</h1>
         {% block subheading %}{% endblock %}
       </div>
+      {% if current_user.role == 'admin' and pending_count %}
+      <a href="{{ url_for('users') }}" class="relative shrink-0 w-9 h-9 grid place-items-center rounded-xl hover:bg-ink/5 transition" title="{{ pending_count }} waiting for approval">
+        {{ icon('bell','w-5 h-5') }}
+        <span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-sagedeep"></span>
+      </a>
+      {% endif %}
       {% block topbar_actions %}{% endblock %}
     </header>
 
-    <main class="px-5 lg:px-8 py-6 lg:py-8 max-w-[1200px]">
+    <main class="px-4 sm:px-5 lg:px-8 py-6 lg:py-8 max-w-[1200px]">
       {% block content %}{% endblock %}
     </main>
   </div>
@@ -66,8 +88,16 @@
 
 <script>
   function toggleSidebar(){
-    const s=document.getElementById('sidebar'), sc=document.getElementById('scrim');
+    var s=document.getElementById('sidebar'), sc=document.getElementById('scrim');
+    var opening = s.classList.contains('-translate-x-full');
     s.classList.toggle('-translate-x-full'); sc.classList.toggle('hidden');
+    document.body.style.overflow = (opening && window.innerWidth < 1024) ? 'hidden' : '';
   }
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && !document.getElementById('scrim').classList.contains('hidden')) toggleSidebar();
+  });
+  window.addEventListener('resize', function(){
+    if(window.innerWidth >= 1024){ document.body.style.overflow=''; }
+  });
 </script>
 {% endblock %}

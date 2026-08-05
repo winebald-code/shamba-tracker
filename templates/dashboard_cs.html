@@ -1,0 +1,47 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% from '_dash.html' import stat, flightlist, channels %}
+{% block title %}Customer Success dashboard{% endblock %}
+{% block heading %}Reports and delivery{% endblock %}
+{% block subheading %}<p class="text-[12.5px] text-dove truncate">What is ready to go out, and what has landed.</p>{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+  {{ stat('inbox', 'To review', stats.to_review, 'Marked ready by an agronomist', 'alert' if stats.to_review else 'plain') }}
+  {{ stat('send', 'To deliver', stats.to_send, 'Generated, not yet sent', 'alert' if stats.to_send else 'plain') }}
+  {{ stat('clock', 'Awaiting receipt', stats.awaiting_ack, 'Sent, not yet confirmed') }}
+  {{ stat('check-circle', 'Acknowledged', stats.acknowledged, tone='good') }}
+  {{ stat('phone', 'Missing contact', stats.missing_contact, 'No email or phone on file', 'alert' if stats.missing_contact else 'plain') }}
+  {{ stat('farm', 'Farms', stats.farms, href=url_for('farms')) }}
+</div>
+
+<div class="grid lg:grid-cols-2 gap-5 mt-5">
+  {{ flightlist('Waiting for your review', to_review,
+                'Nothing is waiting on a review.', 'Review', 'inbox') }}
+  {{ flightlist('Ready to deliver', to_send,
+                'Every generated report has been delivered.', 'Send', 'send') }}
+</div>
+
+<div class="grid lg:grid-cols-3 gap-5 mt-5">
+  <div class="lg:col-span-2 space-y-5">
+    {{ flightlist('Sent, awaiting the farmer', awaiting_ack,
+                  'Every delivered report has been confirmed.', 'Open', 'clock') }}
+    {% if missing_contact %}
+    {{ flightlist('Add a farmer contact first', missing_contact,
+                  'Every farm has a contact.', 'Add contact', 'phone', badge='contact') }}
+    {% endif %}
+  </div>
+  <div class="space-y-5">
+    {{ channels(providers) }}
+    <div class="rounded-xl2 bg-ink text-white p-5">
+      <span class="w-10 h-10 rounded-xl bg-white/10 text-sage grid place-items-center">{{ icon('whatsapp','w-5 h-5') }}</span>
+      <h2 class="text-[15px] font-bold mt-4">No provider account? Still send.</h2>
+      <p class="text-[12.5px] text-white/65 mt-2 leading-relaxed">
+        Open any report and use <span class="text-white font-semibold">Send from my WhatsApp</span> or
+        <span class="text-white font-semibold">Send from my email</span>. Both open your own app with the
+        message and the report link already written, and the delivery is logged here.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

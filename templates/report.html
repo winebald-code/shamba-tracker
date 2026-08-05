@@ -12,7 +12,7 @@
     <a href="{{ url_for('flight_detail', flight_id=flight.id) }}" class="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink hover:bg-ink/5 px-2.5 sm:px-3 py-2 rounded-xl transition whitespace-nowrap">← <span class="hidden sm:inline">Back to review</span><span class="sm:hidden">Back</span></a>
     <div class="flex items-center gap-2">
       <a href="{{ url_for('flight_report_pdf', flight_id=flight.id) }}" class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition"><span class="shrink-0">{{ icon('download','w-4 h-4') }}</span><span class="hidden sm:inline">Download PDF</span></a>
-      <button onclick="document.getElementById('sendPanel').showModal()" class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition"><span class="shrink-0">{{ icon('send','w-4 h-4') }}</span><span class="hidden sm:inline">Approve &amp; send</span><span class="sm:hidden">Send</span></button>
+      <button onclick="document.getElementById('sendPanel').showModal()" class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition"><span class="shrink-0">{{ icon('send','w-4 h-4') }}</span><span class="hidden sm:inline">Share with farmer</span><span class="sm:hidden">Share</span></button>
     </div>
   </div>
 </div>
@@ -168,32 +168,140 @@
 </div>
 
 {% if not public %}
-<!-- send modal -->
-<dialog id="sendPanel" class="rounded-xl2 p-0 w-full max-w-md backdrop:bg-ink/40 shadow-2xl no-print">
-  <form method="post" action="{{ url_for('flight_send', flight_id=flight.id) }}" class="bg-white">
-    <div class="px-6 py-4 border-b border-silver flex items-center justify-between">
-      <h3 class="text-[16px] font-extrabold">Send to farmer</h3>
-      <button type="button" onclick="document.getElementById('sendPanel').close()" class="text-dove hover:text-ink text-xl leading-none">&times;</button>
+<!-- ================= SHARE PANEL ================= -->
+<dialog id="sendPanel" class="rounded-xl2 p-0 w-full max-w-lg backdrop:bg-ink/50 shadow-2xl no-print">
+  <div class="bg-white max-h-[88vh] overflow-y-auto">
+    <div class="px-5 sm:px-6 py-4 border-b border-silver flex items-center justify-between sticky top-0 bg-white z-10">
+      <div>
+        <h3 class="text-[16px] font-extrabold">Share with {{ farm.farmer_name or 'the farmer' }}</h3>
+        <p class="text-[11.5px] text-dove mt-0.5">Two ways out. Both log the delivery here.</p>
+      </div>
+      <button type="button" onclick="document.getElementById('sendPanel').close()" class="text-dove hover:text-ink shrink-0" aria-label="Close">{{ icon('x','w-5 h-5') }}</button>
     </div>
-    <div class="p-6 space-y-4">
-      <p class="text-[12.5px] text-dove leading-relaxed">The report PDF and a short message in Acre&rsquo;s voice will go to {{ farm.farmer_name or 'the farmer' }}. They can open the map and confirm receipt.</p>
-      <label class="flex items-center gap-3 glass-solid rounded-xl px-4 py-3 cursor-pointer">
-        <input type="checkbox" name="channel" value="email" {{ 'checked' if farm.farmer_email }} class="w-4 h-4 accent-sagedeep">
-        <span class="text-dove">{{ icon('mail','w-5 h-5') }}</span>
-        <span class="text-[13px] font-semibold flex-1">Email {% if farm.farmer_email %}<span class="text-dove font-normal block text-[11.5px]">{{ farm.farmer_email }}</span>{% else %}<span class="text-dove font-normal block text-[11.5px]">No email on file</span>{% endif %}</span>
-      </label>
-      <label class="flex items-center gap-3 glass-solid rounded-xl px-4 py-3 cursor-pointer">
-        <input type="checkbox" name="channel" value="whatsapp" {{ 'checked' if farm.farmer_phone }} class="w-4 h-4 accent-sagedeep">
-        <span class="text-dove">{{ icon('whatsapp','w-5 h-5') }}</span>
-        <span class="text-[13px] font-semibold flex-1">WhatsApp {% if farm.farmer_phone %}<span class="text-dove font-normal block text-[11.5px]">{{ farm.farmer_phone }}</span>{% else %}<span class="text-dove font-normal block text-[11.5px]">No phone on file</span>{% endif %}</span>
-      </label>
+
+    <!-- 1. straight from your own apps: needs no provider account -->
+    <div class="p-5 sm:p-6">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="eyebrow text-dove">Send it yourself</span>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sagesoft text-sagedeep">Always works</span>
+      </div>
+      <p class="text-[12.5px] text-dove leading-relaxed mb-4">
+        Opens your own WhatsApp or mail app with the message and the report link already written. Nothing to configure.
+      </p>
+
+      <div class="space-y-2.5">
+        <a href="{{ share.whatsapp }}" target="_blank" rel="noopener"
+           onclick="markShared('whatsapp')"
+           class="flex items-center gap-3 rounded-xl border border-silver px-4 py-3.5 hover:border-sagedeep hover:bg-sagesoft/40 transition group">
+          <span class="w-10 h-10 rounded-xl bg-[#25D366]/12 text-[#128C7E] grid place-items-center shrink-0">{{ icon('whatsapp','w-5 h-5') }}</span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-[13.5px] font-bold">Send from my WhatsApp</span>
+            <span class="block text-[11.5px] text-dove truncate">
+              {% if share.has_phone %}To <span class="inst">+{{ share.phone_e164 }}</span>{% else %}No number on file — you pick the chat{% endif %}
+            </span>
+          </span>
+          <span class="text-dove group-hover:text-sagedeep shrink-0">{{ icon('external','w-4 h-4') }}</span>
+        </a>
+
+        <a href="{{ share.mailto }}"
+           onclick="markShared('email')"
+           class="flex items-center gap-3 rounded-xl border border-silver px-4 py-3.5 hover:border-sagedeep hover:bg-sagesoft/40 transition group">
+          <span class="w-10 h-10 rounded-xl bg-canvas text-ink grid place-items-center shrink-0">{{ icon('mail','w-5 h-5') }}</span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-[13.5px] font-bold">Send from my email</span>
+            <span class="block text-[11.5px] text-dove truncate">
+              {% if share.has_email %}To {{ farm.farmer_email }}{% else %}No email on file — you fill in the address{% endif %}
+            </span>
+          </span>
+          <span class="text-dove group-hover:text-sagedeep shrink-0">{{ icon('external','w-4 h-4') }}</span>
+        </a>
+
+        <a href="{{ share.gmail }}" target="_blank" rel="noopener"
+           onclick="markShared('email')"
+           class="flex items-center gap-3 rounded-xl border border-silver px-4 py-3.5 hover:border-sagedeep hover:bg-sagesoft/40 transition group">
+          <span class="w-10 h-10 rounded-xl bg-canvas text-ink grid place-items-center shrink-0">{{ icon('external','w-5 h-5') }}</span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-[13.5px] font-bold">Compose in Gmail</span>
+            <span class="block text-[11.5px] text-dove">For a browser mailbox with no desktop mail app</span>
+          </span>
+          <span class="text-dove group-hover:text-sagedeep shrink-0">{{ icon('external','w-4 h-4') }}</span>
+        </a>
+      </div>
+
+      <!-- the link itself -->
+      <div class="mt-4 rounded-xl bg-canvas border border-silver p-3.5">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-dove shrink-0">{{ icon('link','w-4 h-4') }}</span>
+          <span class="text-[12px] font-bold flex-1">The farmer&rsquo;s report link</span>
+          <button type="button" onclick="copyShareLink(this)"
+                  class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-silver text-[11.5px] font-bold hover:border-dove transition shrink-0">
+            {{ icon('copy','w-3.5 h-3.5') }} <span>Copy</span>
+          </button>
+        </div>
+        <p id="shareLink" class="inst text-[11px] text-dove break-all leading-snug">{{ share.link }}</p>
+      </div>
     </div>
-    <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
-      <button type="button" onclick="document.getElementById('sendPanel').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
-      <button class="px-5 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 flex items-center gap-2">{{ icon('send','w-4 h-4') }} Send report</button>
+
+    <!-- 2. provider-based automatic delivery -->
+    <div class="border-t border-silver p-5 sm:p-6 bg-canvas/50">
+      <span class="eyebrow text-dove">Or send automatically</span>
+      <p class="text-[12.5px] text-dove leading-relaxed mt-1 mb-4">
+        Delivers straight from Acre Insights with the PDF attached. Needs a verified sending domain for email
+        and an approved business number for WhatsApp.
+      </p>
+      <form method="post" action="{{ url_for('flight_send', flight_id=flight.id) }}" class="space-y-2.5">
+        <label class="flex items-center gap-3 bg-white border border-silver rounded-xl px-4 py-3 cursor-pointer">
+          <input type="checkbox" name="channel" value="email" {{ 'checked' if farm.farmer_email }} class="w-4 h-4 accent-sagedeep">
+          <span class="text-dove shrink-0">{{ icon('mail','w-5 h-5') }}</span>
+          <span class="text-[13px] font-semibold flex-1 min-w-0">Email
+            <span class="text-dove font-normal block text-[11.5px] truncate">{{ farm.farmer_email or 'No email on file' }}</span></span>
+        </label>
+        <label class="flex items-center gap-3 bg-white border border-silver rounded-xl px-4 py-3 cursor-pointer">
+          <input type="checkbox" name="channel" value="whatsapp" {{ 'checked' if farm.farmer_phone }} class="w-4 h-4 accent-sagedeep">
+          <span class="text-dove shrink-0">{{ icon('whatsapp','w-5 h-5') }}</span>
+          <span class="text-[13px] font-semibold flex-1 min-w-0">WhatsApp
+            <span class="text-dove font-normal block text-[11.5px] truncate">{{ farm.farmer_phone or 'No phone on file' }}</span></span>
+        </label>
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <button type="button" onclick="document.getElementById('sendPanel').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-white">Close</button>
+          <button class="px-5 py-2.5 rounded-xl bg-ink text-white text-[13px] font-bold hover:bg-ink/90 flex items-center gap-2">{{ icon('send','w-4 h-4') }} Send automatically</button>
+        </div>
+      </form>
     </div>
-  </form>
+  </div>
 </dialog>
+
+<script>
+  // A hand-off share is recorded the moment the external app opens. The link
+  // still follows normally; this only tells the server the report went out.
+  function markShared(channel){
+    try{
+      var body = JSON.stringify({channel: channel});
+      var url = '{{ url_for("flight_mark_shared", flight_id=flight.id) }}';
+      if(navigator.sendBeacon){
+        navigator.sendBeacon(url, new Blob([body], {type:'application/json'}));
+      }else{
+        fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:body, keepalive:true});
+      }
+    }catch(e){ /* never block the share */ }
+  }
+
+  function copyShareLink(btn){
+    var text = document.getElementById('shareLink').textContent.trim();
+    var label = btn.querySelector('span');
+    var done = function(){ label.textContent = 'Copied'; setTimeout(function(){ label.textContent = 'Copy'; }, 1800); };
+    if(navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text, done); });
+    }else{ fallbackCopy(text, done); }
+  }
+  function fallbackCopy(text, done){
+    var ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); done(); }catch(e){}
+    document.body.removeChild(ta);
+  }
+</script>
 {% endif %}
 
 {% if public %}

@@ -1,140 +1,225 @@
 {% extends 'app_base.html' %}
 {% from '_icons.html' import icon %}
-{% block title %}Users{% endblock %}
-{% block heading %}Users{% endblock %}
-{% block subheading %}<p class="text-[12.5px] text-dove">{{ users|length }} team member{{ '' if users|length==1 else 's' }}.</p>{% endblock %}
+{% block title %}People{% endblock %}
+{% block heading %}People{% endblock %}
+{% block subheading %}<p class="text-[12.5px] text-dove truncate">Approve requests, set roles, and manage every account.</p>{% endblock %}
 {% block topbar_actions %}
-<button onclick="document.getElementById('addUser').showModal()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition">{{ icon('plus','w-4 h-4') }} <span class="hidden sm:inline">Add user</span></button>
+<button onclick="document.getElementById('newUser').showModal()"
+        class="shrink-0 inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition">
+  {{ icon('plus','w-4 h-4') }}<span class="hidden sm:inline">Add someone</span>
+</button>
 {% endblock %}
 
 {% block content %}
-<div class="glass-solid rounded-xl2 overflow-hidden">
-  <div class="hidden lg:block overflow-x-auto">
-    <table class="w-full border-collapse min-w-[640px]">
-      <thead>
-        <tr class="text-left text-[10.5px] font-bold uppercase tracking-wider text-dove">
-          <th class="px-5 py-3.5 border-b border-silver">Name</th>
-          <th class="px-5 py-3.5 border-b border-silver">Email</th>
-          <th class="px-5 py-3.5 border-b border-silver">Role</th>
-          <th class="px-5 py-3.5 border-b border-silver">Status</th>
-          <th class="px-5 py-3.5 border-b border-silver text-right">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for u in users %}
-        <tr class="border-b border-silver last:border-0">
-          <td class="px-5 py-3.5">
-            <div class="flex items-center gap-3">
-              <span class="w-9 h-9 rounded-full bg-sagesoft text-sagedeep grid place-items-center font-bold text-[12px]">{{ u.initials }}</span>
-              <span class="font-bold text-[13.5px]">{{ u.name }}{% if u.id == current_user.id %} <span class="text-dove font-medium text-[11px]">(you)</span>{% endif %}</span>
-            </div>
-          </td>
-          <td class="px-5 py-3.5 text-[13px] text-dove">{{ u.email }}</td>
-          <td class="px-5 py-3.5">
-            <span class="text-[11.5px] font-bold px-2.5 py-1 rounded-full {{ 'bg-ink text-white' if u.role=='admin' else 'bg-sagesoft text-sagedeep' }}">{{ u.role_label }}</span>
-          </td>
-          <td class="px-5 py-3.5">
-            {% if u.active %}<span class="inline-flex items-center gap-1.5 text-[12px] font-semibold text-sagedeep">{{ icon('check-circle','w-4 h-4') }} Active</span>
-            {% else %}<span class="inline-flex items-center gap-1.5 text-[12px] font-semibold text-dove">{{ icon('clock','w-4 h-4') }} Inactive</span>{% endif %}
-          </td>
-          <td class="px-5 py-3.5">
-            <div class="flex items-center justify-end gap-1">
-              <button onclick="editUser({{ u.id }}, '{{ u.name|e }}', '{{ u.role }}')" class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Edit">{{ icon('edit','w-4 h-4') }}</button>
-              {% if u.id != current_user.id %}
-              <form method="post" action="{{ url_for('user_toggle', user_id=u.id) }}"><button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="{{ 'Deactivate' if u.active else 'Activate' }}">{{ icon('clock','w-4 h-4') }}</button></form>
-              <form method="post" action="{{ url_for('user_delete', user_id=u.id) }}" onsubmit="return confirm('Remove {{ u.name }}?')"><button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Remove">{{ icon('trash','w-4 h-4') }}</button></form>
-              {% endif %}
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+<!-- ============ waiting for approval ============ -->
+<section class="mb-6">
+  <div class="flex items-center gap-2.5 mb-3">
+    <h2 class="text-[15px] font-bold">Waiting for approval</h2>
+    <span class="inst text-[11px] font-semibold px-2 py-0.5 rounded-full {{ 'bg-sage text-ink' if awaiting else 'bg-canvas text-dove' }}">{{ awaiting|length }}</span>
   </div>
 
-  <!-- mobile cards -->
-  <div class="lg:hidden divide-y divide-silver">
-    {% for u in users %}
-    <div class="p-4">
-      <div class="flex items-center gap-3">
-        <span class="w-9 h-9 rounded-full bg-sagesoft text-sagedeep grid place-items-center font-bold text-[12px] shrink-0">{{ u.initials }}</span>
+  {% if awaiting %}
+  <div class="space-y-3">
+    {% for u in awaiting %}
+    <div class="glass-solid rounded-xl2 p-4 sm:p-5">
+      <div class="flex flex-col sm:flex-row sm:items-center gap-4">
+        <span class="w-11 h-11 rounded-full bg-ink text-white grid place-items-center text-[13px] font-bold shrink-0">{{ u.initials }}</span>
         <div class="min-w-0 flex-1">
-          <p class="font-bold text-[14px] truncate">{{ u.name }}{% if u.id == current_user.id %} <span class="text-dove font-medium text-[11px]">(you)</span>{% endif %}</p>
-          <p class="text-[12px] text-dove truncate">{{ u.email }}</p>
+          <p class="text-[14.5px] font-bold truncate">{{ u.name }}</p>
+          <p class="text-[12.5px] text-dove break-all">{{ u.email }}</p>
+          <p class="text-[12px] text-dove mt-1">
+            Asked for <span class="font-semibold text-ink">{{ u.requested_role_label }}</span>
+            {% if u.job_title %} · {{ u.job_title }}{% endif %}
+            {% if u.phone %} · <span class="inst">{{ u.phone }}</span>{% endif %}
+            · <span class="inst">{{ u.created_at.strftime('%d %b %Y') if u.created_at else '' }}</span>
+          </p>
         </div>
-        <span class="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0 {{ 'bg-ink text-white' if u.role=='admin' else 'bg-sagesoft text-sagedeep' }}">{{ u.role_label }}</span>
-      </div>
-      <div class="flex items-center justify-between mt-3">
-        {% if u.active %}<span class="inline-flex items-center gap-1.5 text-[12px] font-semibold text-sagedeep">{{ icon('check-circle','w-4 h-4') }} Active</span>
-        {% else %}<span class="inline-flex items-center gap-1.5 text-[12px] font-semibold text-dove">{{ icon('clock','w-4 h-4') }} Inactive</span>{% endif %}
-        <div class="flex items-center gap-1">
-          <button onclick="editUser({{ u.id }}, '{{ u.name|e }}', '{{ u.role }}')" class="w-9 h-9 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Edit">{{ icon('edit','w-4 h-4') }}</button>
-          {% if u.id != current_user.id %}
-          <form method="post" action="{{ url_for('user_toggle', user_id=u.id) }}"><button class="w-9 h-9 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="{{ 'Deactivate' if u.active else 'Activate' }}">{{ icon('clock','w-4 h-4') }}</button></form>
-          <form method="post" action="{{ url_for('user_delete', user_id=u.id) }}" onsubmit="return confirm('Remove {{ u.name }}?')"><button class="w-9 h-9 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Remove">{{ icon('trash','w-4 h-4') }}</button></form>
-          {% endif %}
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+          <form method="post" action="{{ url_for('user_approve', user_id=u.id) }}" class="flex items-center gap-2">
+            <select name="role" class="field glass-solid rounded-xl px-3 py-2.5 text-[12.5px] font-semibold bg-white" aria-label="Role for {{ u.name }}">
+              {% for r in ROLES %}<option value="{{ r }}" {{ 'selected' if r == u.requested_role }}>{{ ROLE_LABELS[r] }}</option>{% endfor %}
+            </select>
+            <button class="px-4 py-2.5 rounded-xl bg-sage text-ink text-[12.5px] font-bold hover:bg-sage/80 transition flex items-center gap-1.5 whitespace-nowrap">{{ icon('check','w-4 h-4') }} Approve</button>
+          </form>
+          <form method="post" action="{{ url_for('user_reject', user_id=u.id) }}"
+                onsubmit="return confirm('Decline access for {{ u.name }}?')">
+            <button class="px-4 py-2.5 rounded-xl border border-silver text-[12.5px] font-bold text-dove hover:bg-canvas hover:text-ink transition">Decline</button>
+          </form>
         </div>
       </div>
     </div>
     {% endfor %}
   </div>
-</div>
+  {% else %}
+  <div class="glass-solid rounded-xl2 py-10 text-center">
+    <span class="inline-grid place-items-center w-11 h-11 rounded-xl bg-canvas text-dove mb-3">{{ icon('check-circle','w-5 h-5') }}</span>
+    <p class="text-[13px] font-semibold">Nobody is waiting</p>
+    <p class="text-[12.5px] text-dove mt-1">New requests land here the moment somebody signs up.</p>
+  </div>
+  {% endif %}
+</section>
 
-<!-- add user modal -->
-<dialog id="addUser" class="rounded-xl2 p-0 w-full max-w-md backdrop:bg-ink/40 shadow-2xl">
-  <form method="post" action="{{ url_for('user_new') }}" class="bg-white">
+<!-- ============ the team ============ -->
+<section>
+  <div class="flex items-center gap-2.5 mb-3">
+    <h2 class="text-[15px] font-bold">The team</h2>
+    <span class="inst text-[11px] font-semibold px-2 py-0.5 rounded-full bg-canvas text-dove">{{ approved|length }}</span>
+  </div>
+
+  <div class="glass-solid rounded-xl2 overflow-hidden">
+    <div class="divide-y divide-silver">
+      {% for u in approved %}
+      <div class="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 {{ 'opacity-60' if not u.active }}">
+        <span class="w-10 h-10 rounded-full bg-sagesoft text-sagedeep grid place-items-center text-[12.5px] font-bold shrink-0">{{ u.initials }}</span>
+        <div class="min-w-0 flex-1">
+          <p class="text-[14px] font-bold truncate">{{ u.name }}
+            {% if u.id == current_user.id %}<span class="text-[11px] font-semibold text-dove">· you</span>{% endif %}
+            {% if not u.active %}<span class="text-[11px] font-bold text-dove">· deactivated</span>{% endif %}
+          </p>
+          <p class="text-[12px] text-dove break-all">{{ u.email }}{% if u.job_title %} · {{ u.job_title }}{% endif %}</p>
+        </div>
+        <span class="text-[11px] font-bold px-3 py-1.5 rounded-full shrink-0 self-start sm:self-auto
+              {{ 'bg-ink text-white' if u.role=='admin' else 'bg-canvas text-dove' }}">{{ u.role_label }}</span>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button onclick="document.getElementById('edit{{ u.id }}').showModal()"
+                  class="w-9 h-9 grid place-items-center rounded-lg text-dove hover:text-ink hover:bg-canvas transition" title="Edit {{ u.name }}">{{ icon('edit','w-4 h-4') }}</button>
+          {% if u.id != current_user.id %}
+          <form method="post" action="{{ url_for('user_toggle', user_id=u.id) }}">
+            <button class="w-9 h-9 grid place-items-center rounded-lg text-dove hover:text-ink hover:bg-canvas transition"
+                    title="{{ 'Deactivate' if u.active else 'Reactivate' }} {{ u.name }}">{{ icon('shield' if u.active else 'shield-check','w-4 h-4') }}</button>
+          </form>
+          <form method="post" action="{{ url_for('user_delete', user_id=u.id) }}"
+                onsubmit="return confirm('Remove {{ u.name }} from the workspace? This cannot be undone.')">
+            <button class="w-9 h-9 grid place-items-center rounded-lg text-dove hover:text-ink hover:bg-canvas transition" title="Remove {{ u.name }}">{{ icon('trash','w-4 h-4') }}</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{% if declined %}
+<section class="mt-6">
+  <h2 class="text-[15px] font-bold mb-3">Declined</h2>
+  <div class="glass-solid rounded-xl2 overflow-hidden">
+    <div class="divide-y divide-silver">
+      {% for u in declined %}
+      <div class="px-5 py-3.5 flex items-center gap-4">
+        <span class="w-9 h-9 rounded-full bg-canvas text-dove grid place-items-center text-[12px] font-bold shrink-0">{{ u.initials }}</span>
+        <div class="min-w-0 flex-1">
+          <p class="text-[13.5px] font-semibold truncate">{{ u.name }}</p>
+          <p class="text-[12px] text-dove break-all">{{ u.email }}{% if u.decision_note %} · {{ u.decision_note }}{% endif %}</p>
+        </div>
+        <form method="post" action="{{ url_for('user_approve', user_id=u.id) }}" class="shrink-0">
+          <input type="hidden" name="role" value="{{ u.requested_role or 'agronomist' }}">
+          <button class="px-3.5 py-2 rounded-xl border border-silver text-[12px] font-bold hover:bg-canvas transition">Approve after all</button>
+        </form>
+        <form method="post" action="{{ url_for('user_delete', user_id=u.id) }}" onsubmit="return confirm('Remove {{ u.name }}?')" class="shrink-0">
+          <button class="w-9 h-9 grid place-items-center rounded-lg text-dove hover:text-ink hover:bg-canvas transition" title="Remove">{{ icon('trash','w-4 h-4') }}</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ============ dialogs ============ -->
+{% for u in approved %}
+<dialog id="edit{{ u.id }}" class="rounded-xl2 p-0 w-full max-w-md backdrop:bg-ink/50 shadow-2xl">
+  <form method="post" action="{{ url_for('user_edit', user_id=u.id) }}" class="bg-white">
     <div class="px-6 py-4 border-b border-silver flex items-center justify-between">
-      <h3 class="text-[16px] font-extrabold">Add user</h3>
-      <button type="button" onclick="document.getElementById('addUser').close()" class="text-dove hover:text-ink text-xl leading-none">&times;</button>
+      <h3 class="text-[16px] font-extrabold">Edit {{ u.name.split()[0] }}</h3>
+      <button type="button" onclick="document.getElementById('edit{{ u.id }}').close()" class="text-dove hover:text-ink" aria-label="Close">{{ icon('x','w-5 h-5') }}</button>
     </div>
     <div class="p-6 space-y-4">
-      <div><label class="block text-[12px] font-semibold mb-1.5">Full name</label><input name="name" required class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
-      <div><label class="block text-[12px] font-semibold mb-1.5">Email</label><input name="email" type="email" required class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
       <div>
-        <label class="block text-[12px] font-semibold mb-1.5">Role</label>
-        <select name="role" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px] font-semibold">
-          {% for r, lbl in ROLE_LABELS.items() %}<option value="{{ r }}">{{ lbl }}</option>{% endfor %}
+        <label class="block text-[12.5px] font-semibold mb-1.5">Full name</label>
+        <input name="name" required value="{{ u.name }}" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+      </div>
+      <div>
+        <label class="block text-[12.5px] font-semibold mb-1.5">Email</label>
+        <input name="email" type="email" required value="{{ u.email }}" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[12.5px] font-semibold mb-1.5">Job title</label>
+          <input name="job_title" value="{{ u.job_title or '' }}" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+        </div>
+        <div>
+          <label class="block text-[12.5px] font-semibold mb-1.5">Phone</label>
+          <input name="phone" value="{{ u.phone or '' }}" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px] inst">
+        </div>
+      </div>
+      <div>
+        <label class="block text-[12.5px] font-semibold mb-1.5">Based in</label>
+        <input name="location" value="{{ u.location or '' }}" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+      </div>
+      <div>
+        <label class="block text-[12.5px] font-semibold mb-1.5">Role</label>
+        <select name="role" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px] bg-white">
+          {% for r in ROLES %}<option value="{{ r }}" {{ 'selected' if r == u.role }}>{{ ROLE_LABELS[r] }}</option>{% endfor %}
         </select>
       </div>
-      <div><label class="block text-[12px] font-semibold mb-1.5">Temporary password</label><input name="password" required minlength="6" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
-    </div>
-    <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
-      <button type="button" onclick="document.getElementById('addUser').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
-      <button class="px-5 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 flex items-center gap-2">{{ icon('check','w-4 h-4') }} Add user</button>
-    </div>
-  </form>
-</dialog>
-
-<!-- edit user modal -->
-<dialog id="editUser" class="rounded-xl2 p-0 w-full max-w-md backdrop:bg-ink/40 shadow-2xl">
-  <form method="post" id="editUserForm" class="bg-white">
-    <div class="px-6 py-4 border-b border-silver flex items-center justify-between">
-      <h3 class="text-[16px] font-extrabold">Edit user</h3>
-      <button type="button" onclick="document.getElementById('editUser').close()" class="text-dove hover:text-ink text-xl leading-none">&times;</button>
-    </div>
-    <div class="p-6 space-y-4">
-      <div><label class="block text-[12px] font-semibold mb-1.5">Full name</label><input name="name" id="euName" required class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
       <div>
-        <label class="block text-[12px] font-semibold mb-1.5">Role</label>
-        <select name="role" id="euRole" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px] font-semibold">
-          {% for r, lbl in ROLE_LABELS.items() %}<option value="{{ r }}">{{ lbl }}</option>{% endfor %}
-        </select>
+        <label class="block text-[12.5px] font-semibold mb-1.5">Reset password <span class="text-dove font-normal">(leave blank to keep)</span></label>
+        <input name="password" type="password" minlength="6" autocomplete="new-password" placeholder="New temporary password"
+               class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
       </div>
-      <div><label class="block text-[12px] font-semibold mb-1.5">Reset password <span class="text-dove font-normal">(optional)</span></label><input name="password" type="password" placeholder="Leave blank to keep current" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
     </div>
     <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
-      <button type="button" onclick="document.getElementById('editUser').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
+      <button type="button" onclick="document.getElementById('edit{{ u.id }}').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
       <button class="px-5 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 flex items-center gap-2">{{ icon('check','w-4 h-4') }} Save</button>
     </div>
   </form>
 </dialog>
+{% endfor %}
 
-<script>
-  function editUser(id, name, role){
-    document.getElementById('editUserForm').action = '/users/' + id + '/edit';
-    document.getElementById('euName').value = name;
-    document.getElementById('euRole').value = role;
-    document.getElementById('editUser').showModal();
-  }
-</script>
+<dialog id="newUser" class="rounded-xl2 p-0 w-full max-w-md backdrop:bg-ink/50 shadow-2xl">
+  <form method="post" action="{{ url_for('user_new') }}" class="bg-white">
+    <div class="px-6 py-4 border-b border-silver flex items-center justify-between">
+      <h3 class="text-[16px] font-extrabold">Add someone</h3>
+      <button type="button" onclick="document.getElementById('newUser').close()" class="text-dove hover:text-ink" aria-label="Close">{{ icon('x','w-5 h-5') }}</button>
+    </div>
+    <div class="p-6 space-y-4">
+      <p class="text-[12.5px] text-dove leading-relaxed">Accounts you add here are approved straight away. Give them the temporary password in person.</p>
+      <div>
+        <label class="block text-[12.5px] font-semibold mb-1.5">Full name</label>
+        <input name="name" required placeholder="Jane Wanjiru" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+      </div>
+      <div>
+        <label class="block text-[12.5px] font-semibold mb-1.5">Email</label>
+        <input name="email" type="email" required placeholder="jane@acre-insights.com" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-[12.5px] font-semibold mb-1.5">Job title</label>
+          <input name="job_title" placeholder="Field agronomist" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+        </div>
+        <div>
+          <label class="block text-[12.5px] font-semibold mb-1.5">Phone</label>
+          <input name="phone" placeholder="+254 7xx" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px] inst">
+        </div>
+      </div>
+      <div>
+        <label class="block text-[12.5px] font-semibold mb-1.5">Role</label>
+        <select name="role" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px] bg-white">
+          {% for r in ROLES %}<option value="{{ r }}" {{ 'selected' if r=='agronomist' }}>{{ ROLE_LABELS[r] }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="block text-[12.5px] font-semibold mb-1.5">Temporary password</label>
+        <input name="password" required minlength="6" autocomplete="new-password" placeholder="At least 6 characters"
+               class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+      </div>
+    </div>
+    <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
+      <button type="button" onclick="document.getElementById('newUser').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
+      <button class="px-5 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 flex items-center gap-2">{{ icon('plus','w-4 h-4') }} Add</button>
+    </div>
+  </form>
+</dialog>
 {% endblock %}

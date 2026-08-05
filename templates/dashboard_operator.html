@@ -1,0 +1,51 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% from '_dash.html' import stat, flightlist %}
+{% block title %}Field dashboard{% endblock %}
+{% block heading %}Field operations{% endblock %}
+{% block subheading %}<p class="text-[12.5px] text-dove truncate">Flights recorded, and what each one is still missing.</p>{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+  {{ stat('drone', 'Flights logged', stats.flights) }}
+  {{ stat('calendar', 'Last 30 days', stats.last_30) }}
+  {{ stat('area', 'Acres covered', stats.acres) }}
+  {{ stat('map', 'Missing a map', stats.no_map, 'Upload the snapshot', 'alert' if stats.no_map else 'plain') }}
+  {{ stat('upload', 'Missing an export', stats.no_csv, 'Upload the CSV', 'alert' if stats.no_csv else 'plain') }}
+  {{ stat('farm', 'Farms', stats.farms, href=url_for('farms')) }}
+</div>
+
+<div class="grid lg:grid-cols-2 gap-5 mt-5">
+  {{ flightlist('Upload the map snapshot', no_map,
+                'Every flight has its map.', 'Upload', 'map') }}
+  {{ flightlist('Upload the DroneDeploy export', no_csv,
+                'Every flight has its annotations.', 'Upload', 'upload') }}
+</div>
+
+<div class="grid lg:grid-cols-3 gap-5 mt-5">
+  <div class="lg:col-span-2">
+    {{ flightlist('Recent flights', recent, 'Record your first flight from a farm page.', 'Open') }}
+  </div>
+  <div class="glass-solid rounded-xl2 overflow-hidden">
+    <div class="px-5 py-4 border-b border-silver flex items-center justify-between">
+      <h2 class="text-[15px] font-bold">Farms</h2>
+      <a href="{{ url_for('farms') }}" class="text-[12px] font-bold text-sagedeep hover:underline">All</a>
+    </div>
+    {% if farms %}
+    <div class="divide-y divide-silver max-h-[320px] overflow-y-auto">
+      {% for f in farms[:12] %}
+      <a href="{{ url_for('farm_detail', farm_id=f.id) }}" class="flex items-center gap-3 px-5 py-3 hover:bg-canvas transition">
+        <span class="w-8 h-8 rounded-lg bg-sagesoft text-sagedeep grid place-items-center shrink-0">{{ icon('farm','w-4 h-4') }}</span>
+        <div class="min-w-0 flex-1">
+          <p class="text-[13px] font-semibold truncate">{{ f.name }}</p>
+          <p class="text-[11px] text-dove truncate">{{ f.crop or 'crop not set' }}{% if f.acreage %} · <span class="inst">{{ f.acreage|round(1) }} ac</span>{% endif %}</p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="py-10 px-5 text-center"><p class="text-[12.5px] text-dove">No farms yet.</p></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

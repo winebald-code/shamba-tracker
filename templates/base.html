@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#030920">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
@@ -22,7 +22,7 @@
           sage: '#B0D48C', sagedeep: '#7FB65E', sagesoft: '#E7F1DB',
           canvas: '#F2F5EF',
         },
-        fontFamily: { sans: ['Montserrat', 'system-ui', 'sans-serif'] },
+        fontFamily: { sans: ['Montserrat', 'system-ui', 'sans-serif'], mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'] },
         borderRadius: { xl2: '1.1rem' },
       }
     }
@@ -34,6 +34,22 @@
   .glass{ background:rgba(255,255,255,0.66); backdrop-filter:saturate(140%) blur(14px); -webkit-backdrop-filter:saturate(140%) blur(14px); border:1px solid rgba(3,9,32,0.08); }
   .glass-solid{ background:#fff; border:1px solid #D6DBD5; }
   .tnum{ font-variant-numeric:tabular-nums; }
+  /* Instrument type: readings, counts and eyebrows are set in mono so a number
+     always looks like a measurement rather than a headline. */
+  .inst{ font-family:'IBM Plex Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+  .eyebrow{ font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:10.5px; font-weight:500;
+            letter-spacing:.18em; text-transform:uppercase; }
+  /* Scroll reveal as pure enhancement: content is visible by default, and only
+     starts hidden once the script has confirmed it can reveal it again. */
+  body.js-motion .reveal{ opacity:0; transform:translateY(18px); transition:opacity .7s cubic-bezier(.2,.7,.3,1), transform .7s cubic-bezier(.2,.7,.3,1); }
+  body.js-motion .reveal.in{ opacity:1; transform:none; }
+  @media (prefers-reduced-motion: reduce){
+    body.js-motion .reveal{ opacity:1 !important; transform:none !important; transition:none !important; }
+    *{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
+  }
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-visible{
+    outline:2px solid #7FB65E; outline-offset:2px; border-radius:6px;
+  }
   .field{ transition:.15s; }
   .field:focus{ outline:none; border-color:#B0D48C; box-shadow:0 0 0 3px rgba(176,212,140,.35); }
   /* editable cells in the review table */

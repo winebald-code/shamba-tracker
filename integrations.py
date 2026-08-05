@@ -205,3 +205,114 @@ def send_whatsapp(to_phone, body):
             return False, f"Meta WhatsApp connection error: {getattr(e, 'reason', e)}"
 
     return True, f"WhatsApp prepared for {to_phone} (no WhatsApp provider key set)."
+
+
+# ------------------------------------------------- hand-off share links
+# Provider APIs need a verified sending domain (email) and an approved business
+# number (WhatsApp). Until both exist, nothing sends automatically. These links
+# need neither: they open the sender's own WhatsApp or mail client with the
+# message and the report link already filled in, so a report can always go out.
+import urllib.parse
+
+DEFAULT_COUNTRY_CODE = os.environ.get("DEFAULT_COUNTRY_CODE", "254").strip().lstrip("+")
+
+
+def normalise_phone(raw, country_code=None):
+    """
+    Turn a phone number as typed into the digits-only form wa.me expects.
+
+      '+254 712 345 678' -> '254712345678'
+      '0712345678'       -> '254712345678'   (leading 0 swapped for the country code)
+      '254712345678'     -> '254712345678'
+
+    Returns an empty string when there is nothing usable, so callers can hide
+    the button rather than build a broken link.
+    """
+    if not raw:
+        return ""
+    cc = (country_code or DEFAULT_COUNTRY_CODE).lstrip("+")
+    digits = "".join(ch for ch in str(raw) if ch.isdigit() or ch == "+")
+    had_plus = digits.startswith("+")
+    digits = digits.lstrip("+")
+    if not digits:
+        return ""
+    if not had_plus and digits.startswith("0"):
+        digits = cc + digits.lstrip("0")
+    elif not had_plus and cc and len(digits) <= 9:
+        # A bare local number with no trunk zero, e.g. '712345678'.
+        digits = cc + digits
+    return digits
+
+
+def whatsapp_share_url(phone, message):
+    """wa.me deep link. Opens WhatsApp (app or web) with the message pre-filled."""
+    digits = normalise_phone(phone)
+    text = urllib.parse.quote(message or "")
+    return f"https://wa.me/{digits}?text={text}" if digits else f"https://wa.me/?text={text}"
+
+
+def mailto_url(to_addr, subject, body):
+    """Opens whatever mail client the sender already uses."""
+    q = urllib.parse.urlencode({"subject": subject or "", "body": body or ""},
+                               quote_via=urllib.parse.quote)
+    return f"mailto:{to_addr or ''}?{q}"
+
+
+def gmail_compose_url(to_addr, subject, body):
+    """Gmail web compose, for people who don't have a desktop mail client."""
+    q = urllib.parse.urlencode(
+        {"view": "cm", "fs": "1", "to": to_addr or "", "su": subject or "", "body": body or ""},
+        quote_via=urllib.parse.quote)
+    return f"https://mail.google.com/mail/?{q}"
+
+
+def report_subject(flight):
+    return (f"Your Acre Insights field report — {flight.farm.name} "
+            f"(Flight {flight.flight_number} of {flight.flights_planned})")
+
+
+def share_links(flight, base_url=None):
+    """
+    Everything the report page needs to hand a report off through the sender's
+    own apps. Returns plain strings so the template stays dumb.
+    """
+    link = flight_public_url(flight, base_url)
+    email_body = acre_voice_message(flight, "email", base_url)
+    wa_body = acre_voice_message(flight, "whatsapp", base_url)
+    subject = report_subject(flight)
+    phone = flight.farm.farmer_phone or ""
+    email = flight.farm.farmer_email or ""
+    return {
+        "link": link,
+        "subject": subject,
+        "email_body": email_body,
+        "whatsapp_body": wa_body,
+        "whatsapp": whatsapp_share_url(phone, wa_body),
+        "whatsapp_no_number": whatsapp_share_url("", wa_body),
+        "mailto": mailto_url(email, subject, email_body),
+        "gmail": gmail_compose_url(email, subject, email_body),
+        "phone_e164": normalise_phone(phone),
+        "has_phone": bool(normalise_phone(phone)),
+        "has_email": bool(email),
+    }
+
+
+def provider_status():
+    """
+    What can actually send right now. The dashboards show this so nobody
+    discovers a missing key only when a report fails to go out.
+    """
+    email_provider = ("Resend" if _env("RESEND_API_KEY")
+                      else "SendGrid" if _env("SENDGRID_API_KEY") else None)
+    if _env("TWILIO_ACCOUNT_SID") and _env("TWILIO_AUTH_TOKEN") and _env("TWILIO_WHATSAPP_FROM"):
+        wa_provider = "Twilio"
+    elif _env("WHATSAPP_TOKEN", "META_WHATSAPP_TOKEN") and _env("WHATSAPP_PHONE_NUMBER_ID"):
+        wa_provider = "Meta Cloud API"
+    else:
+        wa_provider = None
+    return {
+        "email": email_provider,
+        "email_from": _env("MAIL_FROM") or "onboarding@resend.dev",
+        "whatsapp": wa_provider,
+        "any": bool(email_provider or wa_provider),
+    }

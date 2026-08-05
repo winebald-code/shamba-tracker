@@ -1,18 +1,26 @@
 {% extends 'base.html' %}
 {% from '_icons.html' import icon %}
-{% block title %}Create your account{% endblock %}
+{% block title %}{{ 'Set up your workspace' if first_ever else 'Request access' }}{% endblock %}
 
 {% block body %}
 <div class="min-h-screen grid lg:grid-cols-2">
   <div class="hidden lg:flex flex-col justify-between bg-ink text-white p-12 relative overflow-hidden">
-    <div class="absolute -bottom-24 -right-16 w-96 h-96 rounded-full bg-sage/20 blur-3xl"></div>
+    <img src="{{ url_for('static', filename='img/field-aerial.jpg') }}" alt=""
+         class="absolute inset-0 w-full h-full object-cover opacity-25">
+    <div class="absolute inset-0 bg-gradient-to-br from-ink via-ink/85 to-ink/40"></div>
     <a href="{{ url_for('home') }}" class="relative"><img src="{{ url_for('static', filename='img/acre-logo-white.png') }}" class="h-7" alt="Acre Insights"></a>
     <div class="relative">
-      <h2 class="text-4xl font-extrabold tracking-tight leading-tight">Join the team.</h2>
-      <p class="mt-4 text-white/60 text-[15px] max-w-md leading-relaxed">Create your SHAMBA Tracker account to start turning flights into farmer-ready reports.</p>
+      <h2 class="text-4xl font-extrabold tracking-tight leading-tight">{{ 'Set up the workspace.' if first_ever else 'Join the team.' }}</h2>
+      <p class="mt-4 text-white/65 text-[15px] max-w-md leading-relaxed">
+        {% if first_ever %}
+        This is the first account, so it becomes the workspace admin: you approve everyone who joins after you.
+        {% else %}
+        Ask for the role you actually do. An admin confirms it before your first sign-in.
+        {% endif %}
+      </p>
       <ul class="mt-8 space-y-3">
-        {% for t in ['Import DroneDeploy flights in one click','Complete findings in a shared review portal','Send branded reports over email and WhatsApp'] %}
-        <li class="flex items-center gap-3 text-white/80 text-[14px]"><span class="text-sage">{{ icon('check-circle','w-5 h-5') }}</span>{{ t }}</li>
+        {% for t in ['Import DroneDeploy flights in one click','Complete findings in a shared review portal','Send branded reports over WhatsApp and email'] %}
+        <li class="flex items-center gap-3 text-white/80 text-[14px]"><span class="text-sage shrink-0">{{ icon('check-circle','w-5 h-5') }}</span>{{ t }}</li>
         {% endfor %}
       </ul>
     </div>
@@ -22,29 +30,65 @@
   <div class="flex items-center justify-center p-6 sm:p-12">
     <div class="w-full max-w-sm">
       <div class="lg:hidden mb-8"><a href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-7" alt="Acre Insights"></a></div>
-      <h1 class="text-2xl font-extrabold tracking-tight">Create your account</h1>
-      <p class="mt-1.5 text-[14px] text-dove">A minute to set up.</p>
+      <h1 class="text-2xl font-extrabold tracking-tight">{{ 'Create the admin account' if first_ever else 'Request access' }}</h1>
+      <p class="mt-1.5 text-[14px] text-dove">
+        {{ 'You are first in, so this account owns the workspace.' if first_ever else 'An admin approves new accounts, usually the same day.' }}
+      </p>
 
-      <form method="post" class="mt-8 space-y-4">
+      <form method="post" class="mt-7 space-y-4">
         <div>
-          <label class="block text-[12.5px] font-semibold mb-1.5">Full name</label>
-          <input name="name" required autofocus placeholder="Jane Wanjiru"
+          <label class="block text-[12.5px] font-semibold mb-1.5" for="s-name">Full name</label>
+          <input id="s-name" name="name" required autofocus placeholder="Jane Wanjiru"
                  class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
         </div>
         <div>
-          <label class="block text-[12.5px] font-semibold mb-1.5">Email</label>
-          <input name="email" type="email" required placeholder="you@acre-insights.com"
+          <label class="block text-[12.5px] font-semibold mb-1.5" for="s-email">Work email</label>
+          <input id="s-email" name="email" type="email" required placeholder="you@acre-insights.com"
                  class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
         </div>
+        {% if not first_ever %}
         <div>
-          <label class="block text-[12.5px] font-semibold mb-1.5">Password</label>
-          <input name="password" type="password" required minlength="6" placeholder="At least 6 characters"
+          <label class="block text-[12.5px] font-semibold mb-1.5" for="s-role">What do you do here?</label>
+          <select id="s-role" name="requested_role" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px] bg-white"
+                  onchange="document.getElementById('roleNote').textContent = this.selectedOptions[0].dataset.blurb">
+            {% for r in ROLES if r != 'admin' %}
+            <option value="{{ r }}" data-blurb="{{ ROLE_BLURB[r] }}" {{ 'selected' if r=='agronomist' }}>{{ ROLE_LABELS[r] }}</option>
+            {% endfor %}
+          </select>
+          <p id="roleNote" class="text-[11.5px] text-dove mt-1.5 leading-snug">{{ ROLE_BLURB['agronomist'] }}</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[12.5px] font-semibold mb-1.5" for="s-title">Job title <span class="text-dove font-normal">(optional)</span></label>
+            <input id="s-title" name="job_title" placeholder="Field agronomist"
+                   class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
+          </div>
+          <div>
+            <label class="block text-[12.5px] font-semibold mb-1.5" for="s-phone">Phone <span class="text-dove font-normal">(optional)</span></label>
+            <input id="s-phone" name="phone" placeholder="+254 7xx"
+                   class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px] inst">
+          </div>
+        </div>
+        {% endif %}
+        <div>
+          <label class="block text-[12.5px] font-semibold mb-1.5" for="s-pw">Password</label>
+          <input id="s-pw" name="password" type="password" required minlength="6" autocomplete="new-password"
+                 placeholder="At least 6 characters"
                  class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
         </div>
         <button class="w-full py-3.5 rounded-xl2 font-bold bg-sage text-ink hover:bg-sage/80 transition flex items-center justify-center gap-2">
-          {{ icon('check','w-5 h-5') }} Create account
+          {{ icon('check','w-5 h-5') }} {{ 'Create admin account' if first_ever else 'Send my request' }}
         </button>
       </form>
+
+      {% if not first_ever %}
+      <div class="mt-5 flex items-start gap-2.5 rounded-xl bg-canvas border border-silver px-4 py-3">
+        <span class="text-dove shrink-0 mt-0.5">{{ icon('shield-check','w-[18px] h-[18px]') }}</span>
+        <p class="text-[11.5px] text-dove leading-relaxed">
+          Your account stays locked until an admin approves it. We email you as soon as that happens.
+        </p>
+      </div>
+      {% endif %}
 
       <p class="mt-6 text-[13px] text-dove text-center">Already have an account?
         <a href="{{ url_for('login') }}" class="text-sagedeep font-semibold hover:underline">Sign in</a>
