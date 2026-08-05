@@ -53,9 +53,6 @@ def _http_error(provider, e):
         hint = " — check the API key / credentials are correct and have no extra spaces."
     elif code == 403 and provider.startswith(("Resend", "SendGrid")):
         hint = " — set MAIL_FROM to an address on a domain you've verified with the provider (a domain you own, not a free mailbox)."
-    elif code == 400 and provider.startswith("Twilio"):
-        hint = (" — set TWILIO_CONTENT_SID to an approved WhatsApp template SID; "
-                "business-initiated messages require an approved Content Template, not free text.")
     elif code == 422 and provider.startswith("Twilio"):
         hint = (" — Twilio trial accounts can only message verified numbers. Verify the recipient in the "
                 "Twilio console, or use the WhatsApp sandbox and have the recipient send the join code first.")
@@ -155,11 +152,10 @@ def send_email(to_addr, subject, body, pdf_bytes=None, pdf_name=None):
 
 
 # ---------------------------------------------------------------- whatsapp
-def send_whatsapp(to_phone, body, template_vars=None):
+def send_whatsapp(to_phone, body):
     twilio_sid = _env("TWILIO_ACCOUNT_SID")
     twilio_token = _env("TWILIO_AUTH_TOKEN")
-    twilio_from = _env("TWILIO_WHATSAPP_FROM")
-    twilio_content_sid = _env("TWILIO_CONTENT_SID")
+    twilio_from = _env("TWILIO_WHATSAPP_FROM")             # e.g. whatsapp:+14155238886
     meta_token = _env("WHATSAPP_TOKEN", "META_WHATSAPP_TOKEN")
     meta_phone_id = _env("WHATSAPP_PHONE_NUMBER_ID")
 
@@ -171,16 +167,11 @@ def send_whatsapp(to_phone, body, template_vars=None):
         try:
             import urllib.parse
             frm = twilio_from if twilio_from.startswith("whatsapp:") else f"whatsapp:{twilio_from}"
-            fields = {
+            data = urllib.parse.urlencode({
                 "From": frm,
                 "To": f"whatsapp:{to_phone}",
-            }
-            if twilio_content_sid:
-                fields["ContentSid"] = twilio_content_sid
-                fields["ContentVariables"] = json.dumps(template_vars or {"1": body})
-            else:
-                fields["Body"] = body
-            data = urllib.parse.urlencode(fields).encode()
+                "Body": body,
+            }).encode()
             url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
             auth = base64.b64encode(f"{twilio_sid}:{twilio_token}".encode()).decode()
             req = urllib.request.Request(url, data=data,
