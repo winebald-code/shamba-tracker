@@ -127,6 +127,14 @@
     <p>{{ flight.agronomist_note or "None of these need panic — catching them now keeps them small. Reply or call us and we'll walk the field with you." }}</p>
     <div class="tag">Prepared by Acre Insights · Nature meets intelligence · Nairobi, Kenya</div>
   </div>
-
+<script>
+  // Disable right-click and keyboard shortcuts
+  document.addEventListener('contextmenu', event => event.preventDefault());
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+    }
+  });
+</script>
 </body>
 </html>

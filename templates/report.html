@@ -325,6 +325,13 @@
   // correctly-named page to "Save as PDF".
   document.title = "{{ flight.slug }}";
   window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 500); });
+       // Disable right-click and keyboard shortcuts
+document.addEventListener('contextmenu', event => event.preventDefault());
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+    }
+});
 </script>
 {% endif %}
 {% endblock %}
