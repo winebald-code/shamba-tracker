@@ -8,9 +8,9 @@
   <aside id="sidebar" class="fixed lg:static z-40 -translate-x-full lg:translate-x-0 transition-transform
               w-64 shrink-0 h-screen lg:h-auto bg-ink text-white/90 flex flex-col">
     <div class="px-5 pt-6 pb-5">
-      <div class="flex items-center gap-2.5">
+      <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2.5 hover:opacity-90 transition" aria-label="Go to dashboard">
         <img src="{{ url_for('static', filename='img/acre-logo-white.png') }}" alt="Acre Insights" class="h-6">
-      </div>
+      </a>
       <div class="mt-4 flex items-center gap-2">
         <span class="text-[15px] font-bold tracking-wide text-white">SHAMBA Tracker</span>
       </div>

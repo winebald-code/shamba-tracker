@@ -8,19 +8,19 @@
 {% if not public %}
 <!-- internal action bar -->
 <div class="no-print sticky top-0 z-30 glass border-b border-ink/5">
-  <div class="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between gap-3">
-    <a href="{{ url_for('flight_detail', flight_id=flight.id) }}" class="inline-flex items-center gap-2 text-[13px] font-semibold text-ink hover:bg-ink/5 px-3 py-2 rounded-xl transition">← Back to review</a>
+  <div class="max-w-5xl mx-auto px-3 sm:px-5 h-16 flex items-center justify-between gap-2">
+    <a href="{{ url_for('flight_detail', flight_id=flight.id) }}" class="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink hover:bg-ink/5 px-2.5 sm:px-3 py-2 rounded-xl transition whitespace-nowrap">← <span class="hidden sm:inline">Back to review</span><span class="sm:hidden">Back</span></a>
     <div class="flex items-center gap-2">
-      <a href="{{ url_for('flight_report_pdf', flight_id=flight.id) }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition">{{ icon('download','w-4 h-4') }} <span class="hidden sm:inline">Download PDF</span></a>
-      <button onclick="document.getElementById('sendPanel').showModal()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition">{{ icon('send','w-4 h-4') }} Approve &amp; send</button>
+      <a href="{{ url_for('flight_report_pdf', flight_id=flight.id) }}" class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition"><span class="shrink-0">{{ icon('download','w-4 h-4') }}</span><span class="hidden sm:inline">Download PDF</span></a>
+      <button onclick="document.getElementById('sendPanel').showModal()" class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition"><span class="shrink-0">{{ icon('send','w-4 h-4') }}</span><span class="hidden sm:inline">Approve &amp; send</span><span class="sm:hidden">Send</span></button>
     </div>
   </div>
 </div>
 {% else %}
 <!-- public slim header -->
 <div class="no-print bg-white border-b border-silver">
-  <div class="max-w-4xl mx-auto px-5 h-14 flex items-center justify-between">
-    <img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-6" alt="Acre Insights">
+  <div class="max-w-4xl mx-auto px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
+    <a href="{{ url_for('home') }}" class="hover:opacity-90 transition" aria-label="Acre Insights home"><img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-5 sm:h-6" alt="Acre Insights"></a>
     <span class="text-[11px] font-bold uppercase tracking-[0.14em] text-dove">Your field report</span>
   </div>
 </div>

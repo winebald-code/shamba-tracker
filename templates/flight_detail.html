@@ -96,64 +96,77 @@
   </div>
 
   {% if flight.findings %}
-  <div class="overflow-x-auto">
-    <table class="w-full border-collapse min-w-[980px]">
-      <thead>
-        <tr class="text-left text-[10.5px] font-bold uppercase tracking-wider text-dove">
-          <th class="px-3 py-3 border-b border-silver">Pin</th>
-          <th class="px-3 py-3 border-b border-silver">Colour</th>
-          <th class="px-3 py-3 border-b border-silver">Area</th>
-          <th class="px-3 py-3 border-b border-silver w-40">Category</th>
-          <th class="px-3 py-3 border-b border-silver">Observation</th>
-          <th class="px-3 py-3 border-b border-silver">Likely cause</th>
-          <th class="px-3 py-3 border-b border-silver">Recommendation</th>
-          <th class="px-3 py-3 border-b border-silver"></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for f in flight.findings %}
-        <tr id="f{{ f.id }}" data-fid="{{ f.id }}" class="finding-row align-top border-b border-silver last:border-0
-             {{ '' if f.is_complete else 'incomplete' }}">
-          <td class="px-3 py-3">
-            <div class="flex items-center gap-2">
-              <span class="w-1.5 h-8 rounded-full status-bar {{ 'bg-sage' if f.is_complete else '' }}" style="{{ '' if f.is_complete else 'background:#D64550' }}"></span>
-              <span class="font-bold text-[13px] tnum">{{ loop.index }}</span>
-            </div>
-          </td>
-          <td class="px-3 py-3">
-            <div class="flex items-center gap-2 whitespace-nowrap">
-              <span class="w-3.5 h-3.5 rounded-full border border-ink/10 shrink-0" style="background: {{ f.colour_swatch }}"></span>
-              <span class="text-[11px] font-semibold text-dove">{{ f.colour_meaning }}</span>
-            </div>
-            {% if f.label_hex %}<span class="text-[10px] text-dove/70 tnum">{{ f.label_hex }}</span>{% endif %}
-          </td>
-          <td class="px-3 py-3 text-[12.5px] font-semibold tnum whitespace-nowrap">{{ f.area_text or '—' }}</td>
-          <td class="px-3 py-3">
-            <select data-field="category" class="cell w-full text-[12.5px] font-semibold px-2 py-1.5 bg-transparent">
-              {% for c in CATEGORIES %}<option value="{{ c }}" {{ 'selected' if f.category==c }}>{{ c }}</option>{% endfor %}
-            </select>
-          </td>
-          <td class="px-3 py-3 min-w-[190px]">
-            <textarea data-field="observation" rows="2" placeholder="What did you see?" class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.observation }}</textarea>
-          </td>
-          <td class="px-3 py-3 min-w-[180px]">
-            <textarea data-field="likely_cause" rows="2" placeholder="Working diagnosis" class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.likely_cause }}</textarea>
-          </td>
-          <td class="px-3 py-3 min-w-[190px]">
-            <textarea data-field="recommendation" rows="2" placeholder="Next step" class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.recommendation }}</textarea>
-          </td>
-          <td class="px-3 py-3">
-            <div class="flex items-center gap-1">
-              {% if f.annotation_link %}<a href="{{ f.annotation_link }}" target="_blank" title="View pin in DroneDeploy" class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition">{{ icon('external','w-4 h-4') }}</a>{% endif %}
-              <form method="post" action="{{ url_for('finding_delete', finding_id=f.id) }}" onsubmit="return confirm('Delete this finding?')">
-                <button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Delete">{{ icon('trash','w-4 h-4') }}</button>
-              </form>
-            </div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <!-- desktop column header -->
+  <div class="hidden lg:grid lg:grid-cols-[44px_118px_64px_150px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px] gap-3 px-5 py-3 border-b border-silver text-[10.5px] font-bold uppercase tracking-wider text-dove">
+    <div>Pin</div><div>Colour</div><div>Area</div><div>Category</div><div>Observation</div><div>Likely cause</div><div>Recommendation</div><div></div>
+  </div>
+
+  <div class="divide-y divide-silver">
+    {% for f in flight.findings %}
+    <div id="f{{ f.id }}" data-fid="{{ f.id }}"
+         class="finding-row {{ '' if f.is_complete else 'incomplete' }} p-4 lg:p-0 lg:px-5 lg:py-3
+                border-l-4 lg:border-l-0 lg:grid lg:grid-cols-[44px_118px_64px_150px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px] lg:gap-3 lg:items-start transition"
+         style="border-left-color: {{ '#B0D48C' if f.is_complete else '#D64550' }}">
+
+      <!-- MOBILE meta row (pin · colour · area · actions) -->
+      <div class="flex items-center gap-2.5 lg:hidden mb-3">
+        <span class="w-7 h-7 rounded-lg grid place-items-center font-extrabold text-white text-[13px] tnum shrink-0" style="background: {{ f.colour_swatch }}">{{ loop.index }}</span>
+        <span class="text-[12px] font-semibold text-dove">{{ f.colour_meaning }}</span>
+        {% if f.area_text %}<span class="text-[11.5px] font-bold text-dove tnum">· {{ f.area_text }}</span>{% endif %}
+        <span class="flex-1"></span>
+        {% if f.annotation_link %}<a href="{{ f.annotation_link }}" target="_blank" title="View pin in DroneDeploy" class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition">{{ icon('external','w-4 h-4') }}</a>{% endif %}
+        <form method="post" action="{{ url_for('finding_delete', finding_id=f.id) }}" onsubmit="return confirm('Delete this finding?')">
+          <button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Delete">{{ icon('trash','w-4 h-4') }}</button>
+        </form>
+      </div>
+
+      <!-- DESKTOP pin -->
+      <div class="hidden lg:flex items-center gap-2">
+        <span class="w-1.5 h-8 rounded-full status-bar {{ 'bg-sage' if f.is_complete else '' }}" style="{{ '' if f.is_complete else 'background:#D64550' }}"></span>
+        <span class="font-bold text-[13px] tnum">{{ loop.index }}</span>
+      </div>
+      <!-- DESKTOP colour -->
+      <div class="hidden lg:block">
+        <div class="flex items-center gap-2 whitespace-nowrap">
+          <span class="w-3.5 h-3.5 rounded-full border border-ink/10 shrink-0" style="background: {{ f.colour_swatch }}"></span>
+          <span class="text-[11px] font-semibold text-dove">{{ f.colour_meaning }}</span>
+        </div>
+        {% if f.label_hex %}<span class="text-[10px] text-dove/70 tnum">{{ f.label_hex }}</span>{% endif %}
+      </div>
+      <!-- DESKTOP area -->
+      <div class="hidden lg:block text-[12.5px] font-semibold tnum whitespace-nowrap pt-0.5">{{ f.area_text or '—' }}</div>
+
+      <!-- Category -->
+      <div>
+        <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">Category</label>
+        <select data-field="category" class="cell w-full text-[12.5px] font-semibold px-2 py-1.5 bg-transparent">
+          {% for c in CATEGORIES %}<option value="{{ c }}" {{ 'selected' if f.category==c }}>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <!-- Observation -->
+      <div class="mt-2.5 lg:mt-0">
+        <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">What we saw</label>
+        <textarea data-field="observation" rows="2" placeholder="What did you see?" class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.observation }}</textarea>
+      </div>
+      <!-- Likely cause -->
+      <div class="mt-2.5 lg:mt-0">
+        <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">Likely cause</label>
+        <textarea data-field="likely_cause" rows="2" placeholder="Working diagnosis" class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.likely_cause }}</textarea>
+      </div>
+      <!-- Recommendation -->
+      <div class="mt-2.5 lg:mt-0">
+        <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">What to do next</label>
+        <textarea data-field="recommendation" rows="2" placeholder="Next step" class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.recommendation }}</textarea>
+      </div>
+      <!-- DESKTOP actions -->
+      <div class="hidden lg:flex items-center gap-1">
+        {% if f.annotation_link %}<a href="{{ f.annotation_link }}" target="_blank" title="View pin in DroneDeploy" class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition">{{ icon('external','w-4 h-4') }}</a>{% endif %}
+        <form method="post" action="{{ url_for('finding_delete', finding_id=f.id) }}" onsubmit="return confirm('Delete this finding?')">
+          <button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Delete">{{ icon('trash','w-4 h-4') }}</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
   </div>
   {% else %}
   <div class="py-14 text-center">
@@ -194,10 +207,14 @@
   const ALERT = '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16h.01"/></svg>';
 
   function markRow(row, complete){
-    const bar = row.querySelector('.status-bar');
-    if (!bar) return;
-    if (complete){ bar.style.background=''; bar.classList.add('bg-sage'); row.classList.remove('incomplete'); }
-    else { bar.style.background='#D64550'; bar.classList.remove('bg-sage'); row.classList.add('incomplete'); }
+    // desktop status bar
+    row.querySelectorAll('.status-bar').forEach(function(bar){
+      if (complete){ bar.style.background=''; bar.classList.add('bg-sage'); }
+      else { bar.style.background='#D64550'; bar.classList.remove('bg-sage'); }
+    });
+    // mobile card left accent
+    row.style.borderLeftColor = complete ? '#B0D48C' : '#D64550';
+    row.classList.toggle('incomplete', !complete);
   }
 
   function setBanner(incomplete, total){

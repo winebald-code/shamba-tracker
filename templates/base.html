@@ -42,6 +42,8 @@
   .cell:focus{ outline:none; background:#fff; border-color:#B0D48C; box-shadow:0 0 0 3px rgba(176,212,140,.35); }
   .flash-enter{ animation:flashIn .3s ease both; }
   @keyframes flashIn{ from{opacity:0; transform:translateY(-6px)} to{opacity:1; transform:none} }
+  /* dialogs never overflow small screens */
+  dialog{ max-width:calc(100vw - 1.5rem); }
   ::-webkit-scrollbar{ height:10px; width:10px; }
   ::-webkit-scrollbar-thumb{ background:#D6DBD5; border-radius:99px; }
   @media print{ .no-print{ display:none !important; } body{ background:#fff; } }
@@ -52,10 +54,11 @@
 
 {% with messages = get_flashed_messages(with_categories=true) %}
 {% if messages %}
-<div class="fixed top-4 right-4 z-50 space-y-2 no-print" id="flashwrap">
+<div class="fixed top-3 right-3 left-3 sm:left-auto z-50 space-y-2 no-print flex flex-col items-stretch sm:items-end" id="flashwrap">
   {% for cat, msg in messages %}
-  <div class="flash-enter glass rounded-xl2 px-4 py-3 max-w-sm shadow-sm flex items-start gap-3
-              {{ 'border-sagedeep/40' if cat=='ok' else '' }}">
+  <div class="flash-enter glass rounded-xl2 pl-4 pr-2.5 py-3 w-full sm:max-w-sm shadow-lg flex items-start gap-3
+              {{ 'border-sagedeep/40' if cat=='ok' else 'border-ink/10' }}"
+       data-cat="{{ cat }}">
     <span class="mt-0.5 shrink-0 {{ 'text-sagedeep' if cat=='ok' else 'text-ink' }}">
       {% if cat=='ok' %}
       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9.2"/><path d="M8 12.3 11 15.3 16.3 9.2"/></svg>
@@ -63,11 +66,20 @@
       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16h.01"/></svg>
       {% endif %}
     </span>
-    <p class="text-sm font-medium leading-snug">{{ msg }}</p>
+    <p class="text-[13px] font-medium leading-snug flex-1 min-w-0 break-words pt-0.5">{{ msg }}</p>
+    <button type="button" onclick="this.closest('[data-cat]').remove()" aria-label="Dismiss"
+            class="shrink-0 -mt-0.5 w-7 h-7 grid place-items-center rounded-lg text-dove hover:text-ink hover:bg-ink/5 transition">
+      <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
   </div>
   {% endfor %}
 </div>
-<script>setTimeout(()=>{const f=document.getElementById('flashwrap'); if(f){f.style.transition='opacity .5s'; f.style.opacity='0'; setTimeout(()=>f.remove(),500);}}, 4200);</script>
+<script>
+  // Success messages fade on their own; warnings/errors stay until dismissed.
+  document.querySelectorAll('#flashwrap [data-cat="ok"]').forEach(function(el){
+    setTimeout(function(){ el.style.transition='opacity .5s'; el.style.opacity='0'; setTimeout(function(){ el.remove(); }, 500); }, 5000);
+  });
+</script>
 {% endif %}
 {% endwith %}
 

@@ -52,7 +52,10 @@ def _http_error(provider, e):
     if code == 401:
         hint = " — check the API key / credentials are correct and have no extra spaces."
     elif code == 403 and provider.startswith(("Resend", "SendGrid")):
-        hint = " — the sender address domain usually needs to be verified with the provider (or use a verified/test sender)."
+        hint = " — set MAIL_FROM to an address on a domain you've verified with the provider (a domain you own, not a free mailbox)."
+    elif code == 422 and provider.startswith("Twilio"):
+        hint = (" — Twilio trial accounts can only message verified numbers. Verify the recipient in the "
+                "Twilio console, or use the WhatsApp sandbox and have the recipient send the join code first.")
     return f"{provider} {code or ''}: {msg}{hint}".replace(" : ", ": ")
 
 
@@ -113,7 +116,7 @@ def send_email(to_addr, subject, body, pdf_bytes=None, pdf_name=None):
             urllib.request.urlopen(req, timeout=20)
             return True, "Sent via Resend."
         except urllib.error.HTTPError as e:
-            return False, _http_error("Resend", e)
+            return False, _http_error("Resend", e) + f" (sending from {sender})"
         except urllib.error.URLError as e:
             return False, f"Resend connection error: {getattr(e, 'reason', e)}"
 

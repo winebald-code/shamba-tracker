@@ -9,7 +9,7 @@
 
 {% block content %}
 <div class="glass-solid rounded-xl2 overflow-hidden">
-  <div class="overflow-x-auto">
+  <div class="hidden lg:block overflow-x-auto">
     <table class="w-full border-collapse min-w-[640px]">
       <thead>
         <tr class="text-left text-[10.5px] font-bold uppercase tracking-wider text-dove">
@@ -50,6 +50,33 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
+
+  <!-- mobile cards -->
+  <div class="lg:hidden divide-y divide-silver">
+    {% for u in users %}
+    <div class="p-4">
+      <div class="flex items-center gap-3">
+        <span class="w-9 h-9 rounded-full bg-sagesoft text-sagedeep grid place-items-center font-bold text-[12px] shrink-0">{{ u.initials }}</span>
+        <div class="min-w-0 flex-1">
+          <p class="font-bold text-[14px] truncate">{{ u.name }}{% if u.id == current_user.id %} <span class="text-dove font-medium text-[11px]">(you)</span>{% endif %}</p>
+          <p class="text-[12px] text-dove truncate">{{ u.email }}</p>
+        </div>
+        <span class="text-[11px] font-bold px-2.5 py-1 rounded-full shrink-0 {{ 'bg-ink text-white' if u.role=='admin' else 'bg-sagesoft text-sagedeep' }}">{{ u.role_label }}</span>
+      </div>
+      <div class="flex items-center justify-between mt-3">
+        {% if u.active %}<span class="inline-flex items-center gap-1.5 text-[12px] font-semibold text-sagedeep">{{ icon('check-circle','w-4 h-4') }} Active</span>
+        {% else %}<span class="inline-flex items-center gap-1.5 text-[12px] font-semibold text-dove">{{ icon('clock','w-4 h-4') }} Inactive</span>{% endif %}
+        <div class="flex items-center gap-1">
+          <button onclick="editUser({{ u.id }}, '{{ u.name|e }}', '{{ u.role }}')" class="w-9 h-9 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Edit">{{ icon('edit','w-4 h-4') }}</button>
+          {% if u.id != current_user.id %}
+          <form method="post" action="{{ url_for('user_toggle', user_id=u.id) }}"><button class="w-9 h-9 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="{{ 'Deactivate' if u.active else 'Activate' }}">{{ icon('clock','w-4 h-4') }}</button></form>
+          <form method="post" action="{{ url_for('user_delete', user_id=u.id) }}" onsubmit="return confirm('Remove {{ u.name }}?')"><button class="w-9 h-9 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Remove">{{ icon('trash','w-4 h-4') }}</button></form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
   </div>
 </div>
 
