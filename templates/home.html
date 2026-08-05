@@ -428,5 +428,12 @@
       els.forEach(function(e){ if(e.getBoundingClientRect().top < window.innerHeight) e.classList.add('in'); });
     });
   })();
+       // Disable right-click and keyboard shortcuts
+document.addEventListener('contextmenu', event => event.preventDefault());
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+    }
+});
 </script>
 {% endblock %}
