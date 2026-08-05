@@ -155,7 +155,8 @@ def send_email(to_addr, subject, body, pdf_bytes=None, pdf_name=None):
 def send_whatsapp(to_phone, body):
     twilio_sid = _env("TWILIO_ACCOUNT_SID")
     twilio_token = _env("TWILIO_AUTH_TOKEN")
-    twilio_from = _env("TWILIO_WHATSAPP_FROM")             # e.g. whatsapp:+14155238886
+    twilio_from = _env("TWILIO_WHATSAPP_FROM")
+    twilio_content_sid = _env("TWILIO_CONTENT_SID")   # NEW
     meta_token = _env("WHATSAPP_TOKEN", "META_WHATSAPP_TOKEN")
     meta_phone_id = _env("WHATSAPP_PHONE_NUMBER_ID")
 
@@ -167,11 +168,15 @@ def send_whatsapp(to_phone, body):
         try:
             import urllib.parse
             frm = twilio_from if twilio_from.startswith("whatsapp:") else f"whatsapp:{twilio_from}"
-            data = urllib.parse.urlencode({
-                "From": frm,
-                "To": f"whatsapp:{to_phone}",
-                "Body": body,
-            }).encode()
+
+            fields = {"From": frm, "To": f"whatsapp:{to_phone}"}
+            if twilio_content_sid:
+                fields["ContentSid"] = twilio_content_sid
+                fields["ContentVariables"] = json.dumps({"1": body})
+            else:
+                fields["Body"] = body
+
+            data = urllib.parse.urlencode(fields).encode()
             url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_sid}/Messages.json"
             auth = base64.b64encode(f"{twilio_sid}:{twilio_token}".encode()).decode()
             req = urllib.request.Request(url, data=data,
@@ -182,26 +187,3 @@ def send_whatsapp(to_phone, body):
             return False, _http_error("Twilio", e)
         except urllib.error.URLError as e:
             return False, f"Twilio connection error: {getattr(e, 'reason', e)}"
-
-    if meta_token and meta_phone_id:
-        try:
-            payload = {
-                "messaging_product": "whatsapp",
-                "to": to_phone.lstrip("+"),
-                "type": "text",
-                "text": {"body": body},
-            }
-            url = f"https://graph.facebook.com/v20.0/{meta_phone_id}/messages"
-            req = urllib.request.Request(
-                url, data=json.dumps(payload).encode(),
-                headers={"Authorization": f"Bearer {meta_token}",
-                         "Content-Type": "application/json"},
-            )
-            urllib.request.urlopen(req, timeout=20)
-            return True, "Sent via Meta WhatsApp Cloud API."
-        except urllib.error.HTTPError as e:
-            return False, _http_error("Meta WhatsApp", e)
-        except urllib.error.URLError as e:
-            return False, f"Meta WhatsApp connection error: {getattr(e, 'reason', e)}"
-
-    return True, f"WhatsApp prepared for {to_phone} (no WhatsApp provider key set)."
