@@ -135,7 +135,7 @@ def run():
         r = c.post("/profile/edit", data={
             "name": "Joy A. Achieng", "email": "joy@acre-insights.com",
             "job_title": "Senior Agronomist", "phone": "+254712345678",
-            "location": "Naromoru, Kenya", "bio": "Onions and potatoes across Kajiado."},
+            "location": "Nairobi, Kenya", "bio": "Onions and potatoes across Kajiado."},
             follow_redirects=True)
         check("profile update succeeds", r.status_code == 200)
         with APP.app_context():
