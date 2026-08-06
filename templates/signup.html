@@ -4,14 +4,14 @@
 
 {% block body %}
 <div class="min-h-screen grid lg:grid-cols-2">
-  <div class="hidden lg:flex flex-col justify-between bg-ink text-white p-12 relative overflow-hidden">
+  <div class="hidden lg:flex flex-col justify-between bg-sagesoft text-ink p-12 relative overflow-hidden">
     <img src="{{ url_for('static', filename='img/field-aerial.jpg') }}" alt=""
          class="absolute inset-0 w-full h-full object-cover opacity-25">
-    <div class="absolute inset-0 bg-gradient-to-br from-ink via-ink/85 to-ink/40"></div>
-    <a href="{{ url_for('home') }}" class="relative"><img src="{{ url_for('static', filename='img/acre-logo-white.png') }}" class="h-7" alt="Acre Insights"></a>
+    <div class="absolute inset-0 bg-gradient-to-br from-white via-white/92 to-white/55"></div>
+    <a href="{{ url_for('home') }}" class="relative"><img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-7" alt="Acre Insights"></a>
     <div class="relative">
       <h2 class="text-4xl font-extrabold tracking-tight leading-tight">{{ 'Set up the workspace.' if first_ever else 'Join the team.' }}</h2>
-      <p class="mt-4 text-white/65 text-[15px] max-w-md leading-relaxed">
+      <p class="mt-4 text-dove text-[15px] max-w-md leading-relaxed">
         {% if first_ever %}
         This is the first account, so it becomes the workspace admin: you approve everyone who joins after you.
         {% else %}
@@ -20,11 +20,11 @@
       </p>
       <ul class="mt-8 space-y-3">
         {% for t in ['Import DroneDeploy flights in one click','Complete findings in a shared review portal','Send branded reports over WhatsApp and email'] %}
-        <li class="flex items-center gap-3 text-white/80 text-[14px]"><span class="text-sage shrink-0">{{ icon('check-circle','w-5 h-5') }}</span>{{ t }}</li>
+        <li class="flex items-center gap-3 text-ink/80 text-[14px]"><span class="text-dove shrink-0">{{ icon('check-circle','w-5 h-5') }}</span>{{ t }}</li>
         {% endfor %}
       </ul>
     </div>
-    <p class="relative text-white/40 text-[12px]">Built by Africans, for the continent.</p>
+    <p class="relative text-dove text-[12px]">Built by Africans, for the continent.</p>
   </div>
 
   <div class="flex items-center justify-center p-6 sm:p-12">
@@ -91,18 +91,9 @@
       {% endif %}
 
       <p class="mt-6 text-[13px] text-dove text-center">Already have an account?
-        <a href="{{ url_for('login') }}" class="text-sagedeep font-semibold hover:underline">Sign in</a>
+        <a href="{{ url_for('login') }}" class="text-dove font-semibold hover:underline">Sign in</a>
       </p>
     </div>
   </div>
 </div>
-<script>
-  // Disable right-click and keyboard shortcuts
-  document.addEventListener('contextmenu', event => event.preventDefault());
-  document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
-      e.preventDefault();
-    }
-  });
-</script>
 {% endblock %}

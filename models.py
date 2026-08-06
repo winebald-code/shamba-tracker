@@ -163,7 +163,20 @@ class Flight(db.Model):
     # ---- helpers ----
     @property
     def slug(self):
-        return slugify(f"{self.farm.name}_{self.crop or self.farm.crop}_{self.season}")
+        """
+        The download filename: Farm_Crop_SeasonYear.
+
+        The season already carries the year in Acre's convention (2026LR), but
+        a season typed as just "LR" would produce an ambiguous filename, so the
+        year is appended when it is missing.
+        """
+        crop = (self.crop or self.farm.crop or "Crop").strip()
+        season = (self.season or "").strip()
+        dated = self.flight_date or (self.created_at.date() if self.created_at else None)
+        year = str(dated.year) if dated else str(datetime.utcnow().year)
+        if year not in season:
+            season = f"{season}{year}" if season else year
+        return slugify(f"{self.farm.name}_{crop}_{season}")
 
     @property
     def complete_findings(self):
@@ -200,7 +213,7 @@ class Finding(db.Model):
     flight_id = db.Column(db.Integer, db.ForeignKey("flights.id"), nullable=False)
     annotation_id = db.Column(db.String(80), default="")
     label_hex = db.Column(db.String(20), default="")
-    colour_swatch = db.Column(db.String(20), default="#6C6C6C")
+    colour_swatch = db.Column(db.String(20), default="#6E8659")
     colour_meaning = db.Column(db.String(40), default="Pending review")
     category = db.Column(db.String(60), default="Needs Investigation")
     observation = db.Column(db.Text, default="")

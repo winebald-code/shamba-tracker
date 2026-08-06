@@ -10,13 +10,4 @@
     <a href="{{ url_for('home') }}" class="mt-7 inline-flex items-center gap-2 px-5 py-3 rounded-xl2 bg-sage text-ink font-bold hover:bg-sage/80 transition">← Back home</a>
   </div>
 </div>
-<script>
-  // Disable right-click and keyboard shortcuts
-  document.addEventListener('contextmenu', event => event.preventDefault());
-  document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
-      e.preventDefault();
-    }
-  });
-</script>
 {% endblock %}

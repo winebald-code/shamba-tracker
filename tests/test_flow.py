@@ -61,7 +61,11 @@ def run():
 
     with APP.test_client() as c:
         r = login(c, "joy@acre-insights.com", "fieldwork2026")
-        check("pending user is bounced to the waiting page", b"with the admin" in r.data)
+        # Correct password, unapproved account: the login screen now says which,
+        # rather than redirecting away or reusing the wrong-password message.
+        check("pending sign-in is told the account is unapproved",
+              b"waiting for approval" in r.data)
+        check("pending sign-in offers the status link", b"status of my request" in r.data)
         r = c.get("/dashboard", follow_redirects=True)
         check("pending user cannot reach a dashboard", b"Sign in" in r.data or b"sign in" in r.data)
 
@@ -212,6 +216,39 @@ def run():
               fl.sent_whatsapp and fl.status == "Sent" and fl.delivery_method == "handoff",
               f"{fl.sent_whatsapp}/{fl.status}/{fl.delivery_method}")
         token = fl.share_token
+
+    print("\n=== 7b. download filename and login reasons ===")
+    with APP.app_context():
+        fl = db.session.get(Flight, fid)
+        check("filename follows Farm_Crop_SeasonYear",
+              fl.slug == "Mashuru_Onion_Farm_Onions_2026LR", fl.slug)
+    with APP.test_client() as c:
+        login(c, "cathy@acre-insights.com", "AcreInsights2026")
+        r = c.get(f"/flights/{fid}/report")
+        check("report offers the download with the right name",
+              f'download="{fl.slug}.pdf"'.encode() in r.data)
+        check("report shows the start-here block", b"Start with these" in r.data)
+        check("report shows the action box", b"What to do" in r.data)
+
+    with APP.app_context():
+        u = User(name="Pending Pat", email="pat@acre-insights.com", role="agronomist",
+                 requested_role="agronomist", status="pending", active=True)
+        u.set_password("fieldwork2026")
+        d = User(name="Declined Dee", email="dee@acre-insights.com", role="agronomist",
+                 requested_role="agronomist", status="rejected", active=False,
+                 decision_note="not on this team")
+        d.set_password("fieldwork2026")
+        db.session.add_all([u, d])
+        db.session.commit()
+    with APP.test_client() as c:
+        r = c.post("/login", data={"email": "pat@acre-insights.com", "password": "fieldwork2026"})
+        check("pending sign-in explains why", b"waiting for approval" in r.data)
+        check("pending sign-in is not a wrong-password message", b"didn" not in r.data)
+        r = c.post("/login", data={"email": "dee@acre-insights.com", "password": "fieldwork2026"})
+        check("declined sign-in explains why", b"declined" in r.data)
+        check("declined sign-in shows the admin's note", b"not on this team" in r.data)
+        r = c.post("/login", data={"email": "pat@acre-insights.com", "password": "wrong"})
+        check("a wrong password still says so", b"didn" in r.data)
 
     print("\n=== 8. public report and acknowledgement ===")
     with APP.test_client() as c:

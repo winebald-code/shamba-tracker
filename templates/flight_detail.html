@@ -28,11 +28,11 @@
     <form method="post" action="{{ url_for('flight_upload_csv', flight_id=flight.id) }}" enctype="multipart/form-data" class="mt-3">
       <label class="block">
         <input type="file" name="csv" accept=".csv" required onchange="this.form.submit()"
-               class="block w-full text-[12px] text-dove file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12px] file:cursor-pointer cursor-pointer">
+               class="block w-full text-[12px] text-dove file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sagesoft file:text-dove file:font-bold file:text-[12px] file:cursor-pointer cursor-pointer">
       </label>
     </form>
-    {% if flight.csv_filename %}<p class="mt-2.5 text-[11.5px] text-dove flex items-center gap-1.5"><span class="text-sagedeep">{{ icon('check','w-3.5 h-3.5') }}</span> {{ flight.csv_filename }} · {{ flight.findings|length }} pin(s)</p>{% endif %}
-    {% if flight.dronedeploy_project_url %}<a href="{{ flight.dronedeploy_project_url }}" target="_blank" class="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-sagedeep hover:underline">{{ icon('external','w-4 h-4') }} Open project in DroneDeploy</a>{% endif %}
+    {% if flight.csv_filename %}<p class="mt-2.5 text-[11.5px] text-dove flex items-center gap-1.5"><span class="text-dove">{{ icon('check','w-3.5 h-3.5') }}</span> {{ flight.csv_filename }} · {{ flight.findings|length }} pin(s)</p>{% endif %}
+    {% if flight.dronedeploy_project_url %}<a href="{{ flight.dronedeploy_project_url }}" target="_blank" class="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-dove hover:underline">{{ icon('external','w-4 h-4') }} Open project in DroneDeploy</a>{% endif %}
   </div>
 
   <!-- map -->
@@ -47,7 +47,7 @@
     <form method="post" action="{{ url_for('flight_upload_map', flight_id=flight.id) }}" enctype="multipart/form-data" class="mt-3">
       <label class="block">
         <input type="file" name="map" accept="image/*" required onchange="this.form.submit()"
-               class="block w-full text-[12px] text-dove file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12px] file:cursor-pointer cursor-pointer">
+               class="block w-full text-[12px] text-dove file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sagesoft file:text-dove file:font-bold file:text-[12px] file:cursor-pointer cursor-pointer">
       </label>
     </form>
   </div>
@@ -63,9 +63,9 @@
       </select>
     </form>
     <div class="mt-3 space-y-2 text-[12px]">
-      <div class="flex items-center gap-2 {{ 'text-sagedeep font-semibold' if flight.report_generated else 'text-dove' }}">{{ icon('check','w-4 h-4') }} Report {{ 'generated' if flight.report_generated else 'not yet generated' }}</div>
-      {% if flight.sent_email or flight.sent_whatsapp %}<div class="flex items-center gap-2 text-sagedeep font-semibold">{{ icon('send','w-4 h-4') }} Sent {{ flight.sent_at.strftime('%d %b') if flight.sent_at }}</div>{% endif %}
-      {% if flight.acknowledged %}<div class="flex items-center gap-2 text-sagedeep font-semibold">{{ icon('check-circle','w-4 h-4') }} Acknowledged {{ flight.acknowledged_at.strftime('%d %b, %H:%M') if flight.acknowledged_at }}</div>{% endif %}
+      <div class="flex items-center gap-2 {{ 'text-dove font-semibold' if flight.report_generated else 'text-dove' }}">{{ icon('check','w-4 h-4') }} Report {{ 'generated' if flight.report_generated else 'not yet generated' }}</div>
+      {% if flight.sent_email or flight.sent_whatsapp %}<div class="flex items-center gap-2 text-dove font-semibold">{{ icon('send','w-4 h-4') }} Sent {{ flight.sent_at.strftime('%d %b') if flight.sent_at }}</div>{% endif %}
+      {% if flight.acknowledged %}<div class="flex items-center gap-2 text-dove font-semibold">{{ icon('check-circle','w-4 h-4') }} Acknowledged {{ flight.acknowledged_at.strftime('%d %b, %H:%M') if flight.acknowledged_at }}</div>{% endif %}
     </div>
   </div>
 </div>
@@ -73,7 +73,7 @@
 <!-- completeness banner -->
 <div id="banner" class="rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3
      {{ 'bg-sagesoft border border-sage/50' if flight.can_generate else 'glass-solid' }}">
-  <span id="bannerIcon" class="{{ 'text-sagedeep' if flight.can_generate else 'text-dove' }}">
+  <span id="bannerIcon" class="{{ 'text-dove' if flight.can_generate else 'text-dove' }}">
     {{ icon('check-circle','w-5 h-5') if flight.can_generate else icon('alert','w-5 h-5') }}
   </span>
   <p id="bannerText" class="text-[13px] font-semibold">
@@ -110,7 +110,7 @@
 
       <!-- MOBILE meta row (pin · colour · area · actions) -->
       <div class="flex items-center gap-2.5 lg:hidden mb-3">
-        <span class="w-7 h-7 rounded-lg grid place-items-center font-extrabold text-white text-[13px] tnum shrink-0" style="background: {{ f.colour_swatch }}">{{ loop.index }}</span>
+        <span class="w-7 h-7 rounded-lg grid place-items-center font-extrabold text-ink text-[13px] tnum shrink-0" style="background: {{ f.colour_swatch }}">{{ loop.index }}</span>
         <span class="text-[12px] font-semibold text-dove">{{ f.colour_meaning }}</span>
         {% if f.area_text %}<span class="text-[11.5px] font-bold text-dove tnum">· {{ f.area_text }}</span>{% endif %}
         <span class="flex-1"></span>
@@ -230,7 +230,7 @@
       bt.innerHTML = 'Import a DroneDeploy CSV to load the annotations, or add findings by hand.';
     } else if (canGenerate){
       banner.className = 'rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3 bg-sagesoft border border-sage/50';
-      bi.className = 'text-sagedeep'; bi.innerHTML = CHECK;
+      bi.className = 'text-dove'; bi.innerHTML = CHECK;
       bt.innerHTML = `All ${total} findings are complete. You can generate the report.`;
     } else {
       banner.className = 'rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3 glass-solid';
