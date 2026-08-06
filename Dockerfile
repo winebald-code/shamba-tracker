@@ -1,10 +1,15 @@
 # SHAMBA Tracker — production image (Railway detects this Dockerfile automatically)
 FROM python:3.11-slim
 
-# System libraries WeasyPrint needs to render PDFs (Pango/Cairo/GDK-Pixbuf + fonts)
+# System libraries WeasyPrint needs to render PDFs. If any of these are missing
+# the app still runs, but Download falls back to the browser's print dialog —
+# the boot log says which of the two you are getting.
+# libpangoft2 / harfbuzz / fontconfig are what let WeasyPrint use the bundled
+# Montserrat faces in static/fonts, so the PDF matches the screen exactly.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 \
-        libcairo2 libffi8 shared-mime-info fonts-dejavu-core \
+        libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 \
+        libgdk-pixbuf-2.0-0 libcairo2 libffi8 libharfbuzz0b \
+        fontconfig shared-mime-info fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONUNBUFFERED=1 \

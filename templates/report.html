@@ -2,169 +2,62 @@
 {% from '_icons.html' import icon %}
 {% block title %}{{ farm.name }} — Field Report{% endblock %}
 
+{#
+  Everything on this page that is not the report itself carries .no-print, so
+  Ctrl+P produces the document and nothing else. The document is included, not
+  duplicated — report_doc.html is also what WeasyPrint renders, which is what
+  makes the screen, the print dialog and the downloaded PDF agree.
+#}
+
 {% block body %}
 <div class="min-h-screen bg-canvas">
 
 {% if not public %}
 <!-- internal action bar -->
 <div class="no-print sticky top-0 z-30 glass border-b border-ink/5">
-  <div class="max-w-5xl mx-auto px-3 sm:px-5 h-16 flex items-center justify-between gap-2">
+  <div class="max-w-[900px] mx-auto px-3 sm:px-5 h-16 flex items-center justify-between gap-2">
     <a href="{{ url_for('flight_detail', flight_id=flight.id) }}" class="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink hover:bg-ink/5 px-2.5 sm:px-3 py-2 rounded-xl transition whitespace-nowrap">← <span class="hidden sm:inline">Back to review</span><span class="sm:hidden">Back</span></a>
     <div class="flex items-center gap-2">
-      <a href="{{ url_for('flight_report_pdf', flight_id=flight.id) }}" class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition"><span class="shrink-0">{{ icon('download','w-4 h-4') }}</span><span class="hidden sm:inline">Download PDF</span></a>
+      <button onclick="window.print()" class="hidden md:inline-flex items-center gap-2 px-3 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition" title="Prints exactly what you see">{{ icon('report','w-4 h-4') }} Print</button>
+      <a href="{{ url_for('flight_report_pdf', flight_id=flight.id) }}"
+         {% if PDF_AVAILABLE %}download="{{ flight.report_filename }}"{% endif %}
+         title="Downloads as {{ flight.report_filename }}"
+         class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition"><span class="shrink-0">{{ icon('download','w-4 h-4') }}</span><span class="hidden sm:inline">Download PDF</span></a>
       <button onclick="document.getElementById('sendPanel').showModal()" class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition"><span class="shrink-0">{{ icon('send','w-4 h-4') }}</span><span class="hidden sm:inline">Share with farmer</span><span class="sm:hidden">Share</span></button>
     </div>
   </div>
 </div>
 {% else %}
-<!-- public slim header -->
+<!-- public farmer header -->
 <div class="no-print bg-white border-b border-silver">
-  <div class="max-w-4xl mx-auto px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
+  <div class="max-w-[900px] mx-auto px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
     <a href="{{ url_for('home') }}" class="hover:opacity-90 transition" aria-label="Acre Insights home"><img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-5 sm:h-6" alt="Acre Insights"></a>
-    <span class="text-[11px] font-bold uppercase tracking-[0.14em] text-dove">Your field report</span>
+    <a href="{{ url_for('public_report_pdf', token=flight.share_token) }}"
+       {% if PDF_AVAILABLE %}download="{{ flight.report_filename }}"{% endif %}
+       title="Downloads as {{ flight.report_filename }}"
+       class="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-ink text-white text-[12.5px] font-bold hover:bg-ink/90 transition">
+      {{ icon('download','w-4 h-4') }} <span class="hidden sm:inline">Download PDF</span><span class="sm:hidden">PDF</span>
+    </a>
   </div>
 </div>
 {% endif %}
 
-<!-- ================= THE REPORT ================= -->
-<div class="max-w-[880px] mx-auto px-4 sm:px-5 py-6 sm:py-8">
-  <article class="bg-white rounded-2xl border border-silver overflow-hidden shadow-[0_30px_60px_-40px_rgba(3,9,32,0.5)]">
-
-    <!-- header -->
-    <div class="px-6 sm:px-9 pt-8 pb-6">
-      <div class="flex items-start justify-between gap-4 pb-5 border-b-2 border-ink">
-        <img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-8 sm:h-9" alt="Acre Insights">
-        <div class="text-right">
-          <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-dove">Field Scouting Report</p>
-          <h1 class="text-[20px] sm:text-[24px] font-extrabold tracking-tight mt-1 leading-none">{{ farm.name }}</h1>
-          <p class="text-[12px] text-dove font-semibold mt-1.5">Season {{ flight.season }} · Flight {{ flight.flight_number }} of {{ flight.flights_planned }}{{ ' · Baseline' if not prev }}</p>
-        </div>
-      </div>
-
-      <!-- facts -->
-      <div class="grid grid-cols-2 sm:grid-cols-5 gap-px mt-6 rounded-xl overflow-hidden border border-silver bg-silver">
-        {% set facts = [
-          ('Crop', flight.crop or farm.crop or '—'),
-          ('Acreage', ((flight.acreage or farm.acreage)|round(0)|int ~ ' ac') if (flight.acreage or farm.acreage) else '—'),
-          ('Flight date', flight.flight_date.strftime('%d %b %Y') if flight.flight_date else '—'),
-          ('Areas marked', flight.findings|length),
-          ('Report date', now.strftime('%d %b %Y'))
-        ] %}
-        {% for k,v in facts %}
-        <div class="bg-white px-3.5 py-3">
-          <p class="text-[9px] font-bold uppercase tracking-[0.1em] text-dove">{{ k }}</p>
-          <p class="text-[14px] font-extrabold mt-0.5 tnum">{{ v }}</p>
-        </div>
-        {% endfor %}
-      </div>
-
-      <!-- summary -->
-      <div class="mt-6">
-        <p class="text-[16px] sm:text-[17px] font-semibold leading-snug">
-          <span class="font-extrabold">{{ flight.findings|length }} area{{ '' if flight.findings|length==1 else 's' }} to look at</span> this flight{% if category_counts %} —
-          {% set parts = [] %}{% for c,n in category_counts.items() %}{% set _ = parts.append(n ~ ' ' ~ c|lower) %}{% endfor %}
-          {{ parts|join(', ') }}.{% else %}.{% endif %}
-        </p>
-        {% if category_counts %}
-        <div class="flex flex-wrap gap-2 mt-3.5">
-          {% for c,n in category_counts.items() %}
-          <span class="inline-flex items-center gap-2 text-[12px] font-bold bg-white border border-silver rounded-full pl-2.5 pr-2 py-1.5">
-            {{ c }}<span class="grid place-items-center min-w-[18px] h-[18px] rounded-full bg-ink text-white text-[11px] px-1.5 tnum">{{ n }}</span>
-          </span>
-          {% endfor %}
-        </div>
-        {% endif %}
-      </div>
-    </div>
-
-    <!-- map -->
-    {% if flight.map_image %}
-    <div class="px-6 sm:px-9">
-      <div class="rounded-xl overflow-hidden border border-silver relative">
-        <img src="{{ url_for('uploaded', name=flight.map_image) }}" alt="Annotated field map" class="w-full block">
-        <div class="absolute right-3 top-3 glass rounded-lg px-3 py-2.5 text-[10.5px] font-semibold space-y-1.5">
-          {% for meaning, n in meaning_counts.items() %}
-          <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background: {{ COLOUR_CODE.get(meaning, COLOUR_CODE['Pending review']).swatch }}"></span>{{ meaning }}</div>
-          {% endfor %}
-        </div>
-      </div>
-      <div class="flex items-center justify-between gap-3 mt-2.5 mb-1">
-        <p class="text-[11.5px] text-dove font-semibold">Annotated map · {{ flight.findings|length }} zone(s) marked across the field</p>
-        {% if flight.dronedeploy_project_url %}<a href="{{ flight.dronedeploy_project_url }}" target="_blank" class="text-[12px] font-bold text-sagedeep hover:underline inline-flex items-center gap-1.5">{{ icon('external','w-4 h-4') }} Open the interactive map</a>{% endif %}
-      </div>
-    </div>
-    {% endif %}
-
-    <!-- findings -->
-    <div class="px-6 sm:px-9 pt-6 pb-2">
-      <div class="flex items-baseline gap-3 mb-1">
-        <h2 class="text-[15px] font-extrabold">What we found</h2>
-        <div class="flex-1 h-px bg-silver"></div>
-      </div>
-      <div class="divide-y divide-silver">
-        {% for f in flight.findings %}
-        <div class="grid grid-cols-[44px_1fr] gap-4 py-5">
-          <div class="w-11 h-11 rounded-xl grid place-items-center font-extrabold text-white text-[15px] tnum" style="background: {{ f.colour_swatch }}">{{ loop.index }}</div>
-          <div>
-            <div class="flex items-center justify-between gap-3 flex-wrap">
-              <div class="flex items-center gap-2.5">
-                <span class="text-[14px] font-extrabold">{{ f.category }}</span>
-                <span class="text-[10.5px] font-bold uppercase tracking-wide text-dove bg-canvas border border-silver rounded-full px-2 py-0.5">{{ f.colour_meaning }}</span>
-              </div>
-              {% if f.area_text %}<span class="text-[11.5px] font-bold text-dove bg-canvas border border-silver rounded-full px-2.5 py-1 tnum whitespace-nowrap">{{ f.area_text }}</span>{% endif %}
-            </div>
-            <div class="mt-2.5 space-y-2.5">
-              <div><p class="text-[9.5px] font-bold uppercase tracking-[0.1em] text-dove">What we saw</p><p class="text-[13px] leading-relaxed mt-0.5">{{ f.observation }}</p></div>
-              <div><p class="text-[9.5px] font-bold uppercase tracking-[0.1em] text-dove">Likely cause</p><p class="text-[13px] leading-relaxed mt-0.5">{{ f.likely_cause }}</p></div>
-              <div><p class="text-[9.5px] font-bold uppercase tracking-[0.1em] text-dove">What to do next</p><p class="text-[13px] leading-relaxed mt-0.5">{{ f.recommendation }}</p></div>
-            </div>
-            {% if f.annotation_link %}<a href="{{ f.annotation_link }}" target="_blank" class="mt-2.5 inline-flex items-center gap-1.5 text-[11.5px] font-bold text-sagedeep hover:underline">{{ icon('pin','w-4 h-4') }} See this zone on the map</a>{% endif %}
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-
-    <!-- comparison / baseline -->
-    <div class="px-6 sm:px-9 pb-6">
-      <div class="rounded-xl bg-sagesoft border border-sage/40 px-4 py-3.5 text-[13px] font-semibold leading-relaxed">
-        {% if prev %}
-          Compared with flight {{ prev.flight_number }} ({{ prev_total }} issue{{ '' if prev_total==1 else 's' }}):
-          <span class="font-extrabold">{{ resolved }} resolved</span>, {{ still_open }} still open. Keep going — the trend is what matters.
-        {% else %}
-          This is <span class="font-extrabold">flight {{ flight.flight_number }} of the season</span> — the baseline the next flights are measured against. From flight {{ flight.flight_number + 1 }}, this report will show what has improved and what is still open.
-        {% endif %}
-      </div>
-    </div>
-
-    <!-- footer -->
-    <div class="bg-ink text-white px-6 sm:px-9 py-7">
-      <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-5">
-        <div class="max-w-md">
-          <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-white/50">A note from your agronomist</p>
-          <p class="mt-2 text-[13px] leading-relaxed text-white/85">{{ flight.agronomist_note or "None of these need panic — catching them now keeps them small. Reply or call us and we'll walk the field with you." }}</p>
-        </div>
-        {% if public %}
-        <div class="shrink-0" id="ackArea">
-          {% if flight.acknowledged %}
-          <div class="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-sage text-ink text-[13px] font-bold">{{ icon('check-circle','w-5 h-5') }} Receipt confirmed</div>
-          {% else %}
-          <button onclick="acknowledge()" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-sage text-ink text-[13.5px] font-bold hover:bg-sage/80 transition">{{ icon('check','w-5 h-5') }} Acknowledge receipt</button>
-          {% endif %}
-        </div>
-        {% endif %}
-      </div>
-      <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between gap-3 text-[11px] text-white/45">
-        <span>Prepared by Acre Insights · Nature meets intelligence</span>
-        {% if public %}<a href="{{ url_for('public_report_pdf', token=flight.share_token) }}" class="text-white/70 hover:text-white font-semibold inline-flex items-center gap-1.5 no-print">{{ icon('download','w-4 h-4') }} Download PDF</a>{% endif %}
-      </div>
-    </div>
-  </article>
-
-  {% if public %}
-  <p class="text-center text-[11.5px] text-dove mt-6 no-print">Questions? Reply to the message this came from, or call Acre Insights any time.</p>
-  {% endif %}
+{% if not public and not PDF_AVAILABLE %}
+<div class="no-print max-w-[900px] mx-auto px-4 pt-4">
+  <div class="rounded-xl border border-silver bg-white px-4 py-3 text-[12.5px] leading-relaxed">
+    <span class="font-bold">Download will open your print dialog on this server.</span>
+    <span class="text-dove">WeasyPrint&rsquo;s system libraries aren&rsquo;t installed here, so the PDF can&rsquo;t be
+    generated server-side. Choose <span class="font-semibold text-ink">Save as PDF</span> and it will save as
+    <span class="inst text-ink">{{ flight.report_filename }}</span>
+  </div>
 </div>
+{% endif %}
+
+{% include 'report_doc.html' %}
+
+{% if public %}
+<p class="text-center text-[11.5px] text-dove pb-8 px-4 no-print">Questions? Reply to the message this came from, or call Acre Insights any time.</p>
+{% endif %}
 </div>
 
 {% if not public %}
@@ -233,12 +126,17 @@
         <div class="flex items-center gap-2 mb-2">
           <span class="text-dove shrink-0">{{ icon('link','w-4 h-4') }}</span>
           <span class="text-[12px] font-bold flex-1">The farmer&rsquo;s report link</span>
+          <a href="{{ share.link }}" target="_blank" rel="noopener"
+             class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-silver text-[11.5px] font-bold hover:border-dove transition shrink-0">
+            {{ icon('external','w-3.5 h-3.5') }} <span>Test</span>
+          </a>
           <button type="button" onclick="copyShareLink(this)"
                   class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-silver text-[11.5px] font-bold hover:border-dove transition shrink-0">
             {{ icon('copy','w-3.5 h-3.5') }} <span>Copy</span>
           </button>
         </div>
         <p id="shareLink" class="inst text-[11px] text-dove break-all leading-snug">{{ share.link }}</p>
+        <p class="text-[10.5px] text-dove/80 mt-2 leading-snug">Open it in a private window to see exactly what the farmer sees.</p>
       </div>
     </div>
 
@@ -246,7 +144,8 @@
     <div class="border-t border-silver p-5 sm:p-6 bg-canvas/50">
       <span class="eyebrow text-dove">Or send automatically</span>
       <p class="text-[12.5px] text-dove leading-relaxed mt-1 mb-4">
-        Delivers straight from Acre Insights with the PDF attached. Needs a verified sending domain for email
+        Delivers straight from Acre Insights with the PDF attached as
+        <span class="inst text-ink">{{ flight.report_filename }}</span>. Needs a verified sending domain for email
         and an approved business number for WhatsApp.
       </p>
       <form method="post" action="{{ url_for('flight_send', flight_id=flight.id) }}" class="space-y-2.5">
@@ -312,7 +211,7 @@
       const data = await res.json();
       if(data.ok){
         document.getElementById('ackArea').innerHTML =
-          '<div class="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-sage text-ink text-[13px] font-bold"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9.2"/><path d="M8 12.3 11 15.3 16.3 9.2"/></svg> Receipt confirmed</div>';
+          '<div style="display:inline-block;background:#E7F1DB;color:#3E7A24;border-radius:9px;padding:11px 18px;font-size:11.5px;font-weight:800">✓ Thank you — your agronomist knows this reached you</div>';
       }
     }catch(e){ console.error(e); }
   }
@@ -321,17 +220,12 @@
 
 {% if request.args.get('print') %}
 <script>
-  // Reached when server-side PDF isn't available: give the browser a clean,
-  // correctly-named page to "Save as PDF".
-  document.title = "{{ flight.slug }}";
-  window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 500); });
-       // Disable right-click and keyboard shortcuts
-document.addEventListener('contextmenu', event => event.preventDefault());
-document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
-        e.preventDefault();
-    }
-});
+  // Reached only when server-side PDF is unavailable on this host. The document
+  // is the same one WeasyPrint would have rendered, so the browser's own
+  // "Save as PDF" produces the same pages — it just needs the right filename,
+  // which browsers take from the document title.
+  document.title = {{ flight.report_basename|tojson }};
+  window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 700); });
 </script>
 {% endif %}
 {% endblock %}

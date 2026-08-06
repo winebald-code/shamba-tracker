@@ -15,7 +15,7 @@ Built with Flask · SQLite · Tailwind CSS · vanilla JS · WeasyPrint. Ready fo
 1. **Farms & flights** — keep a record of each farm, its farmer contact, and every scouting flight (unique by *farm + season + flight number*).
 2. **Import** — upload the DroneDeploy annotation **CSV**; SHAMBA Tracker parses each pin, classifies its colour into the Acre colour code, normalises the area, and splits the comment into *observation / likely cause / recommendation*.
 3. **Review portal** — complete and correct every finding inline. The report can only be generated once all findings are complete.
-4. **Generate** — one click produces the branded report (web + **PDF**), named `FarmName_CropName_SeasonYear`.
+4. **Generate** — one click produces the branded report (web + **PDF**), named `Farm Name_Crop Name_Season Year.pdf`.
 5. **Deliver** — send by email (report attached) and WhatsApp (link), with a message in Acre's voice.
 6. **Acknowledge** — the farmer opens a tokenised public link, reads the report, and taps to confirm receipt — logged back to the dashboard.
 
@@ -117,6 +117,40 @@ New public sign-ups become Agronomists (the very first ever account becomes Admi
 
 ---
 
+## The report
+
+The report is one document, `templates/report_doc.html`, composed as real A4
+sheets: each sheet is exactly 210 x 297 mm and the page box has no margin of its
+own. The browser shows those sheets, the browser prints those sheets, and
+WeasyPrint turns those sheets into pages — so the screen, the print dialog and
+the downloaded PDF cannot drift apart. `report.html` wraps the document in the
+app's chrome (all of it marked `.no-print`), and `report_print.html` is a bare
+shell with no styling of its own.
+
+Two things hold that guarantee up:
+
+* **Montserrat is bundled**, not fetched from a CDN. If WeasyPrint fell back to
+  a system face while the browser used Montserrat, the same paragraph would wrap
+  at a different word and the page breaks would stop matching. It is the only
+  typeface in the report — readings are set apart by tabular figures
+  (`font-variant-numeric` / `font-feature-settings: 'tnum'`, which Montserrat
+  carries) and by tracking, rather than by a second family.
+* **Findings are paginated in Python** (`report_data.paginate`), not left to the
+  renderer, so a card is never split and both engines break in the same places.
+
+**Download** produces a real file named `Farm Name_Crop Name_Season Year.pdf` —
+`Content-Disposition: attachment` plus a matching `download` attribute on the
+link, so it saves straight to disk with no viewer tab and no Save-as dialog.
+Renders take about a second, so each one is cached against a key derived from
+the report's own content; edit any finding and the cache invalidates itself.
+The boot log states whether server-side PDF is available, and if it is not, the
+report page says so rather than letting a print dialog appear unexplained.
+
+The **field health score** on the cover is the share of the field in good shape,
+counting watch zones at 55% and zones needing action at 0%. The report prints
+that definition on its closing page, so a farmer can check the number rather
+than trust it.
+
 ## Project layout
 ```
 shamba-tracker/
@@ -125,8 +159,14 @@ shamba-tracker/
 ├── parsing.py         # CSV parsing + colour classification
 ├── integrations.py    # email + WhatsApp (env-key based, simulate if absent)
 ├── pdf_gen.py         # WeasyPrint PDF (graceful fallback)
+├── report_data.py     # field health score, banding, sheet pagination
+├── schema.py          # additive migrations + share-token backfill
 ├── templates/         # Tailwind UI + report templates
+│   ├── report_doc.html    # THE report — screen, print and PDF, one file
+│   ├── report.html        # app chrome around the document
+│   └── report_print.html  # bare wrapper WeasyPrint renders
 ├── static/img/        # Acre logo (transparent + white)
+├── static/fonts/      # Montserrat, bundled (see below)
 ├── samples/           # sample DroneDeploy CSV + annotated map
 ├── Dockerfile         # Railway build (installs WeasyPrint libs)
 ├── requirements.txt

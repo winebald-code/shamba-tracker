@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+{#
+  The PDF wrapper.
+
+  It contributes no styling of its own on purpose: every rule the PDF uses
+  comes from report_doc.html, which is the same file the browser renders. If a
+  style lived here, the PDF and the web report could drift, and the whole point
+  of composing the report as fixed A4 sheets would be lost.
+#}
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ flight.report_basename }}</title>
+  <meta name="author" content="Acre Insights">
+  <meta name="subject" content="Field scouting report — {{ farm.name }}, season {{ flight.season }}, flight {{ flight.flight_number }}">
+  <style>html,body{margin:0;padding:0;background:#fff;}</style>
+</head>
+<body>
+{% include 'report_doc.html' %}
+</body>
+</html>

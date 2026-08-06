@@ -36,7 +36,18 @@ ADDITIONS = {
         "last_login_at":  "TIMESTAMP NULL",
     },
     "flights": {
-        "delivery_method": "VARCHAR(40) DEFAULT ''",
+        "delivery_method":  "VARCHAR(40) DEFAULT ''",
+        # share_token drives the farmer's report link. A database that predates
+        # it fails every Flight query without this entry, and a row that has the
+        # column but no value hands out /r/None — see backfill_share_tokens().
+        "share_token":      "VARCHAR(48) NULL",
+        "sent_email":       "BOOLEAN DEFAULT 0",
+        "sent_whatsapp":    "BOOLEAN DEFAULT 0",
+        "sent_at":          "TIMESTAMP NULL",
+        "acknowledged":     "BOOLEAN DEFAULT 0",
+        "acknowledged_at":  "TIMESTAMP NULL",
+        "report_pdf":       "VARCHAR(300) DEFAULT ''",
+        "agronomist_note":  "TEXT DEFAULT ''",
     },
 }
 
@@ -85,4 +96,38 @@ def ensure_schema(db):
             except Exception as exc:
                 print(f"[schema] backfill skipped: {exc}")
         print(f"[schema] added columns: {', '.join(added)}")
+
+    if "flights" in existing_tables:
+        backfill_share_tokens(db)
     return added
+
+
+def backfill_share_tokens(db):
+    """
+    Give every flight a public token.
+
+    Each token must be unique, so this cannot be a single UPDATE — it reads the
+    rows that are missing one and writes a fresh token per row. It runs on every
+    boot and is a no-op once the table is clean, which is what makes the
+    farmer's report link safe to hand out: a flight created before the column
+    existed would otherwise resolve to /r/None and 404 in the farmer's hand.
+    """
+    import secrets
+    try:
+        with db.engine.begin() as conn:
+            rows = conn.execute(text(
+                "SELECT id FROM flights WHERE share_token IS NULL OR share_token = ''"
+            )).fetchall()
+            for (flight_id,) in rows:
+                for _ in range(5):                 # retry on the (vanishing) collision
+                    token = secrets.token_urlsafe(16)
+                    try:
+                        conn.execute(text("UPDATE flights SET share_token=:t WHERE id=:i"),
+                                     {"t": token, "i": flight_id})
+                        break
+                    except Exception:
+                        continue
+        if rows:
+            print(f"[schema] issued share tokens for {len(rows)} flight(s)")
+    except Exception as exc:
+        print(f"[schema] share-token backfill skipped: {exc}")

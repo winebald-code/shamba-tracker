@@ -14,6 +14,7 @@ from flask import (Flask, render_template, request, redirect, url_for, flash,
 from flask_login import (LoginManager, login_user, logout_user, login_required,
                          current_user)
 from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
 from sqlalchemy.exc import IntegrityError, OperationalError
 
 from models import (db, User, Farm, Flight, Finding, ROLES, ROLE_LABELS,
@@ -21,6 +22,7 @@ from models import (db, User, Farm, Flight, Finding, ROLES, ROLE_LABELS,
 import parsing
 import integrations
 import pdf_gen
+import report_data
 import schema
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -43,6 +45,13 @@ PERMISSIONS = {
 
 def create_app():
     app = Flask(__name__)
+    # Railway (and every other PaaS) terminates TLS at a proxy and forwards
+    # plain HTTP inward. Without this, request.url_root reports the internal
+    # http://0.0.0.0:8080 origin, and the report link that goes out to the
+    # farmer over WhatsApp points at a host that only exists inside the
+    # container. ProxyFix reads the X-Forwarded-* headers so every generated
+    # link carries the public https origin instead.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-change-me-in-production")
     db_url = os.environ.get("DATABASE_URL", "sqlite:///" + os.path.join(BASE_DIR, "shamba.db"))
     if db_url.startswith("postgres://"):          # Railway hands out the legacy prefix
@@ -78,7 +87,15 @@ def create_app():
             "can": can,
             "pending_count": _pending_count(),
             "now": datetime.utcnow(),
+            "PDF_AVAILABLE": pdf_gen.PDF_AVAILABLE,
         }
+
+    if pdf_gen.PDF_AVAILABLE:
+        print("[pdf] WeasyPrint ready — reports download as PDF files")
+    else:
+        print("[pdf] WeasyPrint unavailable — the Download button will open the "
+              "browser's print dialog instead. Build with the included Dockerfile "
+              "to get server-generated PDFs.")
 
     register_routes(app)
 
@@ -212,7 +229,15 @@ def _float(v):
 
 
 def report_context(flight):
-    """Everything the report templates need, incl. prior-flight comparison."""
+    """Everything the report template needs, incl. prior-flight comparison."""
+    # Any route that renders a report may also be about to hand its link out,
+    # so this is the right place to make sure the link exists at all.
+    if flight.ensure_share_token():
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
     prev = (Flight.query
             .filter_by(farm_id=flight.farm_id, season=flight.season,
                        flight_number=flight.flight_number - 1)
@@ -222,6 +247,7 @@ def report_context(flight):
         prev_total = len(prev.findings)
         resolved = sum(1 for f in flight.findings if f.resolved)
         still_open = len(flight.findings) - resolved
+
     return {
         "flight": flight,
         "farm": flight.farm,
@@ -232,6 +258,8 @@ def report_context(flight):
         "prev_total": prev_total,
         "resolved": resolved,
         "still_open": still_open,
+        "a": report_data.analyse(flight, prev),
+        "next_flight_no": flight.flight_number + 1,
     }
 
 
@@ -778,7 +806,7 @@ def register_routes(app):
             return redirect(url_for("flight_detail", flight_id=flight.id))
         base = _public_base()
         pdf_bytes = _pdf_bytes(flight)
-        pdf_name = f"{flight.slug}.pdf"
+        pdf_name = flight.report_filename
         channels = request.form.getlist("channel")
         msgs, any_ok = [], False
         if "email" in channels:
@@ -1037,9 +1065,27 @@ def _notify_admins_of_signup(u):
 
 
 def _public_base():
-    """The base URL used inside shared links. PUBLIC_BASE_URL wins when set."""
+    """
+    The base URL used inside shared links. PUBLIC_BASE_URL wins when set;
+    otherwise it comes from the request, which ProxyFix has already corrected
+    to the public scheme and host.
+
+    A link that goes out to a farmer gets one chance to work, so this also
+    forces https on anything that is not a local address: WhatsApp and several
+    mail clients quietly refuse to make a plain-http link tappable.
+    """
     configured = os.environ.get("PUBLIC_BASE_URL", "").strip().rstrip("/")
-    return configured or request.url_root.rstrip("/")
+    if configured:
+        if not configured.startswith(("http://", "https://")):
+            configured = "https://" + configured
+        return configured
+
+    base = request.url_root.rstrip("/")
+    host = request.host.split(":")[0].lower()
+    is_local = host in ("localhost", "127.0.0.1", "0.0.0.0", "::1") or host.endswith(".local")
+    if base.startswith("http://") and not is_local:
+        base = "https://" + base[len("http://"):]
+    return base
 
 
 # ------------------------------------------------------------------ PDF glue
@@ -1051,45 +1097,146 @@ def _map_path(flight):
     return None
 
 
-def _pdf_bytes(flight):
-    """Render the report to PDF bytes, or None if PDF can't be produced here."""
-    if not pdf_gen.PDF_AVAILABLE:
+# Cached renders live below the uploads folder rather than in it: /uploads/<name>
+# is public and runs the name through secure_filename, which flattens away path
+# separators, so nothing under this directory is reachable through that route.
+PDF_CACHE_DIR = os.path.join(UPLOAD_DIR, ".cache")
+
+
+def _pdf_cache_path(flight):
+    try:
+        os.makedirs(PDF_CACHE_DIR, exist_ok=True)
+    except OSError:
         return None
+    return os.path.join(PDF_CACHE_DIR, _pdf_cache_key(flight))
+
+
+def _pdf_cache_key(flight):
+    """
+    Identifies the exact content of this report. Any edit to the flight, its
+    farm or any finding changes the key, so a cached file can never outlive the
+    data it was built from.
+    """
+    import hashlib
+    parts = [str(flight.id), flight.season or "", str(flight.flight_number),
+             str(flight.flights_planned), flight.crop or "", str(flight.acreage),
+             flight.flight_date.isoformat() if flight.flight_date else "",
+             flight.status or "", flight.farm.name or "", str(flight.farm.acreage),
+             flight.map_image or "", flight.agronomist_note or ""]
+    for f in flight.findings:
+        parts += [str(f.id), f.category or "", f.colour_meaning or "", f.observation or "",
+                  f.likely_cause or "", f.recommendation or "", str(f.area_acres),
+                  str(f.resolved)]
+    digest = hashlib.sha1("|".join(str(p) for p in parts).encode()).hexdigest()[:16]
+    return f"report-{flight.id}-{digest}.pdf"
+
+
+def _pdf_bytes(flight, use_cache=True):
+    """
+    Render the report to PDF bytes, or None if PDF can't be produced here.
+
+    This renders the same report_doc.html the browser shows, wrapped in a bare
+    page shell. Screen and paper therefore run on one stylesheet and one set of
+    page breaks, which is the only way the two can be guaranteed to match.
+
+    A render costs about a second, which is long enough that a second click
+    feels like the download did nothing, so the result is cached against a key
+    derived from the report's own content.
+    """
+    if not pdf_gen.PDF_AVAILABLE:
+        print("[pdf] WeasyPrint unavailable — falling back to the browser print path")
+        return None
+
+    cached = _pdf_cache_path(flight) if use_cache else None
+    if cached and os.path.exists(cached):
+        try:
+            with open(cached, "rb") as fh:
+                return fh.read()
+        except OSError:
+            pass                                   # unreadable cache is not a failure
+
     try:
         logo = os.path.join(BASE_DIR, "static", "img", "acre-logo.png")
-        html = render_template("report_pdf.html",
+        html = render_template("report_print.html",
+                               pdf=True, public=True, share=None,
+                               base_url=_public_base_safe(),
                                logo_uri=pdf_gen.data_uri(logo),
                                map_uri=pdf_gen.data_uri(_map_path(flight)),
                                **report_context(flight))
-        return pdf_gen.render_pdf(html, base_url=BASE_DIR)
+        data = pdf_gen.render_pdf(html, base_url=BASE_DIR)
     except Exception as exc:                      # never 500 on a report download
         import traceback
-        print("PDF render failed:", exc)
+        print("[pdf] render failed:", exc)
         traceback.print_exc()
         return None
+
+    if cached:
+        try:
+            _prune_pdf_cache(flight.id)
+            with open(cached, "wb") as fh:
+                fh.write(data)
+        except OSError as exc:
+            print("[pdf] could not cache:", exc)   # serving still succeeds
+    return data
+
+
+def _prune_pdf_cache(flight_id):
+    """Drop this flight's older cached renders so edits don't pile up on disk."""
+    import glob
+    for path in glob.glob(os.path.join(PDF_CACHE_DIR, f"report-{flight_id}-*.pdf")):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
+def _public_base_safe():
+    """_public_base() outside a request context still returns something usable."""
+    try:
+        return _public_base()
+    except RuntimeError:
+        return os.environ.get("PUBLIC_BASE_URL", "").strip().rstrip("/")
 
 
 def _build_pdf(flight):
     data = _pdf_bytes(flight)
     if data is None:
         return False
-    name = f"{flight.slug}.pdf"
+    name = f"{flight.slug}.pdf"          # ASCII-safe name for the uploads folder
     with open(os.path.join(UPLOAD_DIR, name), "wb") as fh:
         fh.write(data)
     flight.report_pdf = name
     return True
 
 
+def _content_disposition(filename):
+    """
+    A Content-Disposition that survives real farm names.
+
+    The plain `filename` parameter is limited to Latin-1, so anything outside it
+    is stripped for that copy and the full UTF-8 name is carried in `filename*`
+    (RFC 5987), which every current browser prefers.
+    """
+    from urllib.parse import quote
+    ascii_name = filename.encode("ascii", "ignore").decode("ascii").strip() or "Field Report.pdf"
+    ascii_name = ascii_name.replace('"', "")
+    return (f'attachment; filename="{ascii_name}"; '
+            f"filename*=UTF-8''{quote(filename, safe='')}")
+
+
 def _serve_pdf(flight, fallback_url):
     data = _pdf_bytes(flight)
-    filename = f"{flight.slug}.pdf"
+    filename = flight.report_filename          # Farm Name_Crop Name_Season Year.pdf
     if data is None:
-        # Server-side PDF isn't available (e.g. WeasyPrint libraries missing on
-        # this host): fall back to the print-optimised report, which the browser
-        # can save as a correctly-named PDF.
+        # Server-side PDF isn't available on this host. The report itself is the
+        # same document WeasyPrint would have rendered, so the browser's own
+        # "Save as PDF" produces the same pages under the same name.
         return redirect(fallback_url)
     return Response(data, mimetype="application/pdf",
-                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+                    headers={"Content-Disposition": _content_disposition(filename),
+                             "Content-Length": str(len(data)),
+                             "X-Content-Type-Options": "nosniff",
+                             "Cache-Control": "private, max-age=0, must-revalidate"})
 
 
 app = create_app()

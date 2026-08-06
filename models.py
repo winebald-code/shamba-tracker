@@ -163,7 +163,39 @@ class Flight(db.Model):
     # ---- helpers ----
     @property
     def slug(self):
+        """Underscored, ASCII-safe. Used for filenames written to disk."""
         return slugify(f"{self.farm.name}_{self.crop or self.farm.crop}_{self.season}")
+
+    @property
+    def report_basename(self):
+        """
+        What the farmer sees when the PDF lands in their downloads:
+        `Farm Name_Crop Name_Season Year`. Spaces inside each part are kept, so
+        the three parts stay legible; only the separators are underscores.
+        """
+        parts = [
+            (self.farm.name or "Farm").strip(),
+            (self.crop or self.farm.crop or "Crop").strip(),
+            (self.season or "Season").strip(),
+        ]
+        return "_".join(filename_safe(p) or "Report" for p in parts)
+
+    @property
+    def report_filename(self):
+        return f"{self.report_basename}.pdf"
+
+    def ensure_share_token(self):
+        """
+        Guarantee this flight has a public token. Rows that predate the column,
+        or that were created by a path which skipped the ORM default, come back
+        with share_token = NULL, and the farmer's link then points at /r/None.
+        Minting one lazily here means a link is never handed out broken.
+        Returns True when a new token was written (caller commits).
+        """
+        if (self.share_token or "").strip():
+            return False
+        self.share_token = secrets.token_urlsafe(16)
+        return True
 
     @property
     def complete_findings(self):
@@ -228,3 +260,18 @@ def slugify(text):
     text = re.sub(r"[\s]+", "_", text)
     text = re.sub(r"_+", "_", text)
     return text.strip("_") or "Report"
+
+
+def filename_safe(text):
+    """
+    Strip only what a filesystem or an HTTP header cannot carry, and keep the
+    rest — including spaces, so `Kilimo Bora Farm` survives as written. The
+    underscore is reserved as the separator between the report's three parts,
+    so any underscore already inside a name becomes a space.
+    """
+    import re
+    text = (text or "").strip()
+    text = text.replace("_", " ")
+    text = re.sub(r'[\\/:*?"<>|\r\n\t]', "", text)      # illegal on disk or in headers
+    text = re.sub(r"\s+", " ", text)
+    return text.strip(" .")
