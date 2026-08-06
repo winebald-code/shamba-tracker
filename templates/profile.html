@@ -9,26 +9,26 @@
 
   <!-- identity card -->
   <div class="lg:col-span-1 space-y-5">
-    <div class="rounded-xl2 bg-sagesoft text-ink border border-sage p-6 relative overflow-hidden">
-      <div class="absolute -bottom-16 -right-10 w-52 h-52 rounded-full bg-sage/30 blur-3xl"></div>
+    <div class="rounded-xl2 bg-ink text-white p-6 relative overflow-hidden">
+      <div class="absolute -bottom-16 -right-10 w-52 h-52 rounded-full bg-sage/20 blur-3xl"></div>
       <div class="relative">
         <div class="w-16 h-16 rounded-2xl bg-sage text-ink grid place-items-center text-[22px] font-extrabold">{{ u.initials }}</div>
         <h2 class="mt-4 text-[19px] font-extrabold tracking-tight leading-tight">{{ u.name }}</h2>
-        <p class="text-[12.5px] text-dove mt-0.5 break-all">{{ u.email }}</p>
+        <p class="text-[12.5px] text-white/60 mt-0.5 break-all">{{ u.email }}</p>
         <div class="mt-4 flex flex-wrap gap-2">
           <span class="text-[11px] font-bold px-3 py-1.5 rounded-full bg-sage text-ink">{{ u.role_label }}</span>
-          <span class="text-[11px] font-bold px-3 py-1.5 rounded-full bg-ink/5 text-ink/80">{{ u.status_label }}</span>
+          <span class="text-[11px] font-bold px-3 py-1.5 rounded-full bg-white/10 text-white/80">{{ u.status_label }}</span>
         </div>
-        <p class="text-[12px] text-dove mt-4 leading-relaxed">{{ ROLE_BLURB.get(u.role, '') }}</p>
-        <dl class="mt-5 pt-5 border-t border-silver space-y-2.5 text-[12px]">
-          {% if u.job_title %}<div class="flex gap-3"><dt class="text-dove w-20 shrink-0">Title</dt><dd class="text-ink/80">{{ u.job_title }}</dd></div>{% endif %}
-          {% if u.phone %}<div class="flex gap-3"><dt class="text-dove w-20 shrink-0">Phone</dt><dd class="text-ink/80 inst">{{ u.phone }}</dd></div>{% endif %}
-          {% if u.location %}<div class="flex gap-3"><dt class="text-dove w-20 shrink-0">Based in</dt><dd class="text-ink/80">{{ u.location }}</dd></div>{% endif %}
-          <div class="flex gap-3"><dt class="text-dove w-20 shrink-0">Joined</dt><dd class="text-ink/80 inst">{{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}</dd></div>
-          {% if u.approved_at %}<div class="flex gap-3"><dt class="text-dove w-20 shrink-0">Approved</dt><dd class="text-ink/80 inst">{{ u.approved_at.strftime('%d %b %Y') }}</dd></div>{% endif %}
-          {% if u.last_login_at %}<div class="flex gap-3"><dt class="text-dove w-20 shrink-0">Last in</dt><dd class="text-ink/80 inst">{{ u.last_login_at.strftime('%d %b %Y, %H:%M') }}</dd></div>{% endif %}
+        <p class="text-[12px] text-white/55 mt-4 leading-relaxed">{{ ROLE_BLURB.get(u.role, '') }}</p>
+        <dl class="mt-5 pt-5 border-t border-white/10 space-y-2.5 text-[12px]">
+          {% if u.job_title %}<div class="flex gap-3"><dt class="text-white/45 w-20 shrink-0">Title</dt><dd class="text-white/85">{{ u.job_title }}</dd></div>{% endif %}
+          {% if u.phone %}<div class="flex gap-3"><dt class="text-white/45 w-20 shrink-0">Phone</dt><dd class="text-white/85 inst">{{ u.phone }}</dd></div>{% endif %}
+          {% if u.location %}<div class="flex gap-3"><dt class="text-white/45 w-20 shrink-0">Based in</dt><dd class="text-white/85">{{ u.location }}</dd></div>{% endif %}
+          <div class="flex gap-3"><dt class="text-white/45 w-20 shrink-0">Joined</dt><dd class="text-white/85 inst">{{ u.created_at.strftime('%d %b %Y') if u.created_at else '—' }}</dd></div>
+          {% if u.approved_at %}<div class="flex gap-3"><dt class="text-white/45 w-20 shrink-0">Approved</dt><dd class="text-white/85 inst">{{ u.approved_at.strftime('%d %b %Y') }}</dd></div>{% endif %}
+          {% if u.last_login_at %}<div class="flex gap-3"><dt class="text-white/45 w-20 shrink-0">Last in</dt><dd class="text-white/85 inst">{{ u.last_login_at.strftime('%d %b %Y, %H:%M') }}</dd></div>{% endif %}
         </dl>
-        {% if u.bio %}<p class="text-[12.5px] text-dove mt-5 pt-5 border-t border-silver leading-relaxed">{{ u.bio }}</p>{% endif %}
+        {% if u.bio %}<p class="text-[12.5px] text-white/70 mt-5 pt-5 border-t border-white/10 leading-relaxed">{{ u.bio }}</p>{% endif %}
       </div>
     </div>
 
@@ -38,7 +38,7 @@
       <div class="divide-y divide-silver">
         {% for fl in my_flights %}
         <a href="{{ url_for('flight_detail', flight_id=fl.id) }}" class="flex items-center gap-3 px-5 py-3 hover:bg-canvas transition">
-          <span class="w-8 h-8 rounded-lg bg-sagesoft text-dove grid place-items-center shrink-0">{{ icon('drone','w-4 h-4') }}</span>
+          <span class="w-8 h-8 rounded-lg bg-sagesoft text-sagedeep grid place-items-center shrink-0">{{ icon('drone','w-4 h-4') }}</span>
           <div class="min-w-0 flex-1">
             <p class="text-[12.5px] font-semibold truncate">{{ fl.farm.name }}</p>
             <p class="text-[11px] text-dove inst">{{ fl.season }} · F{{ fl.flight_number }}</p>
@@ -149,7 +149,7 @@
     </div>
     <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
       <button type="button" onclick="document.getElementById('delPanel').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Keep my account</button>
-      <button class="px-5 py-2.5 rounded-xl bg-sagesoft text-ink text-[13px] font-bold hover:bg-sagesoft/90 flex items-center gap-2">{{ icon('trash','w-4 h-4') }} Delete for good</button>
+      <button class="px-5 py-2.5 rounded-xl bg-ink text-white text-[13px] font-bold hover:bg-ink/90 flex items-center gap-2">{{ icon('trash','w-4 h-4') }} Delete for good</button>
     </div>
   </form>
 </dialog>

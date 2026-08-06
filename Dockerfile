@@ -2,13 +2,9 @@
 FROM python:3.11-slim
 
 # System libraries WeasyPrint needs to render PDFs (Pango/Cairo/GDK-Pixbuf + fonts)
-# libpangoft2 and libglib are pulled in by pango but named explicitly so a base
-# image change cannot silently drop them: without one of these WeasyPrint fails
-# to import and every PDF download degrades to the browser print dialog.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libpango-1.0-0 libpangocairo-1.0-0 libpangoft2-1.0-0 \
-        libgdk-pixbuf-2.0-0 libcairo2 libffi8 libglib2.0-0 \
-        shared-mime-info fonts-dejavu-core fonts-liberation \
+        libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 \
+        libcairo2 libffi8 shared-mime-info fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONUNBUFFERED=1 \

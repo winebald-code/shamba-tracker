@@ -16,7 +16,7 @@
   {% for farm in farms %}
   <a href="{{ url_for('farm_detail', farm_id=farm.id) }}" class="glass-solid rounded-xl2 p-5 hover:border-sage transition group">
     <div class="flex items-start justify-between">
-      <span class="w-11 h-11 rounded-xl bg-sagesoft text-dove grid place-items-center">{{ icon('farm','w-6 h-6') }}</span>
+      <span class="w-11 h-11 rounded-xl bg-sagesoft text-sagedeep grid place-items-center">{{ icon('farm','w-6 h-6') }}</span>
       <span class="text-dove group-hover:text-ink transition">{{ icon('chevron','w-5 h-5') }}</span>
     </div>
     <h3 class="mt-4 text-[16px] font-extrabold">{{ farm.name }}</h3>
@@ -32,7 +32,7 @@
 </div>
 {% else %}
 <div class="glass-solid rounded-xl2 py-16 text-center">
-  <span class="inline-grid place-items-center w-14 h-14 rounded-2xl bg-sagesoft text-dove mb-4">{{ icon('farm','w-7 h-7') }}</span>
+  <span class="inline-grid place-items-center w-14 h-14 rounded-2xl bg-sagesoft text-sagedeep mb-4">{{ icon('farm','w-7 h-7') }}</span>
   <h3 class="text-[17px] font-extrabold">Add your first farm</h3>
   <p class="text-[13px] text-dove mt-1.5 max-w-sm mx-auto">A farm holds its flights, findings and the farmer&rsquo;s contact details for delivery.</p>
   <button onclick="document.getElementById('addFarm').showModal()"

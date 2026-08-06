@@ -33,15 +33,24 @@
   </div>
   <div class="space-y-5">
     {{ channels(providers) }}
-    <div class="rounded-xl2 bg-sagesoft text-ink border border-sage p-5">
-      <span class="w-10 h-10 rounded-xl bg-ink/5 text-dove grid place-items-center">{{ icon('whatsapp','w-5 h-5') }}</span>
+    <div class="rounded-xl2 bg-ink text-white p-5">
+      <span class="w-10 h-10 rounded-xl bg-white/10 text-sage grid place-items-center">{{ icon('whatsapp','w-5 h-5') }}</span>
       <h2 class="text-[15px] font-bold mt-4">No provider account? Still send.</h2>
-      <p class="text-[12.5px] text-dove mt-2 leading-relaxed">
-        Open any report and use <span class="text-ink font-semibold">Send from my WhatsApp</span> or
-        <span class="text-ink font-semibold">Send from my email</span>. Both open your own app with the
+      <p class="text-[12.5px] text-white/65 mt-2 leading-relaxed">
+        Open any report and use <span class="text-white font-semibold">Send from my WhatsApp</span> or
+        <span class="text-white font-semibold">Send from my email</span>. Both open your own app with the
         message and the report link already written, and the delivery is logged here.
       </p>
     </div>
   </div>
 </div>
+<script>
+  // Disable right-click and keyboard shortcuts
+  document.addEventListener('contextmenu', event => event.preventDefault());
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+    }
+  });
+</script>
 {% endblock %}

@@ -4,26 +4,26 @@
 
 {% block body %}
 <div class="min-h-screen grid lg:grid-cols-2">
-  <div class="hidden lg:flex flex-col justify-between bg-sagesoft text-ink p-12 relative overflow-hidden">
+  <div class="hidden lg:flex flex-col justify-between bg-ink text-white p-12 relative overflow-hidden">
     <img src="{{ url_for('static', filename='img/field-aerial.jpg') }}" alt=""
          class="absolute inset-0 w-full h-full object-cover opacity-25">
-    <div class="absolute inset-0 bg-gradient-to-br from-white via-white/92 to-white/55"></div>
-    <a href="{{ url_for('home') }}" class="relative"><img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-7" alt="Acre Insights"></a>
+    <div class="absolute inset-0 bg-gradient-to-br from-ink via-ink/85 to-ink/40"></div>
+    <a href="{{ url_for('home') }}" class="relative"><img src="{{ url_for('static', filename='img/acre-logo-white.png') }}" class="h-7" alt="Acre Insights"></a>
     <div class="relative">
       <h2 class="text-4xl font-extrabold tracking-tight leading-tight">One approval away.</h2>
-      <p class="mt-4 text-dove text-[15px] max-w-md leading-relaxed">
+      <p class="mt-4 text-white/65 text-[15px] max-w-md leading-relaxed">
         SHAMBA Tracker holds real farm records and farmer contact details, so an admin confirms
         every new account and sets the role before it can sign in.
       </p>
     </div>
-    <p class="relative text-dove text-[12px]">Nature meets intelligence · Acre Insights</p>
+    <p class="relative text-white/40 text-[12px]">Nature meets intelligence · Acre Insights</p>
   </div>
 
   <div class="flex items-center justify-center p-6 sm:p-12">
     <div class="w-full max-w-md">
       <div class="lg:hidden mb-8"><a href="{{ url_for('home') }}"><img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-7" alt="Acre Insights"></a></div>
 
-      <span class="inline-grid place-items-center w-14 h-14 rounded-2xl bg-sagesoft text-dove">{{ icon('hourglass','w-7 h-7') }}</span>
+      <span class="inline-grid place-items-center w-14 h-14 rounded-2xl bg-sagesoft text-sagedeep">{{ icon('hourglass','w-7 h-7') }}</span>
       <h1 class="mt-5 text-2xl font-extrabold tracking-tight">Your request is with the admin</h1>
       <p class="mt-2.5 text-[14px] text-dove leading-relaxed">
         {% if pending_user %}
@@ -51,7 +51,7 @@
           <div class="flex items-center justify-between gap-3">
             <span class="text-dove">Status</span>
             <span class="font-bold px-2.5 py-1 rounded-full text-[11px]
-              {{ 'bg-sagesoft text-dove' if pending_user.status=='approved' else ('bg-canvas text-dove' if pending_user.status=='pending' else 'bg-sagesoft text-ink') }}">
+              {{ 'bg-sagesoft text-sagedeep' if pending_user.status=='approved' else ('bg-canvas text-dove' if pending_user.status=='pending' else 'bg-ink text-white') }}">
               {{ pending_user.status_label }}</span>
           </div>
           <div class="flex items-center justify-between gap-3">

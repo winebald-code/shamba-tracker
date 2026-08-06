@@ -23,7 +23,7 @@
     <div class="space-y-3">
       {% for fl in farm.flights %}
       <a href="{{ url_for('flight_detail', flight_id=fl.id) }}" class="glass-solid rounded-xl2 p-4 flex items-center gap-4 hover:border-sage transition">
-        <span class="w-11 h-11 rounded-xl bg-sagesoft text-dove grid place-items-center shrink-0">{{ icon('drone','w-6 h-6') }}</span>
+        <span class="w-11 h-11 rounded-xl bg-sagesoft text-sagedeep grid place-items-center shrink-0">{{ icon('drone','w-6 h-6') }}</span>
         <div class="min-w-0 flex-1">
           <p class="text-[14.5px] font-extrabold">Flight {{ fl.flight_number }}<span class="text-dove font-medium">/{{ fl.flights_planned }}</span> · {{ fl.season }}</p>
           <p class="text-[12px] text-dove mt-0.5">
@@ -32,15 +32,15 @@
             {% if fl.flight_date %} · {{ fl.flight_date.strftime('%d %b %Y') }}{% endif %}
           </p>
         </div>
-        {% set sc = {'Draft':'bg-canvas text-dove','Ready for Review':'bg-sagesoft text-dove','Approved':'bg-sagesoft text-dove','Sent':'bg-sagesoft text-ink'} %}
+        {% set sc = {'Draft':'bg-canvas text-dove','Ready for Review':'bg-sagesoft text-sagedeep','Approved':'bg-sagesoft text-sagedeep','Sent':'bg-ink text-white'} %}
         <span class="text-[11px] font-bold px-3 py-1.5 rounded-full {{ sc.get(fl.status,'bg-canvas text-dove') }} shrink-0">{{ fl.status }}</span>
-        {% if fl.acknowledged %}<span class="text-dove shrink-0" title="Acknowledged">{{ icon('check-circle','w-5 h-5') }}</span>{% endif %}
+        {% if fl.acknowledged %}<span class="text-sagedeep shrink-0" title="Acknowledged">{{ icon('check-circle','w-5 h-5') }}</span>{% endif %}
       </a>
       {% endfor %}
     </div>
     {% else %}
     <div class="glass-solid rounded-xl2 py-14 text-center">
-      <span class="inline-grid place-items-center w-12 h-12 rounded-xl bg-sagesoft text-dove mb-3">{{ icon('drone','w-6 h-6') }}</span>
+      <span class="inline-grid place-items-center w-12 h-12 rounded-xl bg-sagesoft text-sagedeep mb-3">{{ icon('drone','w-6 h-6') }}</span>
       <h3 class="text-[15px] font-bold">No flights yet</h3>
       <p class="text-[12.5px] text-dove mt-1">Create a flight, then import its DroneDeploy annotations.</p>
       <button onclick="document.getElementById('newFlight').showModal()" class="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-sage text-ink font-bold text-[13px] hover:bg-sage/80 transition">{{ icon('plus','w-4 h-4') }} New flight</button>
@@ -77,10 +77,10 @@
         {% if farm.farmer_email %}<div class="flex items-center gap-2.5"><span class="text-dove">{{ icon('mail','w-4 h-4') }}</span><span class="font-semibold truncate">{{ farm.farmer_email }}</span></div>{% endif %}
       </dl>
       {% else %}
-      <p class="text-[12.5px] text-dove mt-3">No contact on file. <button onclick="document.getElementById('editFarm').showModal()" class="text-dove font-semibold">Add details</button> to enable delivery.</p>
+      <p class="text-[12.5px] text-dove mt-3">No contact on file. <button onclick="document.getElementById('editFarm').showModal()" class="text-sagedeep font-semibold">Add details</button> to enable delivery.</p>
       {% endif %}
       {% if farm.dronedeploy_project_url %}
-      <a href="{{ farm.dronedeploy_project_url }}" target="_blank" class="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-dove hover:underline">{{ icon('external','w-4 h-4') }} DroneDeploy project</a>
+      <a href="{{ farm.dronedeploy_project_url }}" target="_blank" class="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-sagedeep hover:underline">{{ icon('external','w-4 h-4') }} DroneDeploy project</a>
       {% endif %}
     </div>
 
@@ -100,7 +100,7 @@
     <div class="p-6 space-y-4">
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-[12px] font-semibold mb-1.5">Season <span class="text-dove">*</span></label>
+          <label class="block text-[12px] font-semibold mb-1.5">Season <span class="text-sagedeep">*</span></label>
           <input name="season" required placeholder="2026LR" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]">
         </div>
         <div>
@@ -110,7 +110,7 @@
       </div>
       <div class="grid grid-cols-2 gap-3">
         <div>
-          <label class="block text-[12px] font-semibold mb-1.5">Flight number <span class="text-dove">*</span></label>
+          <label class="block text-[12px] font-semibold mb-1.5">Flight number <span class="text-sagedeep">*</span></label>
           <input name="flight_number" type="number" min="1" value="1" required class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]">
         </div>
         <div>

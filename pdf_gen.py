@@ -27,32 +27,6 @@ def data_uri(path):
     return f"data:{mime};base64,{b64}"
 
 
-_FONT_CSS = None
-
-
-def font_css():
-    """
-    Embed Montserrat so WeasyPrint renders the report in the brand face rather
-    than substituting DejaVu. The variable font covers every weight in one file,
-    and base64 means no network and no fontconfig dependency.
-    """
-    global _FONT_CSS
-    if _FONT_CSS is not None:
-        return _FONT_CSS
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        "static", "fonts", "Montserrat.ttf")
-    if not os.path.exists(path):
-        _FONT_CSS = ""
-        return _FONT_CSS
-    with open(path, "rb") as fh:
-        b64 = base64.b64encode(fh.read()).decode()
-    _FONT_CSS = (
-        "@font-face{font-family:'Montserrat';font-weight:100 900;font-style:normal;"
-        f"src:url(data:font/ttf;base64,{b64}) format('truetype')}}"
-    )
-    return _FONT_CSS
-
-
 def render_pdf(html_string, base_url=None):
     """Return PDF bytes from a full HTML string. Raises if PDF is unavailable."""
     if not PDF_AVAILABLE:

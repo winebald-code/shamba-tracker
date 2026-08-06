@@ -18,7 +18,7 @@
   }
   /* Mobile drawer */
   #navdrawer{ transition:transform .28s cubic-bezier(.3,.8,.3,1), opacity .2s; }
-  .step-rule::before{ content:''; position:absolute; left:0; top:0; width:2px; height:100%; background:#CFE2B7; }
+  .step-rule::before{ content:''; position:absolute; left:0; top:0; width:2px; height:100%; background:#D6DBD5; }
 </style>
 {% endblock %}
 
@@ -67,7 +67,7 @@
                                ('#deliver','Delivery','whatsapp'), ('#report','The report','report')] %}
     <a href="{{ href }}" onclick="toggleNav()"
        class="flex items-center gap-3 px-3 py-3 rounded-xl text-[14px] font-semibold text-ink hover:bg-canvas transition">
-      <span class="text-dove shrink-0">{{ icon(ic,'w-[18px] h-[18px]') }}</span>{{ label }}
+      <span class="text-sagedeep shrink-0">{{ icon(ic,'w-[18px] h-[18px]') }}</span>{{ label }}
     </a>
     {% endfor %}
   </nav>
@@ -80,22 +80,22 @@
 </aside>
 
 <!-- ===================== HERO ===================== -->
-<section class="relative bg-sagesoft text-ink overflow-hidden">
+<section class="relative bg-ink text-white overflow-hidden">
   <img src="{{ url_for('static', filename='img/field-aerial.jpg') }}" alt=""
        class="absolute inset-0 w-full h-full object-cover opacity-[0.28]">
-  <div class="absolute inset-0 bg-gradient-to-b from-canvas via-canvas/90 to-canvas"></div>
-  <div class="absolute top-1/3 -right-32 w-[560px] h-[560px] rounded-full bg-sage/25 blur-3xl"></div>
+  <div class="absolute inset-0 bg-gradient-to-b from-ink via-ink/92 to-ink"></div>
+  <div class="absolute top-1/3 -right-32 w-[560px] h-[560px] rounded-full bg-sage/15 blur-3xl"></div>
 
   <div class="relative max-w-6xl mx-auto px-5 pt-14 pb-16 lg:pt-20 lg:pb-24 grid lg:grid-cols-[1.05fr_1fr] gap-10 lg:gap-14 items-center">
     <div>
-      <span class="eyebrow inline-flex items-center gap-2 text-dove">
+      <span class="eyebrow inline-flex items-center gap-2 text-sage">
         {{ icon('drone','w-4 h-4') }} A product of Acre Insights
       </span>
       <h1 class="mt-5 text-[38px] sm:text-5xl lg:text-[56px] font-extrabold leading-[1.02] tracking-tight">
         The flight lands at noon.<br class="hidden sm:block">
-        <span class="bg-sagesoft box-decoration-clone px-2 -mx-2 rounded">The farmer reads it by three.</span>
+        <span class="text-sage">The farmer reads it by three.</span>
       </h1>
-      <p class="mt-6 text-[15.5px] lg:text-[17px] text-ink/75 leading-relaxed max-w-xl">
+      <p class="mt-6 text-[15.5px] lg:text-[17px] text-white/70 leading-relaxed max-w-xl">
         SHAMBA Tracker turns a finished DroneDeploy scouting flight into an Acre-branded field report:
         every marked area carries what we saw, the likely cause and one thing to do about it. Sent over
         WhatsApp or email, and confirmed with a tap.
@@ -105,16 +105,16 @@
         <a href="{{ url_for('signup') }}" class="px-6 py-3.5 rounded-xl2 font-bold bg-sage text-ink hover:bg-sage/80 transition flex items-center gap-2">
           {{ icon('check','w-5 h-5') }} Create your account
         </a>
-        <a href="#how" class="px-6 py-3.5 rounded-xl2 font-semibold border border-silver text-ink hover:bg-ink/5 transition">
+        <a href="#how" class="px-6 py-3.5 rounded-xl2 font-semibold border border-white/20 text-white hover:bg-white/10 transition">
           See how it works
         </a>
       </div>
 
-      <dl class="mt-10 grid grid-cols-3 gap-4 max-w-md border-t border-silver pt-6">
+      <dl class="mt-10 grid grid-cols-3 gap-4 max-w-md border-t border-white/10 pt-6">
         {% for v, k in [('6','fields per report'), ('4','colour meanings'), ('1 tap','to confirm receipt')] %}
         <div>
-          <dt class="inst text-[22px] font-semibold text-dove leading-none">{{ v }}</dt>
-          <dd class="text-[11.5px] text-dove mt-1.5 leading-snug">{{ k }}</dd>
+          <dt class="inst text-[22px] font-semibold text-sage leading-none">{{ v }}</dt>
+          <dd class="text-[11.5px] text-white/50 mt-1.5 leading-snug">{{ k }}</dd>
         </div>
         {% endfor %}
       </dl>
@@ -122,7 +122,7 @@
 
     <!-- SIGNATURE: the annotated field, exactly as a report shows it -->
     <div class="relative">
-      <div class="rounded-2xl overflow-hidden border border-white/15 bg-sagesoft/60 shadow-2xl">
+      <div class="rounded-2xl overflow-hidden border border-white/15 bg-ink/60 shadow-2xl">
         <div class="flex items-center justify-between px-4 py-3 bg-white">
           <img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-5" alt="Acre Insights">
           <span class="eyebrow text-dove">Field scouting report</span>
@@ -132,10 +132,10 @@
                class="w-full h-[240px] sm:h-[300px] object-cover">
           <svg class="absolute inset-0 w-full h-full" viewBox="0 0 400 260" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
             <polygon class="plot" points="118,74 214,58 236,132 132,152" fill="rgba(214,69,80,.16)" stroke="#D64550" stroke-width="1.6"/>
-            <g class="pin"><circle cx="132" cy="92" r="12" fill="#D64550"/><text x="132" y="97" text-anchor="middle" font-family="Montserrat,sans-serif" font-size="12" font-weight="600" fill="#fff">1</text></g>
-            <g class="pin"><circle cx="205" cy="112" r="12" fill="#D64550"/><text x="205" y="117" text-anchor="middle" font-family="Montserrat,sans-serif" font-size="12" font-weight="600" fill="#fff">2</text></g>
-            <g class="pin"><circle cx="268" cy="80" r="12" fill="#E7B416"/><text x="268" y="85" text-anchor="middle" font-family="Montserrat,sans-serif" font-size="12" font-weight="600" fill="#000000">3</text></g>
-            <g class="pin"><circle cx="96" cy="176" r="12" fill="#2F6FDB"/><text x="96" y="181" text-anchor="middle" font-family="Montserrat,sans-serif" font-size="12" font-weight="600" fill="#fff">4</text></g>
+            <g class="pin"><circle cx="132" cy="92" r="12" fill="#D64550"/><text x="132" y="97" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="#fff">1</text></g>
+            <g class="pin"><circle cx="205" cy="112" r="12" fill="#D64550"/><text x="205" y="117" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="#fff">2</text></g>
+            <g class="pin"><circle cx="268" cy="80" r="12" fill="#E7B416"/><text x="268" y="85" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="#030920">3</text></g>
+            <g class="pin"><circle cx="96" cy="176" r="12" fill="#2F6FDB"/><text x="96" y="181" text-anchor="middle" font-family="IBM Plex Mono,monospace" font-size="12" font-weight="600" fill="#fff">4</text></g>
           </svg>
         </div>
         <div class="bg-white p-4 sm:p-5 space-y-3">
@@ -145,7 +145,7 @@
               (3, '#E7B416', 'Monitor', 'Colour change at the headland. Photograph again on the next flight.')] %}
           <div class="flex gap-3">
             <span class="inst w-5 h-5 rounded-full grid place-items-center text-[10px] font-semibold shrink-0 mt-0.5"
-                  style="background:{{ colour }}; color:{{ '#000000' if colour=='#E7B416' else '#fff' }}">{{ n }}</span>
+                  style="background:{{ colour }}; color:{{ '#030920' if colour=='#E7B416' else '#fff' }}">{{ n }}</span>
             <div class="min-w-0">
               <p class="text-[11px] font-bold" style="color:{{ colour }}">{{ title }}</p>
               <p class="text-[12.5px] text-ink leading-snug mt-0.5">{{ line }}</p>
@@ -157,7 +157,7 @@
         </div>
       </div>
       <div class="absolute -bottom-4 -left-3 sm:-left-5 glass rounded-xl px-4 py-3 flex items-center gap-2.5 shadow-lg">
-        <span class="text-dove shrink-0">{{ icon('check-circle','w-5 h-5') }}</span>
+        <span class="text-sagedeep shrink-0">{{ icon('check-circle','w-5 h-5') }}</span>
         <span class="text-[12.5px] font-semibold text-ink">Receipt confirmed by the farmer</span>
       </div>
     </div>
@@ -170,7 +170,7 @@
     <div class="max-w-2xl reveal">
       <span class="eyebrow text-dove">How a flight becomes a report</span>
       <h2 class="mt-3 text-3xl lg:text-[40px] font-extrabold tracking-tight leading-tight">Six steps, and the order matters</h2>
-      <p class="mt-4 text-[15px] text-ink/70 leading-relaxed">
+      <p class="mt-4 text-[15px] text-dove leading-relaxed">
         Nothing here is a hand-off into a spreadsheet. Each step writes into the same record, so the report
         assembles itself from work already done.
       </p>
@@ -187,7 +187,7 @@
       ] %}
       {% for title, desc in steps %}
       <li class="relative pl-6 reveal step-rule" style="transition-delay: {{ loop.index0 * 60 }}ms">
-        <span class="inst absolute -left-0 top-0 -translate-x-1/2 bg-white text-dove text-[11px] font-semibold px-1.5">
+        <span class="inst absolute -left-0 top-0 -translate-x-1/2 bg-white text-sagedeep text-[11px] font-semibold px-1.5">
           {{ '%02d'|format(loop.index) }}</span>
         <h3 class="text-[16px] font-bold leading-snug">{{ title }}</h3>
         <p class="mt-2 text-[13.5px] text-dove leading-relaxed">{{ desc }}</p>
@@ -203,7 +203,7 @@
     <div class="reveal">
       <span class="eyebrow text-dove">The annotation colour code</span>
       <h2 class="mt-3 text-3xl lg:text-[40px] font-extrabold tracking-tight leading-tight">One shared language on every map</h2>
-      <p class="mt-4 text-[15px] text-ink/70 leading-relaxed max-w-lg">
+      <p class="mt-4 text-[15px] text-dove leading-relaxed max-w-lg">
         Whatever colour the agronomist picks in DroneDeploy, SHAMBA Tracker buckets it by hue into a fixed
         meaning. The farmer learns four colours once and reads every flight after that without help.
       </p>
@@ -223,7 +223,7 @@
     </div>
 
     <div class="reveal">
-      <div class="rounded-2xl overflow-hidden border border-silver bg-white shadow-[0_30px_60px_-45px_rgba(0,0,0,.6)]">
+      <div class="rounded-2xl overflow-hidden border border-silver bg-white shadow-[0_30px_60px_-45px_rgba(3,9,32,.6)]">
         <img src="{{ url_for('static', filename='img/canopy.jpg') }}" alt="Aerial view of a crop canopy" class="w-full h-56 sm:h-72 object-cover">
         <div class="p-5 sm:p-6">
           <p class="eyebrow text-dove">What the colour decides</p>
@@ -245,7 +245,7 @@
     <div class="max-w-2xl reveal">
       <span class="eyebrow text-dove">Getting it to the farmer</span>
       <h2 class="mt-3 text-3xl lg:text-[40px] font-extrabold tracking-tight leading-tight">Two ways out, and one of them always works</h2>
-      <p class="mt-4 text-[15px] text-ink/70 leading-relaxed">
+      <p class="mt-4 text-[15px] text-dove leading-relaxed">
         Provider APIs need a verified sending domain and an approved business number. Until you have both,
         the report still goes out from your own WhatsApp or mail app, with the message already written.
       </p>
@@ -254,10 +254,10 @@
     <div class="mt-10 grid md:grid-cols-2 gap-5">
       <div class="rounded-xl2 border-2 border-sage bg-sagesoft/40 p-6 reveal">
         <div class="flex items-center gap-3">
-          <span class="w-11 h-11 rounded-xl bg-white text-dove grid place-items-center shrink-0">{{ icon('whatsapp','w-[22px] h-[22px]') }}</span>
+          <span class="w-11 h-11 rounded-xl bg-white text-sagedeep grid place-items-center shrink-0">{{ icon('whatsapp','w-[22px] h-[22px]') }}</span>
           <div>
             <h3 class="text-[16px] font-bold">Send it yourself</h3>
-            <span class="inst text-[10.5px] font-semibold text-dove uppercase tracking-wider">No setup needed</span>
+            <span class="inst text-[10.5px] font-semibold text-sagedeep uppercase tracking-wider">No setup needed</span>
           </div>
         </div>
         <p class="mt-4 text-[13.5px] text-dove leading-relaxed">
@@ -266,7 +266,7 @@
         </p>
         <ul class="mt-4 space-y-2">
           {% for t in ['Works on any phone or laptop', 'Nothing to configure or verify', 'Recorded on the dashboard like any other send'] %}
-          <li class="flex items-start gap-2.5 text-[13px]"><span class="text-dove shrink-0 mt-0.5">{{ icon('check','w-3.5 h-3.5') }}</span>{{ t }}</li>
+          <li class="flex items-start gap-2.5 text-[13px]"><span class="text-sagedeep shrink-0 mt-0.5">{{ icon('check','w-3.5 h-3.5') }}</span>{{ t }}</li>
           {% endfor %}
         </ul>
       </div>
@@ -299,7 +299,7 @@
     <div class="reveal">
       <span class="eyebrow text-dove">What the farmer receives</span>
       <h2 class="mt-3 text-3xl lg:text-[40px] font-extrabold tracking-tight leading-tight">A page you could read standing in the field</h2>
-      <p class="mt-4 text-[15px] text-ink/70 leading-relaxed max-w-lg">
+      <p class="mt-4 text-[15px] text-dove leading-relaxed max-w-lg">
         No jargon, no dashboard to learn. The annotated map, then each marked area in three short lines:
         what we saw, why we think so, and what to do about it.
       </p>
@@ -310,7 +310,7 @@
           ('chart','Compared to last flight','What was resolved and what is still open, when a prior flight exists.'),
           ('download','Branded PDF','Downloadable and attachable, laid out for A4 and for a phone screen.')] %}
         <div>
-          <span class="w-9 h-9 rounded-lg bg-sagesoft text-dove grid place-items-center">{{ icon(ic,'w-[18px] h-[18px]') }}</span>
+          <span class="w-9 h-9 rounded-lg bg-sagesoft text-sagedeep grid place-items-center">{{ icon(ic,'w-[18px] h-[18px]') }}</span>
           <h3 class="mt-3 text-[14px] font-bold">{{ t }}</h3>
           <p class="mt-1 text-[12.5px] text-dove leading-relaxed">{{ d }}</p>
         </div>
@@ -319,7 +319,7 @@
     </div>
 
     <div class="reveal">
-      <div class="rounded-2xl overflow-hidden border border-silver bg-white shadow-[0_40px_80px_-50px_rgba(0,0,0,.65)]">
+      <div class="rounded-2xl overflow-hidden border border-silver bg-white shadow-[0_40px_80px_-50px_rgba(3,9,32,.65)]">
         <div class="flex items-center justify-between px-5 py-4 border-b-2 border-ink">
           <img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-6" alt="Acre Insights">
           <div class="text-right">
@@ -358,12 +358,12 @@
 
 <!-- ===================== CTA ===================== -->
 <section class="max-w-6xl mx-auto px-5 pb-20">
-  <div class="rounded-2xl bg-sagesoft text-ink border border-sage p-8 sm:p-12 lg:p-16 relative overflow-hidden">
+  <div class="rounded-2xl bg-ink text-white p-8 sm:p-12 lg:p-16 relative overflow-hidden">
     <img src="{{ url_for('static', filename='img/canopy.jpg') }}" alt="" class="absolute inset-0 w-full h-full object-cover opacity-20">
-    <div class="absolute inset-0 bg-gradient-to-r from-canvas via-canvas/92 to-canvas/55"></div>
+    <div class="absolute inset-0 bg-gradient-to-r from-ink via-ink/90 to-ink/50"></div>
     <div class="relative max-w-2xl">
       <h2 class="text-3xl lg:text-[42px] font-extrabold tracking-tight leading-tight">Give your farmers a report worth reading.</h2>
-      <p class="mt-4 text-dove text-[15px] leading-relaxed">
+      <p class="mt-4 text-white/70 text-[15px] leading-relaxed">
         Set up your farms, import a flight, and send the first report today. New accounts are approved by
         your workspace admin, usually the same day.
       </p>
@@ -371,7 +371,7 @@
         <a href="{{ url_for('signup') }}" class="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl2 font-bold bg-sage text-ink hover:bg-sage/80 transition">
           {{ icon('check','w-5 h-5') }} Get started
         </a>
-        <a href="{{ url_for('login') }}" class="inline-flex items-center px-6 py-3.5 rounded-xl2 font-semibold border border-silver text-ink hover:bg-ink/5 transition">
+        <a href="{{ url_for('login') }}" class="inline-flex items-center px-6 py-3.5 rounded-xl2 font-semibold border border-white/20 text-white hover:bg-white/10 transition">
           I already have an account
         </a>
       </div>
@@ -428,5 +428,12 @@
       els.forEach(function(e){ if(e.getBoundingClientRect().top < window.innerHeight) e.classList.add('in'); });
     });
   })();
+       // Disable right-click and keyboard shortcuts
+document.addEventListener('contextmenu', event => event.preventDefault());
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+    }
+});
 </script>
 {% endblock %}

@@ -306,36 +306,12 @@ def register_routes(app):
             if not (u and u.check_password(pw)):
                 flash("Those details didn't match any account.", "warn")
             elif u.status == "pending":
-                # Correct credentials, but the account is still in the queue.
-                # Say so plainly rather than reusing the wrong-password message.
-                reason = {
-                    "kind": "pending",
-                    "title": "Your account is waiting for approval",
-                    "body": ("Your details are correct, but an admin has not approved this "
-                             "account yet. You will get an email as soon as they do."),
-                    "email": u.email,
-                }
-                return render_template("login.html", reason=reason)
+                return redirect(url_for("pending", email=u.email))
             elif u.status == "rejected":
-                note = (u.decision_note or "").strip()
-                reason = {
-                    "kind": "rejected",
-                    "title": "This request for access was declined",
-                    "body": ("An admin declined this request"
-                             + (f": {note}" if note else ".")
-                             + " Speak to your workspace admin if you think that is wrong."),
-                    "email": u.email,
-                }
-                return render_template("login.html", reason=reason)
+                flash("That request for access was declined. Contact your workspace admin "
+                      "if you think this is wrong.", "warn")
             elif not u.active:
-                reason = {
-                    "kind": "inactive",
-                    "title": "This account has been deactivated",
-                    "body": ("The account exists but has been switched off. A workspace admin "
-                             "can turn it back on from the People page."),
-                    "email": u.email,
-                }
-                return render_template("login.html", reason=reason)
+                flash("That account has been deactivated. Contact your workspace admin.", "warn")
             else:
                 login_user(u)
                 u.last_login_at = datetime.utcnow()
@@ -723,7 +699,7 @@ def register_routes(app):
         flight = db.get_or_404(Flight, flight_id)
         order = (max([f.sort_order for f in flight.findings], default=-1)) + 1
         f = Finding(flight_id=flight.id, category="Needs Investigation",
-                    colour_meaning="Pending review", colour_swatch="#6E8659",
+                    colour_meaning="Pending review", colour_swatch="#6C6C6C",
                     sort_order=order, annotation_id=f"manual-{order+1}")
         flight.report_generated = False
         db.session.add(f)
@@ -1084,7 +1060,6 @@ def _pdf_bytes(flight):
         html = render_template("report_pdf.html",
                                logo_uri=pdf_gen.data_uri(logo),
                                map_uri=pdf_gen.data_uri(_map_path(flight)),
-                               font_css=pdf_gen.font_css(),
                                **report_context(flight))
         return pdf_gen.render_pdf(html, base_url=BASE_DIR)
     except Exception as exc:                      # never 500 on a report download
@@ -1106,24 +1081,15 @@ def _build_pdf(flight):
 
 
 def _serve_pdf(flight, fallback_url):
-    """
-    Send the PDF as a download named Farm_Crop_SeasonYear.pdf.
-
-    The fallback only exists for hosts without WeasyPrint's native libraries.
-    It is a real degradation: the browser print dialog drops background colours
-    unless the user ticks "Background graphics", so the print template forces
-    `print-color-adjust: exact` to keep the colour code readable either way.
-    """
     data = _pdf_bytes(flight)
     filename = f"{flight.slug}.pdf"
     if data is None:
+        # Server-side PDF isn't available (e.g. WeasyPrint libraries missing on
+        # this host): fall back to the print-optimised report, which the browser
+        # can save as a correctly-named PDF.
         return redirect(fallback_url)
     return Response(data, mimetype="application/pdf",
-                    headers={
-                        "Content-Disposition": f'attachment; filename="{filename}"',
-                        "Content-Length": str(len(data)),
-                        "Cache-Control": "no-store",
-                    })
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
 
 
 app = create_app()

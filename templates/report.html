@@ -2,21 +2,6 @@
 {% from '_icons.html' import icon %}
 {% block title %}{{ farm.name }} — Field Report{% endblock %}
 
-{% block head %}
-<style>
-  /* Colour is meaning on this page, so it must survive the browser print
-     dialog even when "Background graphics" is left unticked. */
-  @media print{
-    *{ -webkit-print-color-adjust:exact !important; print-color-adjust:exact !important; }
-    .no-print{ display:none !important; }
-    article{ box-shadow:none !important; border:0 !important; }
-    .find{ break-inside:avoid; page-break-inside:avoid; }
-  }
-  .find[hidden]{ display:none; }
-  .chip.on{ background:#000000; color:#fff; border-color:#000000; }
-</style>
-{% endblock %}
-
 {% block body %}
 <div class="min-h-screen bg-canvas">
 
@@ -26,41 +11,33 @@
   <div class="max-w-5xl mx-auto px-3 sm:px-5 h-16 flex items-center justify-between gap-2">
     <a href="{{ url_for('flight_detail', flight_id=flight.id) }}" class="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink hover:bg-ink/5 px-2.5 sm:px-3 py-2 rounded-xl transition whitespace-nowrap">← <span class="hidden sm:inline">Back to review</span><span class="sm:hidden">Back</span></a>
     <div class="flex items-center gap-2">
-      <a href="{{ url_for('flight_report_pdf', flight_id=flight.id) }}" download="{{ flight.slug }}.pdf"
-         class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition"><span class="shrink-0">{{ icon('download','w-4 h-4') }}</span><span class="hidden sm:inline">Download PDF</span></a>
+      <a href="{{ url_for('flight_report_pdf', flight_id=flight.id) }}" class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition"><span class="shrink-0">{{ icon('download','w-4 h-4') }}</span><span class="hidden sm:inline">Download PDF</span></a>
       <button onclick="document.getElementById('sendPanel').showModal()" class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition"><span class="shrink-0">{{ icon('send','w-4 h-4') }}</span><span class="hidden sm:inline">Share with farmer</span><span class="sm:hidden">Share</span></button>
     </div>
   </div>
 </div>
 {% else %}
 <!-- public slim header -->
-<div class="no-print bg-white border-b border-silver sticky top-0 z-30">
+<div class="no-print bg-white border-b border-silver">
   <div class="max-w-4xl mx-auto px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
     <a href="{{ url_for('home') }}" class="hover:opacity-90 transition" aria-label="Acre Insights home"><img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-5 sm:h-6" alt="Acre Insights"></a>
-    <a href="{{ url_for('public_report_pdf', token=flight.share_token) }}" download="{{ flight.slug }}.pdf"
-       class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-sage text-ink text-[12.5px] font-bold hover:bg-sage/80 transition">
-      {{ icon('download','w-4 h-4') }} <span class="hidden sm:inline">Save this report</span><span class="sm:hidden">Save</span>
-    </a>
+    <span class="text-[11px] font-bold uppercase tracking-[0.14em] text-dove">Your field report</span>
   </div>
 </div>
 {% endif %}
 
-{# Anything needing action is worth putting first; healthy findings are reassurance, not work. #}
-{% set ACTION = ['Needs testing', 'Monitor', 'Pending review'] %}
-{% set todo = flight.findings | selectattr('colour_meaning', 'in', ACTION) | list %}
-
 <!-- ================= THE REPORT ================= -->
 <div class="max-w-[880px] mx-auto px-4 sm:px-5 py-6 sm:py-8">
-  <article class="bg-white rounded-2xl border border-silver overflow-hidden shadow-[0_30px_60px_-40px_rgba(0,0,0,0.5)]">
+  <article class="bg-white rounded-2xl border border-silver overflow-hidden shadow-[0_30px_60px_-40px_rgba(3,9,32,0.5)]">
 
     <!-- header -->
-    <div class="px-5 sm:px-9 pt-7 sm:pt-8 pb-6">
+    <div class="px-6 sm:px-9 pt-8 pb-6">
       <div class="flex items-start justify-between gap-4 pb-5 border-b-2 border-ink">
-        <img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-7 sm:h-9" alt="Acre Insights">
+        <img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-8 sm:h-9" alt="Acre Insights">
         <div class="text-right">
-          <p class="text-[9.5px] sm:text-[10px] font-bold uppercase tracking-[0.16em] text-dove">Field Scouting Report</p>
-          <h1 class="text-[19px] sm:text-[24px] font-extrabold tracking-tight mt-1 leading-tight">{{ farm.name }}</h1>
-          <p class="text-[11.5px] sm:text-[12px] text-dove font-semibold mt-1.5">Season {{ flight.season }} · Flight {{ flight.flight_number }} of {{ flight.flights_planned }}{{ ' · Baseline' if not prev }}</p>
+          <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-dove">Field Scouting Report</p>
+          <h1 class="text-[20px] sm:text-[24px] font-extrabold tracking-tight mt-1 leading-none">{{ farm.name }}</h1>
+          <p class="text-[12px] text-dove font-semibold mt-1.5">Season {{ flight.season }} · Flight {{ flight.flight_number }} of {{ flight.flights_planned }}{{ ' · Baseline' if not prev }}</p>
         </div>
       </div>
 
@@ -68,212 +45,127 @@
       <div class="grid grid-cols-2 sm:grid-cols-5 gap-px mt-6 rounded-xl overflow-hidden border border-silver bg-silver">
         {% set facts = [
           ('Crop', flight.crop or farm.crop or '—'),
-          ('Acreage', ((flight.acreage or farm.acreage)|round(1) ~ ' ac') if (flight.acreage or farm.acreage) else '—'),
+          ('Acreage', ((flight.acreage or farm.acreage)|round(0)|int ~ ' ac') if (flight.acreage or farm.acreage) else '—'),
           ('Flight date', flight.flight_date.strftime('%d %b %Y') if flight.flight_date else '—'),
           ('Areas marked', flight.findings|length),
           ('Report date', now.strftime('%d %b %Y'))
         ] %}
         {% for k,v in facts %}
-        {# five facts across two mobile columns leaves a hole; the last one spans #}
-        <div class="bg-white px-3.5 py-3 {{ 'col-span-2 sm:col-span-1' if loop.last }}">
+        <div class="bg-white px-3.5 py-3">
           <p class="text-[9px] font-bold uppercase tracking-[0.1em] text-dove">{{ k }}</p>
           <p class="text-[14px] font-extrabold mt-0.5 tnum">{{ v }}</p>
         </div>
         {% endfor %}
       </div>
 
-      <!-- what this flight found, in one sentence -->
+      <!-- summary -->
       <div class="mt-6">
-        <p class="text-[16px] sm:text-[18px] font-semibold leading-snug">
-          <span class="font-extrabold">{{ flight.findings|length }} area{{ '' if flight.findings|length==1 else 's' }} to look at</span> this flight{% if todo %} — <span class="font-extrabold">{{ todo|length }}</span> need{{ 's' if todo|length==1 else '' }} something done{% endif %}.
+        <p class="text-[16px] sm:text-[17px] font-semibold leading-snug">
+          <span class="font-extrabold">{{ flight.findings|length }} area{{ '' if flight.findings|length==1 else 's' }} to look at</span> this flight{% if category_counts %} —
+          {% set parts = [] %}{% for c,n in category_counts.items() %}{% set _ = parts.append(n ~ ' ' ~ c|lower) %}{% endfor %}
+          {{ parts|join(', ') }}.{% else %}.{% endif %}
         </p>
-
-        {% if flight.findings %}
-        <!-- filter: farmers with a long report can look at one thing at a time -->
-        <div class="flex flex-wrap gap-2 mt-4 no-print" role="group" aria-label="Filter findings">
-          <button type="button" data-cat="all" onclick="filterFindings(this,'all')"
-                  class="chip on inline-flex items-center gap-2 text-[12px] font-bold bg-white border border-silver rounded-full pl-3 pr-2 py-1.5 transition">
-            Everything<span class="grid place-items-center min-w-[18px] h-[18px] rounded-full bg-ink/10 text-[11px] px-1.5 tnum">{{ flight.findings|length }}</span>
-          </button>
+        {% if category_counts %}
+        <div class="flex flex-wrap gap-2 mt-3.5">
           {% for c,n in category_counts.items() %}
-          <button type="button" data-cat="{{ c }}" onclick="filterFindings(this,'{{ c }}')"
-                  class="chip inline-flex items-center gap-2 text-[12px] font-bold bg-white border border-silver rounded-full pl-3 pr-2 py-1.5 transition hover:border-dove">
-            {{ c }}<span class="grid place-items-center min-w-[18px] h-[18px] rounded-full bg-canvas text-[11px] px-1.5 tnum">{{ n }}</span>
-          </button>
-          {% endfor %}
-        </div>
-        <!-- the print copy keeps the counts without the buttons -->
-        <div class="hidden print:flex flex-wrap gap-2 mt-4">
-          {% for c,n in category_counts.items() %}
-          <span class="text-[12px] font-bold border border-silver rounded-full px-3 py-1">{{ c }} · {{ n }}</span>
+          <span class="inline-flex items-center gap-2 text-[12px] font-bold bg-white border border-silver rounded-full pl-2.5 pr-2 py-1.5">
+            {{ c }}<span class="grid place-items-center min-w-[18px] h-[18px] rounded-full bg-ink text-white text-[11px] px-1.5 tnum">{{ n }}</span>
+          </span>
           {% endfor %}
         </div>
         {% endif %}
       </div>
-
-      {% if todo %}
-      <!-- start here: the shortest path from reading to doing -->
-      <div class="mt-5 rounded-xl2 border-2 border-sage bg-sagesoft/50 overflow-hidden">
-        <div class="px-4 sm:px-5 py-3 flex items-center gap-2.5 border-b border-sage/50">
-          <span class="text-dove shrink-0">{{ icon('target','w-[18px] h-[18px]') }}</span>
-          <p class="text-[13.5px] font-extrabold">Start with these</p>
-        </div>
-        <ol class="divide-y divide-sage/30">
-          {% for f in flight.findings %}{% if f.colour_meaning in ACTION %}
-          <li>
-            <a href="#f{{ loop.index }}" class="flex items-start gap-3 px-4 sm:px-5 py-3 hover:bg-white transition">
-              <span class="w-6 h-6 rounded-full grid place-items-center text-ink text-[11.5px] font-extrabold tnum shrink-0 mt-0.5"
-                    style="background: {{ f.colour_swatch }}">{{ loop.index }}</span>
-              <span class="min-w-0 flex-1">
-                <span class="block text-[13.5px] font-semibold leading-snug">{{ f.recommendation }}</span>
-                <span class="block text-[11.5px] text-dove mt-0.5">{{ f.category }}{% if f.area_text %} · {{ f.area_text }}{% endif %}</span>
-              </span>
-              <span class="text-dove shrink-0 mt-1 no-print">{{ icon('chevron','w-4 h-4') }}</span>
-            </a>
-          </li>
-          {% endif %}{% endfor %}
-        </ol>
-      </div>
-      {% endif %}
     </div>
 
     <!-- map -->
     {% if flight.map_image %}
-    <div class="px-5 sm:px-9">
+    <div class="px-6 sm:px-9">
       <div class="rounded-xl overflow-hidden border border-silver relative">
-        <img src="{{ url_for('uploaded', name=flight.map_image) }}" alt="Annotated field map showing {{ flight.findings|length }} marked areas" class="w-full block">
-        {% if meaning_counts %}
-        <div class="absolute right-2.5 top-2.5 sm:right-3 sm:top-3 bg-white border border-silver rounded-lg px-2.5 sm:px-3 py-2 text-[10px] sm:text-[10.5px] font-semibold space-y-1.5">
+        <img src="{{ url_for('uploaded', name=flight.map_image) }}" alt="Annotated field map" class="w-full block">
+        <div class="absolute right-3 top-3 glass rounded-lg px-3 py-2.5 text-[10.5px] font-semibold space-y-1.5">
           {% for meaning, n in meaning_counts.items() %}
-          <div class="flex items-center gap-2 whitespace-nowrap"><span class="w-2.5 h-2.5 rounded-full shrink-0" style="background: {{ COLOUR_CODE.get(meaning, COLOUR_CODE['Pending review']).swatch }}"></span>{{ meaning }}</div>
+          <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-full" style="background: {{ COLOUR_CODE.get(meaning, COLOUR_CODE['Pending review']).swatch }}"></span>{{ meaning }}</div>
           {% endfor %}
         </div>
-        {% endif %}
       </div>
-      <div class="flex items-center justify-between gap-3 mt-2.5 mb-1 flex-wrap">
-        <p class="text-[11.5px] text-dove font-semibold">The numbers on this map match the numbers below.</p>
-        {% if flight.dronedeploy_project_url %}<a href="{{ flight.dronedeploy_project_url }}" target="_blank" rel="noopener" class="text-[12px] font-bold text-dove hover:underline inline-flex items-center gap-1.5 no-print">{{ icon('external','w-4 h-4') }} Open the interactive map</a>{% endif %}
+      <div class="flex items-center justify-between gap-3 mt-2.5 mb-1">
+        <p class="text-[11.5px] text-dove font-semibold">Annotated map · {{ flight.findings|length }} zone(s) marked across the field</p>
+        {% if flight.dronedeploy_project_url %}<a href="{{ flight.dronedeploy_project_url }}" target="_blank" class="text-[12px] font-bold text-sagedeep hover:underline inline-flex items-center gap-1.5">{{ icon('external','w-4 h-4') }} Open the interactive map</a>{% endif %}
       </div>
     </div>
     {% endif %}
 
     <!-- findings -->
-    <div class="px-5 sm:px-9 pt-6 pb-2">
-      <div class="flex items-baseline gap-3 mb-4">
+    <div class="px-6 sm:px-9 pt-6 pb-2">
+      <div class="flex items-baseline gap-3 mb-1">
         <h2 class="text-[15px] font-extrabold">What we found</h2>
         <div class="flex-1 h-px bg-silver"></div>
       </div>
-
-      <div id="findingList" class="space-y-4">
+      <div class="divide-y divide-silver">
         {% for f in flight.findings %}
-        <div class="find rounded-xl2 border border-silver overflow-hidden" id="f{{ loop.index }}" data-cat="{{ f.category }}">
-          <div class="flex">
-            <span class="w-1.5 shrink-0" style="background: {{ f.colour_swatch }}"></span>
-            <div class="min-w-0 flex-1">
-
-              <div class="flex items-start gap-3 px-4 sm:px-5 pt-4 pb-3 border-b border-silver">
-                <span class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl grid place-items-center font-extrabold text-ink text-[15px] tnum shrink-0"
-                      style="background: {{ f.colour_swatch }}">{{ loop.index }}</span>
-                <div class="min-w-0 flex-1">
-                  <p class="text-[14.5px] font-extrabold leading-tight">{{ f.category }}</p>
-                  <div class="flex items-center gap-2 flex-wrap mt-1.5">
-                    <span class="text-[10px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 border"
-                          style="color: {{ f.colour_swatch }}; border-color: {{ f.colour_swatch }}44; background: {{ f.colour_swatch }}14">{{ f.colour_meaning }}</span>
-                    {% if f.area_text %}<span class="text-[11px] font-bold text-dove bg-canvas border border-silver rounded-full px-2.5 py-0.5 tnum whitespace-nowrap">{{ f.area_text }}</span>{% endif %}
-                  </div>
-                </div>
+        <div class="grid grid-cols-[44px_1fr] gap-4 py-5">
+          <div class="w-11 h-11 rounded-xl grid place-items-center font-extrabold text-white text-[15px] tnum" style="background: {{ f.colour_swatch }}">{{ loop.index }}</div>
+          <div>
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+              <div class="flex items-center gap-2.5">
+                <span class="text-[14px] font-extrabold">{{ f.category }}</span>
+                <span class="text-[10.5px] font-bold uppercase tracking-wide text-dove bg-canvas border border-silver rounded-full px-2 py-0.5">{{ f.colour_meaning }}</span>
               </div>
-
-              <div class="px-4 sm:px-5 py-4 space-y-3.5">
-                <div>
-                  <p class="text-[9.5px] font-bold uppercase tracking-[0.1em] text-dove">What we saw</p>
-                  <p class="text-[13.5px] leading-relaxed mt-1">{{ f.observation }}</p>
-                </div>
-                <div>
-                  <p class="text-[9.5px] font-bold uppercase tracking-[0.1em] text-dove">Why we think so</p>
-                  <p class="text-[13.5px] leading-relaxed mt-1">{{ f.likely_cause }}</p>
-                </div>
-                <div class="rounded-xl bg-sagesoft border border-sage/50 px-3.5 py-3">
-                  <p class="text-[9.5px] font-bold uppercase tracking-[0.1em] text-dove flex items-center gap-1.5">
-                    {{ icon('check-circle','w-3.5 h-3.5') }} What to do
-                  </p>
-                  <p class="text-[13.5px] font-semibold leading-relaxed mt-1">{{ f.recommendation }}</p>
-                </div>
-                {% if f.annotation_link %}
-                <a href="{{ f.annotation_link }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-dove hover:underline no-print">{{ icon('pin','w-4 h-4') }} See this area on the map</a>
-                {% endif %}
-              </div>
-
+              {% if f.area_text %}<span class="text-[11.5px] font-bold text-dove bg-canvas border border-silver rounded-full px-2.5 py-1 tnum whitespace-nowrap">{{ f.area_text }}</span>{% endif %}
             </div>
+            <div class="mt-2.5 space-y-2.5">
+              <div><p class="text-[9.5px] font-bold uppercase tracking-[0.1em] text-dove">What we saw</p><p class="text-[13px] leading-relaxed mt-0.5">{{ f.observation }}</p></div>
+              <div><p class="text-[9.5px] font-bold uppercase tracking-[0.1em] text-dove">Likely cause</p><p class="text-[13px] leading-relaxed mt-0.5">{{ f.likely_cause }}</p></div>
+              <div><p class="text-[9.5px] font-bold uppercase tracking-[0.1em] text-dove">What to do next</p><p class="text-[13px] leading-relaxed mt-0.5">{{ f.recommendation }}</p></div>
+            </div>
+            {% if f.annotation_link %}<a href="{{ f.annotation_link }}" target="_blank" class="mt-2.5 inline-flex items-center gap-1.5 text-[11.5px] font-bold text-sagedeep hover:underline">{{ icon('pin','w-4 h-4') }} See this zone on the map</a>{% endif %}
           </div>
         </div>
         {% endfor %}
       </div>
-
-      <p id="noMatch" class="hidden text-center text-[13px] text-dove py-8 no-print">Nothing in that group on this flight.</p>
     </div>
 
     <!-- comparison / baseline -->
-    <div class="px-5 sm:px-9 pb-6 pt-2">
-      <div class="rounded-xl bg-canvas border border-silver px-4 py-3.5 text-[13px] leading-relaxed">
+    <div class="px-6 sm:px-9 pb-6">
+      <div class="rounded-xl bg-sagesoft border border-sage/40 px-4 py-3.5 text-[13px] font-semibold leading-relaxed">
         {% if prev %}
-          Compared with flight {{ prev.flight_number }}, which had {{ prev_total }} area{{ '' if prev_total==1 else 's' }} marked:
-          <span class="font-extrabold">{{ resolved }} resolved</span>, {{ still_open }} still open. The trend is what matters, not any single flight.
+          Compared with flight {{ prev.flight_number }} ({{ prev_total }} issue{{ '' if prev_total==1 else 's' }}):
+          <span class="font-extrabold">{{ resolved }} resolved</span>, {{ still_open }} still open. Keep going — the trend is what matters.
         {% else %}
-          This is <span class="font-extrabold">flight {{ flight.flight_number }} of the season</span> — the baseline every later flight is measured against. From flight {{ flight.flight_number + 1 }}, this report will also show what has improved.
+          This is <span class="font-extrabold">flight {{ flight.flight_number }} of the season</span> — the baseline the next flights are measured against. From flight {{ flight.flight_number + 1 }}, this report will show what has improved and what is still open.
         {% endif %}
       </div>
     </div>
 
-    <!-- note + acknowledge -->
-    <div class="bg-sagesoft text-ink border-t border-sage px-5 sm:px-9 py-7">
+    <!-- footer -->
+    <div class="bg-ink text-white px-6 sm:px-9 py-7">
       <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-5">
         <div class="max-w-md">
-          <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-dove">A note from your agronomist</p>
-          <p class="mt-2 text-[13.5px] leading-relaxed text-ink/80">{{ flight.agronomist_note or "None of these need panic — catching them now keeps them small. Reply to this message or call us and we will walk the field with you." }}</p>
+          <p class="text-[10px] font-bold uppercase tracking-[0.16em] text-white/50">A note from your agronomist</p>
+          <p class="mt-2 text-[13px] leading-relaxed text-white/85">{{ flight.agronomist_note or "None of these need panic — catching them now keeps them small. Reply or call us and we'll walk the field with you." }}</p>
         </div>
         {% if public %}
-        <div class="shrink-0 no-print" id="ackArea">
+        <div class="shrink-0" id="ackArea">
           {% if flight.acknowledged %}
           <div class="inline-flex items-center gap-2 px-4 py-3 rounded-xl bg-sage text-ink text-[13px] font-bold">{{ icon('check-circle','w-5 h-5') }} Receipt confirmed</div>
           {% else %}
-          <button onclick="acknowledge()" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-sage text-ink text-[14px] font-bold hover:bg-sage/80 transition">{{ icon('check','w-5 h-5') }} I have received this</button>
-          <p class="text-[11px] text-dove mt-2 sm:text-right">One tap tells us it reached you.</p>
+          <button onclick="acknowledge()" class="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-sage text-ink text-[13.5px] font-bold hover:bg-sage/80 transition">{{ icon('check','w-5 h-5') }} Acknowledge receipt</button>
           {% endif %}
         </div>
         {% endif %}
       </div>
-      <div class="mt-6 pt-4 border-t border-silver flex items-center justify-between gap-3 text-[11px] text-dove flex-wrap">
-        <span>Prepared by Acre Insights · Nairobi, Kenya</span>
-        <span class="tnum">{{ flight.slug }}</span>
+      <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between gap-3 text-[11px] text-white/45">
+        <span>Prepared by Acre Insights · Nature meets intelligence</span>
+        {% if public %}<a href="{{ url_for('public_report_pdf', token=flight.share_token) }}" class="text-white/70 hover:text-white font-semibold inline-flex items-center gap-1.5 no-print">{{ icon('download','w-4 h-4') }} Download PDF</a>{% endif %}
       </div>
     </div>
   </article>
 
   {% if public %}
-  <p class="text-center text-[12px] text-dove mt-6 no-print">Questions about anything here? Reply to the message this came from, or call Acre Insights any time.</p>
+  <p class="text-center text-[11.5px] text-dove mt-6 no-print">Questions? Reply to the message this came from, or call Acre Insights any time.</p>
   {% endif %}
 </div>
 </div>
-
-<script>
-  // Filter by category. Everything stays in the DOM so printing is unaffected.
-  function filterFindings(btn, cat){
-    document.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('on'); });
-    btn.classList.add('on');
-    var shown = 0;
-    document.querySelectorAll('#findingList .find').forEach(function(el){
-      var match = (cat === 'all') || (el.dataset.cat === cat);
-      el.hidden = !match;
-      if(match) shown++;
-    });
-    document.getElementById('noMatch').classList.toggle('hidden', shown > 0);
-  }
-  // Printing must always show every finding, whatever filter is on screen.
-  window.addEventListener('beforeprint', function(){
-    document.querySelectorAll('#findingList .find').forEach(function(el){ el.hidden = false; });
-  });
-</script>
 
 {% if not public %}
 <!-- ================= SHARE PANEL ================= -->
@@ -291,7 +183,7 @@
     <div class="p-5 sm:p-6">
       <div class="flex items-center gap-2 mb-1">
         <span class="eyebrow text-dove">Send it yourself</span>
-        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sagesoft text-dove">Always works</span>
+        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sagesoft text-sagedeep">Always works</span>
       </div>
       <p class="text-[12.5px] text-dove leading-relaxed mb-4">
         Opens your own WhatsApp or mail app with the message and the report link already written. Nothing to configure.
@@ -308,7 +200,7 @@
               {% if share.has_phone %}To <span class="inst">+{{ share.phone_e164 }}</span>{% else %}No number on file — you pick the chat{% endif %}
             </span>
           </span>
-          <span class="text-dove group-hover:text-dove shrink-0">{{ icon('external','w-4 h-4') }}</span>
+          <span class="text-dove group-hover:text-sagedeep shrink-0">{{ icon('external','w-4 h-4') }}</span>
         </a>
 
         <a href="{{ share.mailto }}"
@@ -321,7 +213,7 @@
               {% if share.has_email %}To {{ farm.farmer_email }}{% else %}No email on file — you fill in the address{% endif %}
             </span>
           </span>
-          <span class="text-dove group-hover:text-dove shrink-0">{{ icon('external','w-4 h-4') }}</span>
+          <span class="text-dove group-hover:text-sagedeep shrink-0">{{ icon('external','w-4 h-4') }}</span>
         </a>
 
         <a href="{{ share.gmail }}" target="_blank" rel="noopener"
@@ -332,7 +224,7 @@
             <span class="block text-[13.5px] font-bold">Compose in Gmail</span>
             <span class="block text-[11.5px] text-dove">For a browser mailbox with no desktop mail app</span>
           </span>
-          <span class="text-dove group-hover:text-dove shrink-0">{{ icon('external','w-4 h-4') }}</span>
+          <span class="text-dove group-hover:text-sagedeep shrink-0">{{ icon('external','w-4 h-4') }}</span>
         </a>
       </div>
 
@@ -372,7 +264,7 @@
         </label>
         <div class="flex items-center justify-end gap-3 pt-2">
           <button type="button" onclick="document.getElementById('sendPanel').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-white">Close</button>
-          <button class="px-5 py-2.5 rounded-xl bg-sagesoft text-ink text-[13px] font-bold hover:bg-sagesoft/90 flex items-center gap-2">{{ icon('send','w-4 h-4') }} Send automatically</button>
+          <button class="px-5 py-2.5 rounded-xl bg-ink text-white text-[13px] font-bold hover:bg-ink/90 flex items-center gap-2">{{ icon('send','w-4 h-4') }} Send automatically</button>
         </div>
       </form>
     </div>
@@ -433,6 +325,13 @@
   // correctly-named page to "Save as PDF".
   document.title = "{{ flight.slug }}";
   window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 500); });
+       // Disable right-click and keyboard shortcuts
+document.addEventListener('contextmenu', event => event.preventDefault());
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+    }
+});
 </script>
 {% endif %}
 {% endblock %}

@@ -8,26 +8,21 @@
 <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
 <link rel="icon" type="image/png" sizes="256x256" href="{{ url_for('static', filename='img/favicon-256.png') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
-<meta name="theme-color" content="#F4F9EC">
+<meta name="theme-color" content="#030920">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
   tailwind.config = {
     theme: {
       extend: {
         colors: {
-          // Sage, white and black only. Nothing else.
-          ink: '#000000',        // text and dark surfaces
-          dove: '#6E8659',       // secondary text, muted sage
-          silver: '#CFE2B7',     // hairlines
-          sage: '#B0D48C',       // primary action
-          sagedeep: '#7FB65E',   // active borders, links, icons on tint
-          sagesoft: '#E7F1DB',   // tinted / active surface
-          canvas: '#F4F9EC',     // page background
+          ink: '#030920', dove: '#6C6C6C', silver: '#D6DBD5',
+          sage: '#B0D48C', sagedeep: '#7FB65E', sagesoft: '#E7F1DB',
+          canvas: '#F2F5EF',
         },
-        fontFamily: { sans: ['Montserrat', 'system-ui', 'sans-serif'], mono: ['Montserrat', 'system-ui', 'sans-serif'] },
+        fontFamily: { sans: ['Montserrat', 'system-ui', 'sans-serif'], mono: ['IBM Plex Mono', 'ui-monospace', 'monospace'] },
         borderRadius: { xl2: '1.1rem' },
       }
     }
@@ -36,13 +31,14 @@
 <style>
   html{ -webkit-text-size-adjust:100%; }
   body{ font-family:'Montserrat',system-ui,sans-serif; letter-spacing:-0.006em; -webkit-font-smoothing:antialiased; }
-  .glass{ background:rgba(255,255,255,0.66); backdrop-filter:saturate(140%) blur(14px); -webkit-backdrop-filter:saturate(140%) blur(14px); border:1px solid rgba(0,0,0,0.08); }
-  .glass-solid{ background:#fff; border:1px solid #CFE2B7; }
+  .glass{ background:rgba(255,255,255,0.66); backdrop-filter:saturate(140%) blur(14px); -webkit-backdrop-filter:saturate(140%) blur(14px); border:1px solid rgba(3,9,32,0.08); }
+  .glass-solid{ background:#fff; border:1px solid #D6DBD5; }
   .tnum{ font-variant-numeric:tabular-nums; }
-  /* One typeface throughout. Readings and counts still read as measurements
-     through tabular figures and letter-spacing rather than a second family. */
-  .inst{ font-variant-numeric:tabular-nums; letter-spacing:.01em; }
-  .eyebrow{ font-size:10.5px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; }
+  /* Instrument type: readings, counts and eyebrows are set in mono so a number
+     always looks like a measurement rather than a headline. */
+  .inst{ font-family:'IBM Plex Mono',ui-monospace,monospace; font-variant-numeric:tabular-nums; }
+  .eyebrow{ font-family:'IBM Plex Mono',ui-monospace,monospace; font-size:10.5px; font-weight:500;
+            letter-spacing:.18em; text-transform:uppercase; }
   /* Scroll reveal as pure enhancement: content is visible by default, and only
      starts hidden once the script has confirmed it can reveal it again. */
   body.js-motion .reveal{ opacity:0; transform:translateY(18px); transition:opacity .7s cubic-bezier(.2,.7,.3,1), transform .7s cubic-bezier(.2,.7,.3,1); }
@@ -58,14 +54,14 @@
   .field:focus{ outline:none; border-color:#B0D48C; box-shadow:0 0 0 3px rgba(176,212,140,.35); }
   /* editable cells in the review table */
   .cell{ transition:.15s; border:1px solid transparent; border-radius:8px; }
-  .cell:hover{ background:rgba(0,0,0,.03); }
+  .cell:hover{ background:rgba(3,9,32,.03); }
   .cell:focus{ outline:none; background:#fff; border-color:#B0D48C; box-shadow:0 0 0 3px rgba(176,212,140,.35); }
   .flash-enter{ animation:flashIn .3s ease both; }
   @keyframes flashIn{ from{opacity:0; transform:translateY(-6px)} to{opacity:1; transform:none} }
   /* dialogs never overflow small screens */
   dialog{ max-width:calc(100vw - 1.5rem); }
   ::-webkit-scrollbar{ height:10px; width:10px; }
-  ::-webkit-scrollbar-thumb{ background:#CFE2B7; border-radius:99px; }
+  ::-webkit-scrollbar-thumb{ background:#D6DBD5; border-radius:99px; }
   @media print{ .no-print{ display:none !important; } body{ background:#fff; } }
 </style>
 {% block head %}{% endblock %}
@@ -79,7 +75,7 @@
   <div class="flash-enter glass rounded-xl2 pl-4 pr-2.5 py-3 w-full sm:max-w-sm shadow-lg flex items-start gap-3
               {{ 'border-sagedeep/40' if cat=='ok' else 'border-ink/10' }}"
        data-cat="{{ cat }}">
-    <span class="mt-0.5 shrink-0 {{ 'text-dove' if cat=='ok' else 'text-ink' }}">
+    <span class="mt-0.5 shrink-0 {{ 'text-sagedeep' if cat=='ok' else 'text-ink' }}">
       {% if cat=='ok' %}
       <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9.2"/><path d="M8 12.3 11 15.3 16.3 9.2"/></svg>
       {% else %}
@@ -99,6 +95,13 @@
   document.querySelectorAll('#flashwrap [data-cat="ok"]').forEach(function(el){
     setTimeout(function(){ el.style.transition='opacity .5s'; el.style.opacity='0'; setTimeout(function(){ el.remove(); }, 500); }, 5000);
   });
+       // Disable right-click and keyboard shortcuts
+document.addEventListener('contextmenu', event => event.preventDefault());
+document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+    }
+});
 </script>
 {% endif %}
 {% endwith %}

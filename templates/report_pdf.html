@@ -2,199 +2,139 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>{{ flight.slug }}</title>
 <style>
-  {{ font_css|safe }}
-  @page { size: A4; margin: 14mm 13mm 16mm;
-          @bottom-left   { content: "Acre Insights · Nairobi, Kenya"; font-size: 7.5pt; color: #6E8659; }
-          @bottom-right  { content: counter(page) " / " counter(pages); font-size: 7.5pt; color: #6E8659; } }
-  * { box-sizing: border-box; -weasy-print-color-adjust: exact; }
-  html { font-family: 'Montserrat', 'Helvetica Neue', Arial, sans-serif; color: #000000; }
-  body { margin: 0; font-size: 10px; line-height: 1.5; }
+  @page { size: A4; margin: 14mm 13mm; }
+  * { box-sizing: border-box; }
+  html { font-family: 'Montserrat', 'Helvetica Neue', Arial, sans-serif; color: #030920; -weasy-font-variant: normal; }
+  body { margin: 0; font-size: 10.5px; line-height: 1.5; }
   .tnum { font-variant-numeric: tabular-nums; }
-  h1, h2, h3, p, ol, li { margin: 0; }
-  ol { padding: 0; list-style: none; }
+  h1,h2,h3 { margin: 0; }
 
-  /* ---- header ---- */
-  .head { border-bottom: 2px solid #000000; padding-bottom: 11px; }
-  .head td { vertical-align: top; }
-  .head td.r { text-align: right; padding-left: 14px; }
-  .facts td.c { text-align: left; }
-  .logo { height: 27px; }
-  .eyebrow { font-size: 7.5pt; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: #6E8659; }
-  .head h1 { font-size: 20pt; font-weight: 800; letter-spacing: -0.4px; margin-top: 3px; line-height: 1.05; }
-  .flight { font-size: 9pt; color: #6E8659; font-weight: 600; margin-top: 4px; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start;
+          padding-bottom: 12px; border-bottom: 2px solid #030920; }
+  .logo { height: 34px; }
+  .title { text-align: right; }
+  .eyebrow { font-size: 8px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: #6C6C6C; }
+  .title h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; margin-top: 3px; }
+  .flight { font-size: 11px; color: #6C6C6C; font-weight: 600; margin-top: 4px; }
 
-  /* ---- facts ---- */
-  .facts { width: 100%; border-collapse: collapse; margin: 14px 0 0; border: 1px solid #CFE2B7; }
-  .facts td { border-right: 1px solid #CFE2B7; padding: 7px 9px; width: 20%; }
+  .facts { width: 100%; border-collapse: collapse; margin: 16px 0 6px;
+           border: 1px solid #D6DBD5; border-radius: 8px; overflow: hidden; }
+  .facts td { border-right: 1px solid #D6DBD5; padding: 9px 11px; width: 20%; }
   .facts td:last-child { border-right: 0; }
-  .fk { font-size: 6.6pt; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #6E8659; }
-  .fv { font-size: 11pt; font-weight: 800; margin-top: 2px; }
+  .fk { font-size: 7.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #6C6C6C; }
+  .fv { font-size: 13px; font-weight: 800; margin-top: 2px; }
 
-  /* ---- lead + categories ---- */
-  .lead { font-size: 13pt; font-weight: 600; line-height: 1.35; margin: 14px 0 8px; }
+  .lead { font-size: 14.5px; font-weight: 600; line-height: 1.4; margin: 16px 0 10px; }
   .lead b { font-weight: 800; }
-  .pill { display: inline-block; font-size: 8.6pt; font-weight: 700; border: 1px solid #CFE2B7;
-          border-radius: 999px; padding: 2px 9px; margin: 0 5px 5px 0; }
+  .pills { margin: 0 0 4px; }
+  .pill { display: inline-block; font-size: 10.5px; font-weight: 700; border: 1px solid #D6DBD5;
+          border-radius: 999px; padding: 3px 9px; margin: 0 6px 6px 0; }
+  .pill .n { background: #030920; color: #fff; border-radius: 999px; padding: 1px 6px; margin-left: 5px; font-size: 9.5px; }
 
-  /* ---- start here ---- */
-  .start { border: 1.5px solid #B0D48C; background: #F4F9EC; margin: 12px 0 0; }
-  .start .sh { font-size: 10pt; font-weight: 800; padding: 7px 11px; border-bottom: 1px solid #DCEAC7; }
-  .start li { padding: 7px 11px; border-bottom: 1px solid #E4EFD4; }
-  .start li:last-child { border-bottom: 0; }
-  .start .n { display: inline-block; width: 15px; height: 15px; border-radius: 50%; color: #fff;
-              font-size: 8pt; font-weight: 800; text-align: center; line-height: 15px; margin-right: 7px; }
-  .start .txt { font-size: 9.6pt; font-weight: 600; }
-  .start .meta { font-size: 8pt; color: #6E8659; margin-left: 22px; margin-top: 1px; }
-
-  /* ---- map ---- */
-  .map { margin: 14px 0 4px; border: 1px solid #CFE2B7; }
+  .map { margin: 14px 0 6px; border: 1px solid #D6DBD5; border-radius: 8px; overflow: hidden; }
   .map img { width: 100%; display: block; }
-  .mapcap { font-size: 8.4pt; color: #6E8659; font-weight: 600; margin: 5px 0 0; }
-  .key span { display: inline-block; font-size: 8.2pt; font-weight: 600; color: #6E8659; margin-right: 12px; }
-  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; }
+  .mapcap { font-size: 10px; color: #6C6C6C; font-weight: 600; margin: 6px 0 2px; }
+  .key { margin: 4px 0 0; }
+  .key span { display: inline-block; font-size: 9.5px; font-weight: 600; color: #6C6C6C; margin-right: 12px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
 
-  /* ---- findings ---- */
-  .sech { margin: 13px 0 8px; border-bottom: 1px solid #CFE2B7; padding-bottom: 4px; }
-  .sech h2 { font-size: 11.5pt; font-weight: 800; }
-  .find { border: 1px solid #CFE2B7; margin: 0 0 7px; page-break-inside: avoid; }
-  .find table { width: 100%; border-collapse: collapse; }
-  .bar { width: 5px; padding: 0; }
-  .fhead { padding: 8px 10px; border-bottom: 1px solid #CFE2B7; }
-  .fnum { display: inline-block; width: 24px; height: 24px; color: #fff; font-weight: 800; font-size: 11pt;
-          text-align: center; line-height: 24px; margin-right: 8px; vertical-align: middle; }
-  .fcat { font-size: 11pt; font-weight: 800; vertical-align: middle; }
-  .fmean { display: inline-block; font-size: 7.4pt; font-weight: 700; text-transform: uppercase;
-           letter-spacing: 0.5px; border-radius: 999px; padding: 1.5px 7px; margin-left: 7px; vertical-align: middle; }
-  .farea { float: right; font-size: 8.2pt; font-weight: 700; color: #6E8659; background: #F4F9EC;
-           border: 1px solid #CFE2B7; border-radius: 999px; padding: 2px 8px; }
-  .fbody { padding: 8px 10px; }
-  .flab { font-size: 6.8pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.7px; color: #6E8659; }
-  .ftext { font-size: 9.6pt; line-height: 1.45; margin-top: 1px; }
-  .todo { background: #E7F1DB; border: 1px solid #CFE3B8; padding: 6px 9px; margin-top: 7px; }
-  .todo .flab { color: #5E8F42; }
-  .todo .ftext { font-weight: 600; }
+  .sech { display: flex; align-items: center; margin: 16px 0 8px; }
+  .sech h2 { font-size: 14px; font-weight: 800; margin-right: 10px; }
+  .sech .rule { flex: 1; height: 1px; background: #D6DBD5; }
 
-  /* ---- close ---- */
-  .compare { margin: 10px 0 0; background: #F4F9EC; border: 1px solid #CFE2B7; padding: 9px 11px;
-             font-size: 9.4pt; line-height: 1.45; }
-  .note { margin: 10px 0 0; background: #E7F1DB; border: 1px solid #B0D48C; color: #000; padding: 12px 13px; page-break-inside: avoid; }
-  .note .flab { color: #6E8659; }
-  .note p { font-size: 9.6pt; line-height: 1.5; color: #000; margin-top: 4px; }
-  .note .sig { margin-top: 11px; padding-top: 8px; border-top: 1px solid #B0D48C;
-               font-size: 7.8pt; color: #6E8659; }
-  .note .sig .r { float: right; }
+  .finding { display: flex; gap: 11px; padding: 11px 0; border-bottom: 1px solid #D6DBD5; }
+  .finding:last-child { border-bottom: 0; }
+  .fnum { width: 30px; height: 30px; border-radius: 8px; color: #fff; font-weight: 800; font-size: 13px;
+          text-align: center; line-height: 30px; flex-shrink: 0; }
+  .fbody { flex: 1; }
+  .fcat { font-size: 12.5px; font-weight: 800; }
+  .fmean { font-size: 8.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #6C6C6C;
+           border: 1px solid #D6DBD5; border-radius: 999px; padding: 1px 6px; margin-left: 6px; }
+  .farea { float: right; font-size: 10px; font-weight: 700; color: #6C6C6C; border: 1px solid #D6DBD5;
+           border-radius: 999px; padding: 2px 8px; }
+  .flab { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #6C6C6C; margin-top: 5px; }
+  .ftext { font-size: 11px; line-height: 1.45; margin-top: 1px; }
+
+  .compare { margin: 14px 0 4px; background: #E7F1DB; border: 1px solid #cfe3b8; border-radius: 8px;
+             padding: 10px 12px; font-size: 11.5px; font-weight: 600; line-height: 1.4; }
+  .compare b { font-weight: 800; }
+
+  .foot { margin-top: 16px; background: #030920; color: #fff; border-radius: 8px; padding: 14px 16px; }
+  .foot .eyebrow { color: rgba(255,255,255,0.5); }
+  .foot p { font-size: 11px; line-height: 1.45; color: rgba(255,255,255,0.85); margin: 5px 0 0; }
+  .foot .tag { margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.15);
+               font-size: 9px; color: rgba(255,255,255,0.5); }
 </style>
 </head>
 <body>
 
-{% set ACTION = ['Needs testing', 'Monitor', 'Pending review'] %}
-{% set todo = flight.findings | selectattr('colour_meaning', 'in', ACTION) | list %}
-
-<table class="head" width="100%">
-  <tr>
-    <td width="45%">{% if logo_uri %}<img class="logo" src="{{ logo_uri }}" alt="Acre Insights">{% endif %}</td>
-    <td width="55%" class="r">
+  <div class="head">
+    {% if logo_uri %}<img class="logo" src="{{ logo_uri }}" alt="Acre Insights">{% else %}<div style="font-weight:800;font-size:18px">ACRE INSIGHTS</div>{% endif %}
+    <div class="title">
       <div class="eyebrow">Field Scouting Report</div>
       <h1>{{ farm.name }}</h1>
       <div class="flight">Season {{ flight.season }} · Flight {{ flight.flight_number }} of {{ flight.flights_planned }}{{ ' · Baseline' if not prev }}</div>
-    </td>
-  </tr>
-</table>
+    </div>
+  </div>
 
-<table class="facts">
-  <tr>
-    {% set facts = [
-      ('Crop', flight.crop or farm.crop or '—'),
-      ('Acreage', ((flight.acreage or farm.acreage)|round(1) ~ ' ac') if (flight.acreage or farm.acreage) else '—'),
-      ('Flight date', flight.flight_date.strftime('%d %b %Y') if flight.flight_date else '—'),
-      ('Areas marked', flight.findings|length),
-      ('Report date', now.strftime('%d %b %Y'))
-    ] %}
-    {% for k, v in facts %}
-    <td><div class="fk">{{ k }}</div><div class="fv tnum">{{ v }}</div></td>
-    {% endfor %}
-  </tr>
-</table>
+  <table class="facts"><tr>
+    <td><div class="fk">Crop</div><div class="fv">{{ flight.crop or farm.crop or '—' }}</div></td>
+    <td><div class="fk">Acreage</div><div class="fv tnum">{{ ((flight.acreage or farm.acreage)|round(0)|int ~ ' ac') if (flight.acreage or farm.acreage) else '—' }}</div></td>
+    <td><div class="fk">Flight date</div><div class="fv tnum">{{ flight.flight_date.strftime('%d %b %Y') if flight.flight_date else '—' }}</div></td>
+    <td><div class="fk">Areas marked</div><div class="fv tnum">{{ flight.findings|length }}</div></td>
+    <td><div class="fk">Report date</div><div class="fv tnum">{{ now.strftime('%d %b %Y') }}</div></td>
+  </tr></table>
 
-<p class="lead">
-  <b>{{ flight.findings|length }} area{{ '' if flight.findings|length==1 else 's' }} to look at</b> this flight{% if todo %} — <b>{{ todo|length }}</b> need{{ 's' if todo|length==1 else '' }} something done{% endif %}.
-</p>
+  <p class="lead"><b>{{ flight.findings|length }} area{{ '' if flight.findings|length==1 else 's' }} to look at</b> this flight{% if category_counts %} —
+    {% set parts = [] %}{% for c,n in category_counts.items() %}{% set _ = parts.append(n ~ ' ' ~ c|lower) %}{% endfor %}{{ parts|join(', ') }}.{% else %}.{% endif %}</p>
 
-{% if category_counts %}
-<div>{% for c, n in category_counts.items() %}<span class="pill">{{ c }} · {{ n }}</span>{% endfor %}</div>
-{% endif %}
-
-{% if todo %}
-<div class="start">
-  <div class="sh">Start with these</div>
-  <ol>
-    {% for f in flight.findings %}{% if f.colour_meaning in ACTION %}
-    <li>
-      <span class="n" style="background: {{ f.colour_swatch }}">{{ loop.index }}</span><span class="txt">{{ f.recommendation }}</span>
-      <div class="meta">{{ f.category }}{% if f.area_text %} · {{ f.area_text }}{% endif %}</div>
-    </li>
-    {% endif %}{% endfor %}
-  </ol>
-</div>
-{% endif %}
-
-{% if map_uri %}
-<div class="map"><img src="{{ map_uri }}" alt="Annotated field map"></div>
-<div class="mapcap">The numbers on this map match the numbers below.</div>
-{% if meaning_counts %}
-<div class="key">
-  {% for meaning, n in meaning_counts.items() %}
-  <span><span class="dot" style="background: {{ COLOUR_CODE.get(meaning, COLOUR_CODE['Pending review']).swatch }}"></span>{{ meaning }}</span>
-  {% endfor %}
-</div>
-{% endif %}
-{% endif %}
-
-<div class="sech"><h2>What we found</h2></div>
-
-{% for f in flight.findings %}
-<div class="find">
-  <table>
-    <tr>
-      <td class="bar" style="background: {{ f.colour_swatch }}"></td>
-      <td>
-        <div class="fhead">
-          {% if f.area_text %}<span class="farea tnum">{{ f.area_text }}</span>{% endif %}
-          <span class="fnum tnum" style="background: {{ f.colour_swatch }}">{{ loop.index }}</span><span class="fcat">{{ f.category }}</span><span class="fmean" style="color: {{ f.colour_swatch }}; border: 1px solid {{ f.colour_swatch }}55">{{ f.colour_meaning }}</span>
-        </div>
-        <div class="fbody">
-          <div class="flab">What we saw</div>
-          <div class="ftext">{{ f.observation }}</div>
-          <div class="flab" style="margin-top:7px">Why we think so</div>
-          <div class="ftext">{{ f.likely_cause }}</div>
-          <div class="todo">
-            <div class="flab">What to do</div>
-            <div class="ftext">{{ f.recommendation }}</div>
-          </div>
-        </div>
-      </td>
-    </tr>
-  </table>
-</div>
-{% endfor %}
-
-<div class="compare">
-  {% if prev %}
-    Compared with flight {{ prev.flight_number }}, which had {{ prev_total }} area{{ '' if prev_total==1 else 's' }} marked:
-    <b>{{ resolved }} resolved</b>, {{ still_open }} still open. The trend is what matters, not any single flight.
-  {% else %}
-    This is <b>flight {{ flight.flight_number }} of the season</b> — the baseline every later flight is measured against.
-    From flight {{ flight.flight_number + 1 }}, this report will also show what has improved.
+  {% if category_counts %}
+  <div class="pills">
+    {% for c,n in category_counts.items() %}<span class="pill">{{ c }}<span class="n tnum">{{ n }}</span></span>{% endfor %}
+  </div>
   {% endif %}
-</div>
 
-<div class="note">
-  <div class="flab">A note from your agronomist</div>
-  <p>{{ flight.agronomist_note or "None of these need panic — catching them now keeps them small. Reply to this message or call us and we will walk the field with you." }}</p>
-  <div class="sig"><span class="r tnum">{{ flight.slug }}</span>Prepared by Acre Insights · Nairobi, Kenya</div>
-</div>
+  {% if map_uri %}
+  <div class="map"><img src="{{ map_uri }}" alt="Annotated field map"></div>
+  <div class="mapcap">Annotated map · {{ flight.findings|length }} zone(s) marked across the field{% if flight.dronedeploy_project_url %} · <a href="{{ flight.dronedeploy_project_url }}" style="color:#5f8f3a;text-decoration:none;font-weight:700">Open the interactive map</a>{% endif %}</div>
+  <div class="key">
+    {% for meaning, n in meaning_counts.items() %}<span><span class="dot" style="background: {{ COLOUR_CODE.get(meaning, COLOUR_CODE['Pending review']).swatch }}"></span>{{ meaning }}</span>{% endfor %}
+  </div>
+  {% endif %}
 
+  <div class="sech"><h2>What we found</h2><div class="rule"></div></div>
+  {% for f in flight.findings %}
+  <div class="finding">
+    <div class="fnum" style="background: {{ f.colour_swatch }}">{{ loop.index }}</div>
+    <div class="fbody">
+      {% if f.area_text %}<span class="farea tnum">{{ f.area_text }}</span>{% endif %}
+      <span class="fcat">{{ f.category }}</span><span class="fmean">{{ f.colour_meaning }}</span>
+      <div class="flab">What we saw</div><div class="ftext">{{ f.observation }}</div>
+      <div class="flab">Likely cause</div><div class="ftext">{{ f.likely_cause }}</div>
+      <div class="flab">What to do next</div><div class="ftext">{{ f.recommendation }}</div>
+    </div>
+  </div>
+  {% endfor %}
+
+  <div class="compare">
+    {% if prev %}Compared with flight {{ prev.flight_number }} ({{ prev_total }} issue{{ '' if prev_total==1 else 's' }}): <b>{{ resolved }} resolved</b>, {{ still_open }} still open. Keep going — the trend is what matters.
+    {% else %}This is <b>flight {{ flight.flight_number }} of the season</b> — the baseline the next flights are measured against. From flight {{ flight.flight_number + 1 }}, this report will show what has improved and what is still open.{% endif %}
+  </div>
+
+  <div class="foot">
+    <div class="eyebrow">A note from your agronomist</div>
+    <p>{{ flight.agronomist_note or "None of these need panic — catching them now keeps them small. Reply or call us and we'll walk the field with you." }}</p>
+    <div class="tag">Prepared by Acre Insights · Nature meets intelligence · Nairobi, Kenya</div>
+  </div>
+<script>
+  // Disable right-click and keyboard shortcuts
+  document.addEventListener('contextmenu', event => event.preventDefault());
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+    }
+  });
+</script>
 </body>
 </html>

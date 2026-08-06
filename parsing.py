@@ -22,7 +22,7 @@ COLOUR_CODE = {
     "Healthy":      {"swatch": "#3FA34D", "hue": "green",  "note": "No action needed, baseline confirmed"},
     "Monitor":      {"swatch": "#E7B416", "hue": "yellow", "note": "Discoloration or early-stage concern"},
     "Needs testing":{"swatch": "#D64550", "hue": "red",    "note": "Suspicious gap or suspected diagnosis"},
-    "Pending review":{"swatch": "#6E8659","hue": "grey",   "note": "Logged, awaiting agronomist review"},
+    "Pending review":{"swatch": "#6C6C6C","hue": "grey",   "note": "Logged, awaiting agronomist review"},
 }
 
 # suggested issue category per colour meaning (agronomist can override)

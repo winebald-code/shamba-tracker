@@ -9,22 +9,22 @@
 
 {% if awaiting %}
 <!-- approval queue first: it blocks other people from working -->
-<div class="rounded-xl2 bg-sagesoft text-ink overflow-hidden mb-5 border border-sage">
-  <div class="px-5 py-4 flex items-center gap-3 border-b border-silver">
+<div class="rounded-xl2 bg-ink text-white overflow-hidden mb-5">
+  <div class="px-5 py-4 flex items-center gap-3 border-b border-white/10">
     <span class="w-9 h-9 rounded-lg bg-sage text-ink grid place-items-center shrink-0">{{ icon('hourglass','w-5 h-5') }}</span>
     <div class="flex-1 min-w-0">
       <h2 class="text-[15px] font-bold">{{ awaiting|length }} account{{ '' if awaiting|length==1 else 's' }} waiting for you</h2>
-      <p class="text-[12px] text-dove">Nobody can sign in until you approve them.</p>
+      <p class="text-[12px] text-white/60">Nobody can sign in until you approve them.</p>
     </div>
     <a href="{{ url_for('users') }}" class="hidden sm:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-sage text-ink text-[12.5px] font-bold hover:bg-sage/80 transition whitespace-nowrap">Review all {{ icon('arrow-right','w-4 h-4') }}</a>
   </div>
   <div class="divide-y divide-white/10">
     {% for u in awaiting[:4] %}
     <div class="px-5 py-3.5 flex items-center gap-3">
-      <span class="w-9 h-9 rounded-full bg-ink/5 grid place-items-center text-[12px] font-bold shrink-0">{{ u.initials }}</span>
+      <span class="w-9 h-9 rounded-full bg-white/10 grid place-items-center text-[12px] font-bold shrink-0">{{ u.initials }}</span>
       <div class="min-w-0 flex-1">
         <p class="text-[13.5px] font-semibold truncate">{{ u.name }}</p>
-        <p class="text-[11.5px] text-dove truncate">{{ u.email }} · asked for {{ u.requested_role_label }}</p>
+        <p class="text-[11.5px] text-white/55 truncate">{{ u.email }} · asked for {{ u.requested_role_label }}</p>
       </div>
       <form method="post" action="{{ url_for('user_approve', user_id=u.id) }}" class="shrink-0">
         <input type="hidden" name="role" value="{{ u.requested_role or 'agronomist' }}">
@@ -33,7 +33,7 @@
     </div>
     {% endfor %}
   </div>
-  <a href="{{ url_for('users') }}" class="sm:hidden block px-5 py-3.5 text-[12.5px] font-bold text-dove border-t border-silver">Review all requests →</a>
+  <a href="{{ url_for('users') }}" class="sm:hidden block px-5 py-3.5 text-[12.5px] font-bold text-sage border-t border-white/10">Review all requests →</a>
 </div>
 {% endif %}
 
@@ -80,7 +80,7 @@
     <div class="glass-solid rounded-xl2 p-5">
       <div class="flex items-center justify-between">
         <h2 class="text-[15px] font-bold">The team</h2>
-        <a href="{{ url_for('users') }}" class="text-[12px] font-bold text-dove hover:underline">Manage</a>
+        <a href="{{ url_for('users') }}" class="text-[12px] font-bold text-sagedeep hover:underline">Manage</a>
       </div>
       <div class="mt-4 space-y-2.5">
         {% for r in ROLES %}
@@ -98,4 +98,13 @@
 <div class="mt-5">
   {{ flightlist('Recent flights', recent, 'Your first flight will appear here once you create one.', 'Open') }}
 </div>
+<script>
+  // Disable right-click and keyboard shortcuts
+  document.addEventListener('contextmenu', event => event.preventDefault());
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+    }
+  });
+</script>
 {% endblock %}
