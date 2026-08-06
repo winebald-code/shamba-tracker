@@ -1,3 +1,4 @@
+
 {#
   The report document.
 
@@ -605,6 +606,39 @@
 
 {% if not pdf %}
 <script>
+  // Browsers take the suggested filename for "Save as PDF" from document.title,
+  // so printing is renamed to match the download exactly:
+  //   Farm Name_Crop Name_Season Year
+  // The tab keeps its readable title the rest of the time, and gets it back as
+  // soon as the dialog closes.
+  (function () {
+    var REPORT_NAME = {{ flight.report_basename|tojson }};
+    var pageTitle = document.title;
+
+    function useReportName() { document.title = REPORT_NAME; }
+    function restoreTitle()  { document.title = pageTitle; }
+
+    // Covers Ctrl+P and the browser's own menu, where there is no click to hook.
+    window.addEventListener('beforeprint', useReportName);
+    window.addEventListener('afterprint', restoreTitle);
+
+    // Older WebKit never fires those two, but does flip this media query.
+    if (window.matchMedia) {
+      var mq = window.matchMedia('print');
+      var onChange = function (m) { (m.matches ? useReportName : restoreTitle)(); };
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+    }
+
+    // Chrome reads the title while building the preview, and can start that
+    // before beforeprint handlers have settled. Anything of ours that triggers
+    // printing therefore sets the name synchronously first and goes through here.
+    window.printReport = function () {
+      useReportName();
+      window.print();
+    };
+  })();
+
   // The sheets are a fixed 210mm wide so that the screen and the page agree.
   // On a narrow phone that would overflow, so scale the sheet down to fit —
   // scaling, not reflowing, because reflowing is exactly what would break the
