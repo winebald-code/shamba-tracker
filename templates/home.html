@@ -97,8 +97,8 @@
       </h1>
       <p class="mt-6 text-[15.5px] lg:text-[17px] text-white/70 leading-relaxed max-w-xl">
         SHAMBA Tracker turns a finished DroneDeploy scouting flight into an Acre-branded field report:
-        every marked area carries what we saw, the likely cause and one thing to do about it. Sent over
-        WhatsApp or email, and confirmed with a tap.
+        one health score for the whole field, then every marked zone in order of urgency with what we saw,
+        the likely cause and one thing to do by a date. Sent over WhatsApp or email, and confirmed with a tap.
       </p>
 
       <div class="mt-8 flex flex-wrap items-center gap-3">
@@ -111,9 +111,9 @@
       </div>
 
       <dl class="mt-10 grid grid-cols-3 gap-4 max-w-md border-t border-white/10 pt-6">
-        {% for v, k in [('6','fields per report'), ('4','colour meanings'), ('1 tap','to confirm receipt')] %}
+        {% for v, k in [('0&ndash;100','field health score'), ('4','colour meanings'), ('1 tap','to confirm receipt')] %}
         <div>
-          <dt class="inst text-[22px] font-semibold text-sage leading-none">{{ v }}</dt>
+          <dt class="inst text-[22px] font-extrabold text-sage leading-none">{{ v|safe }}</dt>
           <dd class="text-[11.5px] text-white/50 mt-1.5 leading-snug">{{ k }}</dd>
         </div>
         {% endfor %}
@@ -153,7 +153,19 @@
           </div>
           {% endfor %}
           <div class="h-px bg-silver"></div>
-          <p class="text-[11.5px] text-dove leading-relaxed">Six areas marked on this flight. Every one carries a cause and a next step.</p>
+          <div class="flex items-center gap-3">
+            <div>
+              <p class="inst text-[26px] font-extrabold leading-none tracking-tight" style="color:{{ demo.score_colour }}">{{ demo.score }}</p>
+              <p class="inst text-dove uppercase mt-0.5" style="font-size:7px;letter-spacing:.12em;font-weight:700">Out of 100</p>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-[11px] font-extrabold leading-none">Field health, this flight</p>
+              <div class="mt-1.5 h-[9px] rounded overflow-hidden flex bg-canvas">
+                {% for b in demo.bands %}<span class="shrink-0" style="width:{{ b.pct }}%;background:{{ b.colour }}"></span>{% endfor %}
+              </div>
+              <p class="text-[10.5px] text-dove leading-snug mt-1.5">{{ demo.at_risk }} of {{ demo.total_acres }} acres under pressure. Seven zones marked, each with a next step.</p>
+            </div>
+          </div>
         </div>
       </div>
       <div class="absolute -bottom-4 -left-3 sm:-left-5 glass rounded-xl px-4 py-3 flex items-center gap-2.5 shadow-lg">
@@ -182,7 +194,7 @@
         ('Annotate','The scout marks what they see. Colour carries the meaning, so the map reads at a glance.'),
         ('Import','Export the annotations as CSV. SHAMBA Tracker reads the colours and the free text into structured findings.'),
         ('Complete','The agronomist adds the likely cause and the one action worth taking. Nothing generates until all three fields are filled.'),
-        ('Generate','One click builds the Acre-branded PDF: map, findings, colour code, prior-flight comparison.'),
+        ('Generate','One click builds the Acre-branded PDF: the field health score, the map, every zone in order of urgency, and the comparison against the last flight.'),
         ('Deliver and confirm','Out over WhatsApp or email. The farmer taps once to confirm, and it lands back on the dashboard.')
       ] %}
       {% for title, desc in steps %}
@@ -228,10 +240,16 @@
         <div class="p-5 sm:p-6">
           <p class="eyebrow text-dove">What the colour decides</p>
           <p class="mt-2.5 text-[14px] leading-relaxed">
-            The colour sets the suggested category too. A red pin arrives as
+            The colour sets the suggested category. A red pin arrives as
             <span class="font-semibold">Pest / Disease</span>, a yellow one as
             <span class="font-semibold">Needs Investigation</span>. The agronomist can always override it,
             but the first guess is already close.
+          </p>
+          <p class="mt-3 text-[14px] leading-relaxed">
+            It also decides where the zone lands in the report: red goes to the top of the
+            work list with a three-day deadline, yellow to the fortnight, green to
+            <span class="font-semibold">confirmed healthy</span>. That is what the field health
+            score counts &mdash; the acres in good shape, with yellow at 55% and red at nothing.
           </p>
         </div>
       </div>
@@ -300,15 +318,16 @@
       <span class="eyebrow text-dove">What the farmer receives</span>
       <h2 class="mt-3 text-3xl lg:text-[40px] font-extrabold tracking-tight leading-tight">A page you could read standing in the field</h2>
       <p class="mt-4 text-[15px] text-dove leading-relaxed max-w-lg">
-        No jargon, no dashboard to learn. The annotated map, then each marked area in three short lines:
-        what we saw, why we think so, and what to do about it.
+        It opens with one number for the whole field and the acres sitting behind it, then the work
+        in the order it should be done &mdash; each zone with what we saw, why it is happening, and
+        what to do by when.
       </p>
       <div class="mt-8 grid sm:grid-cols-2 gap-4">
         {% for ic, t, d in [
-          ('map','Annotated map','The same image the scout marked, numbered to match the findings below.'),
-          ('report','Findings in order','Grouped by category so related work gets done in one visit.'),
-          ('chart','Compared to last flight','What was resolved and what is still open, when a prior flight exists.'),
-          ('download','Branded PDF','Downloadable and attachable, laid out for A4 and for a phone screen.')] %}
+          ('chart','A score out of 100','The share of the field in good shape, so this flight can be set against the last one.'),
+          ('report','Most urgent first','Ordered by what costs most if it waits, and every action carries a deadline.'),
+          ('map','The annotated map','The scout&rsquo;s own image. Every zone is keyed to the report by colour.'),
+          ('download','Prints as it reads','Real A4 pages, so the screen and the paper match. Saved as Farm_Crop_Season.')] %}
         <div>
           <span class="w-9 h-9 rounded-lg bg-sagesoft text-sagedeep grid place-items-center">{{ icon(ic,'w-[18px] h-[18px]') }}</span>
           <h3 class="mt-3 text-[14px] font-bold">{{ t }}</h3>
@@ -318,38 +337,101 @@
       </div>
     </div>
 
+    {#
+      The cover of a real report, at reduced scale. The score, its colour and the
+      widths of the acreage band all come from report_data via the home route, so
+      this cannot quietly stop matching what the product sends out.
+    #}
     <div class="reveal">
       <div class="rounded-2xl overflow-hidden border border-silver bg-white shadow-[0_40px_80px_-50px_rgba(3,9,32,.65)]">
-        <div class="flex items-center justify-between px-5 py-4 border-b-2 border-ink">
-          <img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-6" alt="Acre Insights">
+        <div class="flex items-end justify-between mx-5 mt-4 pb-2.5 border-b-2 border-ink">
+          <img src="{{ url_for('static', filename='img/acre-logo.png') }}" class="h-5" alt="Acre Insights">
           <div class="text-right">
-            <p class="eyebrow text-dove">Field scouting report</p>
-            <p class="text-[15px] font-extrabold tracking-tight leading-none mt-1">Mashuru Onion Farm</p>
+            <p class="eyebrow text-dove" style="font-size:8px">Field scouting report</p>
+            <p class="text-[17px] font-extrabold tracking-tight leading-none mt-0.5">Mashuru Onion Farm</p>
+            <p class="inst text-[9px] text-dove mt-1 uppercase" style="letter-spacing:.09em">Season 2026LR / Flight 2 of 3</p>
           </div>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-px bg-silver">
-          {% for k, v in [('Crop','Onions'), ('Acreage','10.7 ac'), ('Flight','1 of 12'), ('Areas marked','6')] %}
-          <div class="bg-white px-4 py-3">
-            <p class="eyebrow text-dove" style="font-size:9px">{{ k }}</p>
-            <p class="text-[14px] font-extrabold inst mt-1">{{ v }}</p>
+
+        <div class="mx-5 mt-3 grid grid-cols-4 rounded-lg border border-silver overflow-hidden">
+          {% for k, v in [('Crop','Onions'), ('Field size', demo.total_acres ~ ' ac'), ('Flown','14 Mar'), ('Zones marked','7')] %}
+          <div class="px-2.5 py-2 {{ '' if loop.last else 'border-r border-silver' }}">
+            <p class="inst text-dove uppercase" style="font-size:7.5px;letter-spacing:.12em;font-weight:700">{{ k }}</p>
+            <p class="text-[12px] font-extrabold inst mt-0.5 leading-none">{{ v }}</p>
           </div>
           {% endfor %}
         </div>
-        <img src="{{ url_for('static', filename='img/hero-map.jpg') }}" alt="Annotated field map"
-             onerror="this.style.display='none'" class="w-full h-48 sm:h-56 object-cover border-y border-silver">
-        <div class="p-5 space-y-4">
-          {% for colour, cat, obs, act in [
-            ('#D64550','Irrigation','Crop stress running the length of the eastern feeder line.','Check pressure at the far bay before the next irrigation.'),
-            ('#2F6FDB','Nutrient / Vigor','New growth returning across the replanted block.','No action. Photograph again next flight to confirm.')] %}
-          <div class="flex gap-3.5">
-            <span class="w-1 rounded-full shrink-0" style="background:{{ colour }}"></span>
-            <div class="min-w-0">
-              <p class="eyebrow" style="color:{{ colour }}">{{ cat }}</p>
-              <p class="text-[13px] font-semibold mt-1 leading-snug">{{ obs }}</p>
-              <p class="text-[12.5px] text-dove mt-1 leading-snug">{{ act }}</p>
+
+        <!-- the field read as one instrument -->
+        <div class="mx-5 mt-3 rounded-xl border border-silver overflow-hidden">
+          <div class="bg-ink px-3 py-1.5 flex items-center justify-between">
+            <span class="eyebrow text-white/55" style="font-size:8px">Field health</span>
+            <span class="inst text-white/50 uppercase" style="font-size:8px;letter-spacing:.1em">Onions &middot; 2026LR</span>
+          </div>
+          <div class="p-3 flex items-center gap-3">
+            <div class="shrink-0 text-center" style="width:84px">
+              <svg viewBox="0 0 80 80" class="w-[74px] h-[74px]" aria-hidden="true">
+                <path d="{{ demo.gauge.track }}" fill="none" stroke="#E9ECE6" stroke-width="9" stroke-linecap="round"/>
+                <path d="{{ demo.gauge.value }}" fill="none" stroke="{{ demo.score_colour }}" stroke-width="9" stroke-linecap="round"/>
+                <text x="40" y="43" font-size="22" font-weight="700" letter-spacing="-0.9" text-anchor="middle" fill="#030920">{{ demo.score }}</text>
+                <text x="40" y="53" font-size="5" font-weight="700" letter-spacing="0.7" text-anchor="middle" fill="#6C6C6C">OUT OF 100</text>
+              </svg>
+              <p class="text-[9.5px] font-extrabold -mt-1.5" style="color:{{ demo.score_colour }}">{{ demo.score_label }}</p>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-[12.5px] font-bold leading-snug tracking-tight">
+                2 zones need you this week. {{ demo.at_risk }} of your {{ demo.total_acres }} acres are under pressure &mdash; small now, expensive later.
+              </p>
+              <span class="inst inline-block mt-1.5 rounded-full px-2 py-0.5 bg-sagesoft text-[#3E7A24]"
+                    style="font-size:8px;font-weight:700;letter-spacing:.06em">&#9650; {{ demo.delta }} POINTS UP VS FLIGHT {{ demo.prev_flight }}</span>
+
+              <div class="mt-2 h-[13px] rounded overflow-hidden flex bg-canvas">
+                {% for b in demo.bands %}<span class="shrink-0" style="width:{{ b.pct }}%;background:{{ b.colour }}"></span>{% endfor %}
+              </div>
+              <div class="mt-1.5 flex gap-3">
+                {% for b in demo.bands %}
+                <div class="min-w-0">
+                  <p class="text-[8px] font-bold whitespace-nowrap">
+                    <span class="inline-block w-[6px] h-[6px] rounded-sm mr-1" style="background:{{ b.colour }}"></span>{{ b.short }}
+                  </p>
+                  <p class="inst text-[10px] font-extrabold leading-none mt-0.5">{{ demo.ac(b.acres) }} ac</p>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ranked, each with a deadline -->
+        <div class="mx-5 mt-3.5">
+          <p class="text-[11.5px] font-extrabold tracking-tight">Work through these, in this order</p>
+        </div>
+        <div class="mx-5 mt-1.5 space-y-1.5">
+          {% for n, key, cat, act, area in [
+            (1,'urgent','Irrigation','Check pressure at the far bay before the next cycle, and mark every emitter that is not running.','3.4 ac'),
+            (2,'watch','Nutrient / Vigor','Top-dress the western corner at the next weeding. Take a soil sample first.','5.1 ac')] %}
+          {% set s = demo.SEVERITY[key] %}
+          <div class="flex gap-2.5 rounded-lg px-2.5 py-2 border" style="border-color:{{ s.line }};background:{{ s.soft }}">
+            <span class="inst w-[22px] h-[22px] rounded-md grid place-items-center text-[11px] font-extrabold shrink-0 text-white"
+                  style="background:{{ s.colour }}">{{ n }}</span>
+            <div class="min-w-0 flex-1">
+              <p class="text-[11px] font-extrabold leading-none">{{ cat }}</p>
+              <p class="text-[10px] leading-snug mt-1">{{ act }}</p>
+              <p class="inst text-[8.5px] font-bold text-dove mt-1">{{ area }} affected</p>
+            </div>
+            <div class="text-right shrink-0" style="width:74px">
+              <p class="inst text-dove uppercase" style="font-size:7px;letter-spacing:.1em;font-weight:700">{{ demo.URGENCY_COPY[key][0] }}</p>
+              <p class="text-[9px] font-extrabold mt-0.5" style="color:{{ s.colour }}">{{ demo.URGENCY_COPY[key][1] }}</p>
             </div>
           </div>
           {% endfor %}
+        </div>
+
+        <div class="mx-5 mt-3 mb-5 rounded-lg border px-2.5 py-2" style="border-color:#CBE3B4;background:#F4F9EC">
+          <p class="text-[10px] font-extrabold">
+            <span class="inline-block w-[6px] h-[6px] rounded-sm mr-1.5" style="background:#3FA34D"></span>Confirmed healthy &mdash; 4 zones
+          </p>
+          <p class="inst text-[9.5px] font-extrabold text-[#3E7A24] mt-0.5">9 ac</p>
         </div>
       </div>
     </div>

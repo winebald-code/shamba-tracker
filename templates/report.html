@@ -18,7 +18,7 @@
   <div class="max-w-[900px] mx-auto px-3 sm:px-5 h-16 flex items-center justify-between gap-2">
     <a href="{{ url_for('flight_detail', flight_id=flight.id) }}" class="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink hover:bg-ink/5 px-2.5 sm:px-3 py-2 rounded-xl transition whitespace-nowrap">← <span class="hidden sm:inline">Back to review</span><span class="sm:hidden">Back</span></a>
     <div class="flex items-center gap-2">
-      <button onclick="window.print()" class="hidden md:inline-flex items-center gap-2 px-3 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition" title="Prints exactly what you see">{{ icon('report','w-4 h-4') }} Print</button>
+      <button onclick="printReport()" class="hidden md:inline-flex items-center gap-2 px-3 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition" title="Prints exactly what you see, saving as {{ flight.report_filename }}">{{ icon('report','w-4 h-4') }} Print</button>
       <a href="{{ url_for('flight_report_pdf', flight_id=flight.id) }}"
          {% if PDF_AVAILABLE %}download="{{ flight.report_filename }}"{% endif %}
          title="Downloads as {{ flight.report_filename }}"
@@ -145,7 +145,8 @@
       <span class="eyebrow text-dove">Or send automatically</span>
       <p class="text-[12.5px] text-dove leading-relaxed mt-1 mb-4">
         Delivers straight from Acre Insights with the PDF attached as
-        <span class="inst text-ink">{{ flight.report_filename }}</span>.
+        <span class="inst text-ink">{{ flight.report_filename }}</span>. Needs a verified sending domain for email
+        and an approved business number for WhatsApp.
       </p>
       <form method="post" action="{{ url_for('flight_send', flight_id=flight.id) }}" class="space-y-2.5">
         <label class="flex items-center gap-3 bg-white border border-silver rounded-xl px-4 py-3 cursor-pointer">
@@ -221,10 +222,9 @@
 <script>
   // Reached only when server-side PDF is unavailable on this host. The document
   // is the same one WeasyPrint would have rendered, so the browser's own
-  // "Save as PDF" produces the same pages — it just needs the right filename,
-  // which browsers take from the document title.
-  document.title = {{ flight.report_basename|tojson }};
-  window.addEventListener('load', function(){ setTimeout(function(){ window.print(); }, 700); });
+  // "Save as PDF" produces the same pages, under the same name the download
+  // would have used — printReport() in report_doc.html sets that name.
+  window.addEventListener('load', function(){ setTimeout(function(){ printReport(); }, 700); });
 </script>
 {% endif %}
 {% endblock %}
