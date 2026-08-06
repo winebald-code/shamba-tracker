@@ -145,8 +145,7 @@
       <span class="eyebrow text-dove">Or send automatically</span>
       <p class="text-[12.5px] text-dove leading-relaxed mt-1 mb-4">
         Delivers straight from Acre Insights with the PDF attached as
-        <span class="inst text-ink">{{ flight.report_filename }}</span>. Needs a verified sending domain for email
-        and an approved business number for WhatsApp.
+        <span class="inst text-ink">{{ flight.report_filename }}</span>.
       </p>
       <form method="post" action="{{ url_for('flight_send', flight_id=flight.id) }}" class="space-y-2.5">
         <label class="flex items-center gap-3 bg-white border border-silver rounded-xl px-4 py-3 cursor-pointer">
