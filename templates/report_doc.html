@@ -1,3 +1,4 @@
+
 {#
   The report document.
 
@@ -217,18 +218,6 @@
 .prog .kpi .l { font-size:8.5px; font-weight:700; color:#6C6C6C; margin-top:3px; }
 .prog .say { font-size:11px; line-height:1.5; margin-top:11px; padding-top:10px; border-top:1px solid #E9ECE6; }
 
-/* The link through to the live DroneDeploy project. It stays in the PDF as a
-   real annotation, the way the per-finding zone links do — a farmer opening the
-   file on a phone can tap straight through to the map. */
-.ddlink { display:block; margin-top:10px; border:1px solid #CBE3B4; background:#F4F9EC;
-          border-radius:9px; padding:9px 11px; text-decoration:none; color:inherit;
-          break-inside:avoid; page-break-inside:avoid; }
-.ddlink td { vertical-align:middle; }
-.ddlink .ico { width:26px; }
-.ddlink .ico span { display:block; width:21px; height:21px; border-radius:6px; background:#DDEDC9; text-align:center; line-height:23px; }
-.ddlink .t { font-size:11px; font-weight:800; color:#3E7A24; }
-.ddlink .d { font-size:9px; color:#6C6C6C; margin-top:1px; }
-
 /* the standing colour key — the same code the agronomist draws with, so the
    farmer can read the next map before the next report arrives */
 .key { border:1px solid #D6DBD5; border-radius:9px; overflow:hidden; }
@@ -262,28 +251,6 @@
 {#
   ---------------------------------------------------------------- macros
 #}
-{% macro arrow(colour='currentColor', size=9) -%}
-<svg viewBox="0 0 12 12" width="{{ size }}" height="{{ size }}" fill="none" stroke="{{ colour }}"
-     stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
-     style="vertical-align:-1px;margin-right:2px"><path d="M3.5 8.5 8.5 3.5"/><path d="M4.6 3.5h3.9v3.9"/></svg>
-{%- endmacro %}
-
-{% macro tick(colour='currentColor', size=10) -%}
-<svg viewBox="0 0 12 12" width="{{ size }}" height="{{ size }}" fill="none" stroke="{{ colour }}"
-     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-     style="vertical-align:-1px"><path d="M2.5 6.3 4.9 8.7 9.5 3.5"/></svg>
-{%- endmacro %}
-
-{% macro trend_mark(direction, colour) -%}
-{%- if direction == 'up' -%}
-<svg viewBox="0 0 10 10" width="7" height="7" style="vertical-align:0"><polygon points="5,1.6 9,8 1,8" fill="{{ colour }}"/></svg>
-{%- elif direction == 'down' -%}
-<svg viewBox="0 0 10 10" width="7" height="7" style="vertical-align:0"><polygon points="5,8.4 1,2 9,2" fill="{{ colour }}"/></svg>
-{%- else -%}
-<svg viewBox="0 0 10 10" width="7" height="7" style="vertical-align:0"><rect x="1" y="4.1" width="8" height="1.8" rx="0.9" fill="{{ colour }}"/></svg>
-{%- endif -%}
-{%- endmacro %}
-
 {% macro chip(n, colour, cls='chip') -%}
 <div class="{{ cls }}" style="background:{{ colour }}">{{ n }}</div>
 {%- endmacro %}
@@ -363,10 +330,8 @@
         {% if a.delta is not none %}
           {% set up = a.delta > 0 %}
           {% set flat = a.delta == 0 %}
-          {% set tone = '#3E7A24' if up else ('#6C6C6C' if flat else '#B3323C') %}
-          <div class="trend" style="background:{{ '#E7F1DB' if up else ('#F2F5EF' if flat else '#FBEAEB') }};color:{{ tone }}">
-            {{ trend_mark('up' if up else ('flat' if flat else 'down'), tone) }}
-            {{ a.delta|abs }} {{ 'POINTS ' ~ ('UP' if up else 'DOWN') if not flat else 'NO CHANGE' }} VS FLIGHT {{ prev.flight_number }}
+          <div class="trend" style="background:{{ '#E7F1DB' if up else ('#F2F5EF' if flat else '#FBEAEB') }};color:{{ '#3E7A24' if up else ('#6C6C6C' if flat else '#B3323C') }}">
+            {{ '▲' if up else ('=' if flat else '▼') }} {{ a.delta|abs }} {{ 'POINTS ' ~ ('UP' if up else 'DOWN') if not flat else 'NO CHANGE' }} VS FLIGHT {{ prev.flight_number }}
           </div>
         {% endif %}
 
@@ -414,7 +379,7 @@
     {% endif %}
   {% else %}
     <table class="act" style="border-color:#CBE3B4;background:#E7F1DB"><tr>
-      <td class="no"><div class="chip" style="background:#3FA34D">{{ tick('#ffffff', 13) }}</div></td>
+      <td class="no">{{ chip('✓', '#3FA34D') }}</td>
       <td><div class="cat">No action needed</div>
         <div class="do">Every zone the flight checked came back clear. The next flight will confirm the field is holding.</div></td>
     </tr></table>
@@ -489,16 +454,10 @@
     </table>
   </div>
 
-  {% if flight.dronedeploy_project_url %}
-  <a class="ddlink" href="{{ flight.dronedeploy_project_url }}"{% if not pdf %} target="_blank" rel="noopener"{% endif %}>
-    <table><tr>
-      <td class="ico"><span>{{ arrow('#3E7A24', 12) }}</span></td>
-      <td>
-        <div class="t">Open the interactive map</div>
-        <div class="d">Pan, zoom and tap any zone in DroneDeploy to see it up close.</div>
-      </td>
-    </tr></table>
-  </a>
+  {% if flight.dronedeploy_project_url and not pdf %}
+  <p class="mono no-print" style="font-size:8.5px;color:#5C8A3C;margin-top:8px">
+    <a href="{{ flight.dronedeploy_project_url }}" target="_blank" rel="noopener">↗ Open the interactive map</a>
+  </p>
   {% endif %}
 
   {{ pagefoot(2, total_pages) }}
@@ -538,7 +497,7 @@
         <div class="tx">{{ f.recommendation }}</div>
       </div>
       {% if f.annotation_link %}
-      <div class="link"><a href="{{ f.annotation_link }}"{% if not pdf %} target="_blank" rel="noopener"{% endif %}>{{ arrow('#5C8A3C') }}See this zone on the map</a></div>
+      <div class="link">{% if pdf %}<a href="{{ f.annotation_link }}">↗ See this zone on the map</a>{% else %}<a href="{{ f.annotation_link }}" target="_blank" rel="noopener">↗ See this zone on the map</a>{% endif %}</div>
       {% endif %}
     </div>
   </div>
@@ -556,7 +515,7 @@
 
   <div class="prog">
     <div class="cap">
-      <span class="eyebrow">{% if prev %}Flight {{ prev.flight_number }} to flight {{ flight.flight_number }}{% else %}Baseline — flight {{ flight.flight_number }} of {{ flight.flights_planned }}{% endif %}</span>
+      <span class="eyebrow">{% if prev %}Flight {{ prev.flight_number }} → flight {{ flight.flight_number }}{% else %}Baseline — flight {{ flight.flight_number }} of {{ flight.flights_planned }}{% endif %}</span>
     </div>
     <div class="body">
       {% if prev %}
@@ -611,18 +570,6 @@
     <div class="who">Acre Insights &middot; Nature meets intelligence</div>
   </div>
 
-  {% if flight.dronedeploy_project_url and not map_src %}
-  <a class="ddlink" href="{{ flight.dronedeploy_project_url }}"{% if not pdf %} target="_blank" rel="noopener"{% endif %}>
-    <table><tr>
-      <td class="ico"><span>{{ arrow('#3E7A24', 12) }}</span></td>
-      <td>
-        <div class="t">Open the interactive map</div>
-        <div class="d">Pan, zoom and tap any zone in DroneDeploy to see it up close.</div>
-      </td>
-    </tr></table>
-  </a>
-  {% endif %}
-
   <table class="contact"><tr>
     <td>
       <div class="l">Prepared for</div>
@@ -640,12 +587,12 @@
   <div class="no-print" style="margin-top:12px;text-align:center" id="ackArea">
     {% if flight.acknowledged %}
     <div style="display:inline-block;background:#E7F1DB;color:#3E7A24;border-radius:9px;padding:11px 18px;font-size:11.5px;font-weight:800">
-      {{ tick('#3E7A24', 12) }} You confirmed you received this on {{ flight.acknowledged_at.strftime('%d %b %Y') if flight.acknowledged_at else 'file' }}
+      ✓ You confirmed you received this on {{ flight.acknowledged_at.strftime('%d %b %Y') if flight.acknowledged_at else 'file' }}
     </div>
     {% else %}
     <button type="button" onclick="acknowledge()"
             style="background:#B0D48C;color:#030920;border:0;border-radius:9px;padding:12px 22px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit">
-      {{ tick('#030920', 13) }} Confirm you received this report
+      ✓ Confirm you received this report
     </button>
     <p style="font-size:9px;color:#6C6C6C;margin-top:6px !important">One tap. It tells your agronomist the report reached you.</p>
     {% endif %}
