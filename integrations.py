@@ -11,6 +11,7 @@ import base64
 import json
 import urllib.request
 import urllib.error
+import urllib.parse
 
 
 def _env(*names):
@@ -165,7 +166,6 @@ def send_whatsapp(to_phone, body):
 
     if twilio_sid and twilio_token and twilio_from:
         try:
-            import urllib.parse
             frm = twilio_from if twilio_from.startswith("whatsapp:") else f"whatsapp:{twilio_from}"
             data = urllib.parse.urlencode({
                 "From": frm,
@@ -212,7 +212,6 @@ def send_whatsapp(to_phone, body):
 # number (WhatsApp). Until both exist, nothing sends automatically. These links
 # need neither: they open the sender's own WhatsApp or mail client with the
 # message and the report link already filled in, so a report can always go out.
-import urllib.parse
 
 DEFAULT_COUNTRY_CODE = os.environ.get("DEFAULT_COUNTRY_CODE", "254").strip().lstrip("+")
 

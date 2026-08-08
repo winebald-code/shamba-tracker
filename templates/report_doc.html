@@ -1,4 +1,3 @@
-
 {#
   The report document.
 
@@ -209,6 +208,47 @@
 .find .todo .tx { font-weight:600; }
 .find .link { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8.5px; font-weight:700; color:#5C8A3C; margin-top:6px; }
 
+/* ---------------------------------------------------------------- season trend
+   The season read as one arc rather than as a pair of flights. Same vocabulary
+   as the rest of the document — bordered box, dark cap, tabular readings — so
+   it sits with the closing sheet rather than looking bolted on. */
+.trendbox { border:1px solid #D6DBD5; border-radius:10px; overflow:hidden; }
+.trendbox .cap { background:#030920; padding:6px 12px; }
+.trendbox .cap .eyebrow { color:rgba(255,255,255,.55); }
+.trendbox .cap .rt { float:right; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
+                     font-size:8px; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+                     color:rgba(255,255,255,.5); }
+.trendbox .body { padding:12px; }
+.spark { width:100%; height:auto; }
+.spark .gl { stroke:#E9ECE6; stroke-width:1; }
+.axis { margin-top:4px; }
+.axis td { text-align:center; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
+           font-size:7.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#6C6C6C; }
+.axis td.on { color:#030920; }
+
+.skpi { margin-top:11px; padding-top:10px; border-top:1px solid #E9ECE6; }
+.skpi td { width:25%; padding-right:10px; vertical-align:top; }
+.skpi td:last-child { padding-right:0; }
+.skpi .n { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:23px;
+           font-weight:800; letter-spacing:-1px; line-height:1; }
+.skpi .l { font-size:8.5px; font-weight:700; color:#6C6C6C; margin-top:3px; line-height:1.3; }
+
+/* per-flight zone mix, so a falling count of problem zones is visible as a shape */
+.sbars { margin-top:10px; }
+.sbars td { vertical-align:bottom; text-align:center; padding:0 3px; }
+.sbars .col { height:52px; position:relative; }
+.sbars .stack { position:absolute; left:0; right:0; bottom:0; border-radius:3px 3px 0 0; overflow:hidden; font-size:0; }
+.sbars .seg { display:block; width:100%; }
+.sbars .tot { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8.5px;
+              font-weight:800; margin-bottom:2px; }
+.sbars .fl { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:7.5px;
+             font-weight:700; color:#6C6C6C; margin-top:3px; }
+.sbars .fl.on { color:#030920; }
+.slegend { margin-top:8px; }
+.slegend td { padding:0 12px 0 0; white-space:nowrap; width:1%; }
+.slegend .dot { display:inline-block; width:7px; height:7px; border-radius:2px; margin-right:5px; }
+.slegend .lb { font-size:8.5px; font-weight:700; }
+
 /* ---------------------------------------------------------------- closing sheet */
 .prog { border:1px solid #D6DBD5; border-radius:10px; overflow:hidden; }
 .prog .cap { background:#F2F5EF; padding:7px 12px; border-bottom:1px solid #D6DBD5; }
@@ -217,6 +257,18 @@
 .prog .kpi .n { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:27px; font-weight:800; letter-spacing:-1.2px; line-height:1; }
 .prog .kpi .l { font-size:8.5px; font-weight:700; color:#6C6C6C; margin-top:3px; }
 .prog .say { font-size:11px; line-height:1.5; margin-top:11px; padding-top:10px; border-top:1px solid #E9ECE6; }
+
+/* The link through to the live DroneDeploy project. It stays in the PDF as a
+   real annotation, the way the per-finding zone links do — a farmer opening the
+   file on a phone can tap straight through to the map. */
+.ddlink { display:block; margin-top:10px; border:1px solid #CBE3B4; background:#F4F9EC;
+          border-radius:9px; padding:9px 11px; text-decoration:none; color:inherit;
+          break-inside:avoid; page-break-inside:avoid; }
+.ddlink td { vertical-align:middle; }
+.ddlink .ico { width:26px; }
+.ddlink .ico span { display:block; width:21px; height:21px; border-radius:6px; background:#DDEDC9; text-align:center; line-height:23px; }
+.ddlink .t { font-size:11px; font-weight:800; color:#3E7A24; }
+.ddlink .d { font-size:9px; color:#6C6C6C; margin-top:1px; }
 
 /* the standing colour key — the same code the agronomist draws with, so the
    farmer can read the next map before the next report arrives */
@@ -251,8 +303,42 @@
 {#
   ---------------------------------------------------------------- macros
 #}
+{% macro arrow(colour='currentColor', size=9) -%}
+<svg viewBox="0 0 12 12" width="{{ size }}" height="{{ size }}" fill="none" stroke="{{ colour }}"
+     stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
+     style="vertical-align:-1px;margin-right:2px"><path d="M3.5 8.5 8.5 3.5"/><path d="M4.6 3.5h3.9v3.9"/></svg>
+{%- endmacro %}
+
+{% macro tick(colour='currentColor', size=10) -%}
+<svg viewBox="0 0 12 12" width="{{ size }}" height="{{ size }}" fill="none" stroke="{{ colour }}"
+     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+     style="vertical-align:-1px"><path d="M2.5 6.3 4.9 8.7 9.5 3.5"/></svg>
+{%- endmacro %}
+
+{% macro trend_mark(direction, colour) -%}
+{%- if direction == 'up' -%}
+<svg viewBox="0 0 10 10" width="7" height="7" style="vertical-align:0"><polygon points="5,1.6 9,8 1,8" fill="{{ colour }}"/></svg>
+{%- elif direction == 'down' -%}
+<svg viewBox="0 0 10 10" width="7" height="7" style="vertical-align:0"><polygon points="5,8.4 1,2 9,2" fill="{{ colour }}"/></svg>
+{%- else -%}
+<svg viewBox="0 0 10 10" width="7" height="7" style="vertical-align:0"><rect x="1" y="4.1" width="8" height="1.8" rx="0.9" fill="{{ colour }}"/></svg>
+{%- endif -%}
+{%- endmacro %}
+
 {% macro chip(n, colour, cls='chip') -%}
 <div class="{{ cls }}" style="background:{{ colour }}">{{ n }}</div>
+{%- endmacro %}
+
+{% macro ddlink() -%}
+<a class="ddlink" href="{{ flight.dronedeploy_project_url }}"{% if not pdf %} target="_blank" rel="noopener"{% endif %}>
+  <table><tr>
+    <td class="ico"><span>{{ arrow('#3E7A24', 12) }}</span></td>
+    <td>
+      <div class="t">Open the interactive map</div>
+      <div class="d">Pan, zoom and tap any zone in DroneDeploy to see it up close.</div>
+    </td>
+  </tr></table>
+</a>
 {%- endmacro %}
 
 {% macro runhead(label) -%}
@@ -270,7 +356,8 @@
 {%- endmacro %}
 
 {% set map_pages = 1 if map_src else 0 %}
-{% set total_pages = 1 + map_pages + a.pages|length + 1 %}
+{% set season_pages = 1 if (season and season.spark) else 0 %}
+{% set total_pages = 1 + map_pages + a.pages|length + season_pages + 1 %}
 
 <div class="paper rd">
 
@@ -330,8 +417,10 @@
         {% if a.delta is not none %}
           {% set up = a.delta > 0 %}
           {% set flat = a.delta == 0 %}
-          <div class="trend" style="background:{{ '#E7F1DB' if up else ('#F2F5EF' if flat else '#FBEAEB') }};color:{{ '#3E7A24' if up else ('#6C6C6C' if flat else '#B3323C') }}">
-            {{ '▲' if up else ('=' if flat else '▼') }} {{ a.delta|abs }} {{ 'POINTS ' ~ ('UP' if up else 'DOWN') if not flat else 'NO CHANGE' }} VS FLIGHT {{ prev.flight_number }}
+          {% set tone = '#3E7A24' if up else ('#6C6C6C' if flat else '#B3323C') %}
+          <div class="trend" style="background:{{ '#E7F1DB' if up else ('#F2F5EF' if flat else '#FBEAEB') }};color:{{ tone }}">
+            {{ trend_mark('up' if up else ('flat' if flat else 'down'), tone) }}
+            {{ a.delta|abs }} {{ 'POINTS ' ~ ('UP' if up else 'DOWN') if not flat else 'NO CHANGE' }} VS FLIGHT {{ prev.flight_number }}
           </div>
         {% endif %}
 
@@ -379,7 +468,7 @@
     {% endif %}
   {% else %}
     <table class="act" style="border-color:#CBE3B4;background:#E7F1DB"><tr>
-      <td class="no">{{ chip('✓', '#3FA34D') }}</td>
+      <td class="no"><div class="chip" style="background:#3FA34D">{{ tick('#ffffff', 13) }}</div></td>
       <td><div class="cat">No action needed</div>
         <div class="do">Every zone the flight checked came back clear. The next flight will confirm the field is holding.</div></td>
     </tr></table>
@@ -454,10 +543,8 @@
     </table>
   </div>
 
-  {% if flight.dronedeploy_project_url and not pdf %}
-  <p class="mono no-print" style="font-size:8.5px;color:#5C8A3C;margin-top:8px">
-    <a href="{{ flight.dronedeploy_project_url }}" target="_blank" rel="noopener">↗ Open the interactive map</a>
-  </p>
+  {% if flight.dronedeploy_project_url %}
+  {{ ddlink() }}
   {% endif %}
 
   {{ pagefoot(2, total_pages) }}
@@ -497,7 +584,7 @@
         <div class="tx">{{ f.recommendation }}</div>
       </div>
       {% if f.annotation_link %}
-      <div class="link">{% if pdf %}<a href="{{ f.annotation_link }}">↗ See this zone on the map</a>{% else %}<a href="{{ f.annotation_link }}" target="_blank" rel="noopener">↗ See this zone on the map</a>{% endif %}</div>
+      <div class="link"><a href="{{ f.annotation_link }}"{% if not pdf %} target="_blank" rel="noopener"{% endif %}>{{ arrow('#5C8A3C') }}See this zone on the map</a></div>
       {% endif %}
     </div>
   </div>
@@ -507,6 +594,139 @@
 </section>
 {% endfor %}
 
+{# ================================================================ SEASON SHEET
+   The season so far, flight by flight. Only drawn when at least two flights of
+   this season carry findings — with one flight there is no trend to show, and
+   the closing sheet's baseline wording already covers that case. #}
+{% if season and season.spark %}
+{% set sp = season.spark %}
+<section class="sheet">
+  {{ runhead('Your season so far') }}
+
+  <table class="sec"><tr><td><h2>Your season so far</h2></td><td><div class="rule"></div></td></tr></table>
+
+  <div class="trendbox">
+    <div class="cap">
+      <span class="eyebrow">Field health across the season</span>
+      <span class="rt">{{ season.flights_scored }} flight{{ '' if season.flights_scored == 1 else 's' }} flown &middot; {{ flight.season }}</span>
+    </div>
+    <div class="body">
+      <svg class="spark" viewBox="0 0 {{ sp.w }} {{ sp.h }}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <line class="gl" x1="0" y1="{{ sp.h - 6 }}" x2="{{ sp.w }}" y2="{{ sp.h - 6 }}"/>
+        <line class="gl" x1="0" y1="{{ (sp.h / 2)|round(1) }}" x2="{{ sp.w }}" y2="{{ (sp.h / 2)|round(1) }}"/>
+        <path d="{{ sp.area }}" fill="{{ a.score_colour }}" fill-opacity="0.10"/>
+        <path d="{{ sp.line }}" fill="none" stroke="{{ a.score_colour }}" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        {% for p in sp.points %}
+        <circle cx="{{ p.x }}" cy="{{ p.y }}" r="{{ 4.2 if p.is_current else 3 }}"
+                fill="#fff" stroke="{{ a.score_colour }}" stroke-width="{{ 2.4 if p.is_current else 1.8 }}"/>
+        {% endfor %}
+      </svg>
+      <table class="axis"><tr>
+        {% for p in sp.points %}
+        <td class="{{ 'on' if p.is_current }}">{{ p.score }}<br>F{{ p.number }}</td>
+        {% endfor %}
+      </tr></table>
+
+      <table class="skpi"><tr>
+        <td>
+          <div class="n" style="color:{{ a.score_colour }}">{{ '+' if season.swing > 0 }}{{ season.swing }}</div>
+          <div class="l">Points {{ 'gained' if season.swing > 0 else ('lost' if season.swing < 0 else 'change') }} since flight {{ season.first.number }}</div>
+        </td>
+        <td>
+          <div class="n">{{ season.average }}</div>
+          <div class="l">Season average score</div>
+        </td>
+        <td>
+          <div class="n" style="color:#3FA34D">{{ season.best.score }}</div>
+          <div class="l">Best flight so far (flight {{ season.best.number }})</div>
+        </td>
+        <td>
+          <div class="n" style="color:{{ '#3FA34D' if season.closed else '#6C6C6C' }}">{{ season.closed }}</div>
+          <div class="l">Problem zones closed since flight {{ season.first.number }}</div>
+        </td>
+      </tr></table>
+    </div>
+  </div>
+
+  <table class="sec" style="margin-top:12px"><tr>
+    <td><h2>Marked zones, flight by flight</h2></td><td><div class="rule"></div></td>
+  </tr></table>
+
+  <div class="trendbox">
+    <div class="body">
+      <table class="sbars"><tr>
+        {% for b in season.bars %}
+        <td>
+          <div class="tot">{{ b.total }}</div>
+          <div class="col">
+            <div class="stack" style="height:{{ b.pct }}%">
+              {% if b.urgent_pct %}<span class="seg" style="height:{{ b.urgent_pct }}%;background:#D64550"></span>{% endif %}
+              {% if b.watch_pct %}<span class="seg" style="height:{{ b.watch_pct }}%;background:#E7B416"></span>{% endif %}
+              {% if b.good_pct %}<span class="seg" style="height:{{ b.good_pct }}%;background:#3FA34D"></span>{% endif %}
+            </div>
+          </div>
+          <div class="fl {{ 'on' if b.is_current }}">F{{ b.number }}</div>
+        </td>
+        {% endfor %}
+      </tr></table>
+      <table class="slegend"><tr>
+        <td><span class="lb"><span class="dot" style="background:#D64550"></span>Needs action</span></td>
+        <td><span class="lb"><span class="dot" style="background:#E7B416"></span>Worth watching</span></td>
+        <td><span class="lb"><span class="dot" style="background:#3FA34D"></span>Doing well</span></td>
+        <td></td>
+      </tr></table>
+      <p class="say" style="font-size:11px;line-height:1.5;margin-top:11px !important;padding-top:10px;border-top:1px solid #E9ECE6">
+        {% if season.direction == 'up' %}
+          Across {{ season.flights_scored }} flights this season your field has gone from
+          <b>{{ season.first.score }}</b> to <b>{{ season.last.score }}</b>{% if season.closed %}, and
+          {{ season.closed }} zone{{ '' if season.closed == 1 else 's' }} that needed attention at the start
+          {{ 'is' if season.closed == 1 else 'are' }} no longer flagged{% endif %}. That is a season trending
+          the right way — the next flight will show whether it holds.
+        {% elif season.direction == 'down' %}
+          Across {{ season.flights_scored }} flights this season your field has moved from
+          <b>{{ season.first.score }}</b> to <b>{{ season.last.score }}</b>{% if season.opened %}, with
+          {{ season.opened }} more zone{{ '' if season.opened == 1 else 's' }} flagged than at the start{% endif %}.
+          One flight can be weather; a run of them is a pattern, which is why this page exists — the actions
+          on the first page are where to start.
+        {% else %}
+          Across {{ season.flights_scored }} flights this season your field has held between
+          <b>{{ season.worst.score }}</b> and <b>{{ season.best.score }}</b>, averaging {{ season.average }}.
+          Steady across a whole season is a result in itself — it means nothing has got away from you
+          between flights.
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  <table class="sec" style="margin-top:12px"><tr>
+    <td><h2>Every flight this season</h2></td><td><div class="rule"></div></td>
+  </tr></table>
+
+  <div class="zt">
+    <table>
+      <tr>
+        <th class="n">Fl</th><th>Flown</th><th>Zones</th>
+        <th>Needs action</th><th>Watching</th><th>Doing well</th><th>Score</th>
+      </tr>
+      {% for p in season.points %}
+      <tr{% if p.is_current %} style="background:#F7F9F4"{% endif %}>
+        <td class="cat">{{ p.number }}{% if p.is_current %} <span class="mono" style="font-size:7px;font-weight:700;letter-spacing:.1em;color:#5C8A3C">THIS ONE</span>{% endif %}</td>
+        <td class="mono">{{ p.date.strftime('%d %b %Y') if p.date else '—' }}</td>
+        <td class="ac">{{ p.zones }}</td>
+        <td class="ac" style="color:{{ '#B3323C' if p.urgent else '#6C6C6C' }}">{{ p.urgent }}</td>
+        <td class="ac" style="color:{{ '#9A7A0F' if p.watch else '#6C6C6C' }}">{{ p.watch }}</td>
+        <td class="ac" style="color:{{ '#3E7A24' if p.good else '#6C6C6C' }}">{{ p.good }}</td>
+        <td class="ac">{{ p.score if p.score is not none else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  {{ pagefoot(1 + map_pages + a.pages|length + 1, total_pages) }}
+</section>
+{% endif %}
+
 {# ================================================================ CLOSING SHEET #}
 <section class="sheet">
   {{ runhead('Where this leaves you') }}
@@ -515,7 +735,7 @@
 
   <div class="prog">
     <div class="cap">
-      <span class="eyebrow">{% if prev %}Flight {{ prev.flight_number }} → flight {{ flight.flight_number }}{% else %}Baseline — flight {{ flight.flight_number }} of {{ flight.flights_planned }}{% endif %}</span>
+      <span class="eyebrow">{% if prev %}Flight {{ prev.flight_number }} to flight {{ flight.flight_number }}{% else %}Baseline — flight {{ flight.flight_number }} of {{ flight.flights_planned }}{% endif %}</span>
     </div>
     <div class="body">
       {% if prev %}
@@ -545,6 +765,14 @@
       </p>
       {% endif %}
 
+      {% if season and season.spark %}
+      <p class="say" style="font-size:10px;margin-top:9px !important;padding-top:9px">
+        Across the season so far this field has scored between <b>{{ season.worst.score }}</b> and
+        <b>{{ season.best.score }}</b> over {{ season.flights_scored }} flights, and is
+        <b>{{ season.verdict }}</b>. The previous page tracks that flight by flight.
+      </p>
+      {% endif %}
+
       {% if a.total_acres %}
       <p class="mono" style="font-size:8px;font-weight:600;color:#9A9A9A;margin-top:9px;line-height:1.5">
         HOW THE SCORE IS WORKED OUT: the share of your {{ a.ac(a.total_acres) }} acres in good shape, counting watch zones at 55% and zones needing action at 0%.
@@ -570,6 +798,10 @@
     <div class="who">Acre Insights &middot; Nature meets intelligence</div>
   </div>
 
+  {% if flight.dronedeploy_project_url and not map_src %}
+  {{ ddlink() }}
+  {% endif %}
+
   <table class="contact"><tr>
     <td>
       <div class="l">Prepared for</div>
@@ -587,12 +819,12 @@
   <div class="no-print" style="margin-top:12px;text-align:center" id="ackArea">
     {% if flight.acknowledged %}
     <div style="display:inline-block;background:#E7F1DB;color:#3E7A24;border-radius:9px;padding:11px 18px;font-size:11.5px;font-weight:800">
-      ✓ You confirmed you received this on {{ flight.acknowledged_at.strftime('%d %b %Y') if flight.acknowledged_at else 'file' }}
+      {{ tick('#3E7A24', 12) }} You confirmed you received this on {{ flight.acknowledged_at.strftime('%d %b %Y') if flight.acknowledged_at else 'file' }}
     </div>
     {% else %}
     <button type="button" onclick="acknowledge()"
             style="background:#B0D48C;color:#030920;border:0;border-radius:9px;padding:12px 22px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit">
-      ✓ Confirm you received this report
+      {{ tick('#030920', 13) }} Confirm you received this report
     </button>
     <p style="font-size:9px;color:#6C6C6C;margin-top:6px !important">One tap. It tells your agronomist the report reached you.</p>
     {% endif %}

@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}SHAMBA Tracker{% endblock %} · Acre Insights</title>
+<title>{% block full_title %}{% block title %}SHAMBA Tracker{% endblock %} · Acre Insights{% endblock %}</title>
+<meta name="description" content="{% block meta_description %}Field scouting reports by Acre Insights.{% endblock %}">
 <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='img/favicon.ico') }}">
 <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
 <link rel="icon" type="image/png" sizes="256x256" href="{{ url_for('static', filename='img/favicon-256.png') }}">
@@ -96,17 +97,20 @@
   document.querySelectorAll('#flashwrap [data-cat="ok"]').forEach(function(el){
     setTimeout(function(){ el.style.transition='opacity .5s'; el.style.opacity='0'; setTimeout(function(){ el.remove(); }, 500); }, 5000);
   });
-       // Disable right-click and keyboard shortcuts
-document.addEventListener('contextmenu', event => event.preventDefault());
-document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
-        e.preventDefault();
-    }
-});
 </script>
 {% endif %}
 {% endwith %}
 
 {% block body %}{% endblock %}
+
+<script>
+  // Disable right-click and keyboard shortcuts
+  document.addEventListener('contextmenu', event => event.preventDefault());
+  document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
+          e.preventDefault();
+      }
+  });
+</script>
 </body>
 </html>

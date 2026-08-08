@@ -6,3 +6,9 @@ instance/
 uploads/*
 !uploads/.gitkeep
 .DS_Store
+uploads/.cache/
+uploads/*.pdf
+
+# Local tooling, not part of the application
+scripts/
+git-autocommit.sh

@@ -4,6 +4,12 @@
 {% block heading %}Farms &amp; flights{% endblock %}
 {% block subheading %}<p class="text-[12.5px] text-dove">{{ farms|length }} farm{{ '' if farms|length==1 else 's' }} on record.</p>{% endblock %}
 {% block topbar_actions %}
+{% if can('manage_farms') %}
+<a href="{{ url_for('import_home', kind='farms') }}"
+   class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition">
+  {{ icon('upload','w-4 h-4') }} <span class="hidden sm:inline">Import</span>
+</a>
+{% endif %}
 <button onclick="document.getElementById('addFarm').showModal()"
         class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition">
   {{ icon('plus','w-4 h-4') }} <span class="hidden sm:inline">Add farm</span>

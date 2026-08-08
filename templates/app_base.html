@@ -36,6 +36,14 @@
                  matches=['dashboard_admin','dashboard_agronomist','dashboard_cs','dashboard_operator']) }}
       {{ navlink('farms', 'Farms & flights', 'farm',
                  matches=['farm_detail','flight_detail','flight_report']) }}
+      {% if can('manage_farms') %}
+      {{ navlink('import_home', 'Import', 'upload',
+                 matches=['import_preview','import_apply']) }}
+      {% endif %}
+      {% if can('manage_homepage') %}
+      {{ navlink('homepage_edit', 'Homepage', 'edit',
+                 matches=['homepage_save','homepage_image','homepage_reset']) }}
+      {% endif %}
       {% if current_user.role == 'admin' %}
       {{ navlink('users', 'People', 'users', badge=pending_count) }}
       {% endif %}
@@ -99,12 +107,5 @@
   window.addEventListener('resize', function(){
     if(window.innerWidth >= 1024){ document.body.style.overflow=''; }
   });
-       // Disable right-click and keyboard shortcuts
-document.addEventListener('contextmenu', event => event.preventDefault());
-document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
-        e.preventDefault();
-    }
-});
 </script>
 {% endblock %}

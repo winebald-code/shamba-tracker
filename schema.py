@@ -21,7 +21,8 @@ from sqlalchemy import inspect, text
 
 # table -> column -> DDL fragment used when the column is missing.
 # Types are written in a dialect-neutral way that both SQLite and PostgreSQL
-# accept, and every entry has a DEFAULT so existing rows get a sane value.
+# accept — note BOOLEAN DEFAULT FALSE rather than DEFAULT 0, which PostgreSQL
+# rejects as an integer default on a boolean column — and every entry has a DEFAULT so existing rows get a sane value.
 ADDITIONS = {
     "users": {
         "phone":          "VARCHAR(60) DEFAULT ''",
@@ -35,16 +36,24 @@ ADDITIONS = {
         "decision_note":  "TEXT DEFAULT ''",
         "last_login_at":  "TIMESTAMP NULL",
     },
+    "findings": {
+        # Customer success records what the farmer said back about a finding,
+        # usually when the farmer's own knowledge of the field disagrees with
+        # what was reported. Internal only; it never reaches the report.
+        "farmer_comment":       "TEXT DEFAULT ''",
+        "farmer_comment_at":    "TIMESTAMP NULL",
+        "farmer_comment_by_id": "INTEGER NULL",
+    },
     "flights": {
         "delivery_method":  "VARCHAR(40) DEFAULT ''",
         # share_token drives the farmer's report link. A database that predates
         # it fails every Flight query without this entry, and a row that has the
         # column but no value hands out /r/None — see backfill_share_tokens().
         "share_token":      "VARCHAR(48) NULL",
-        "sent_email":       "BOOLEAN DEFAULT 0",
-        "sent_whatsapp":    "BOOLEAN DEFAULT 0",
+        "sent_email":       "BOOLEAN DEFAULT FALSE",
+        "sent_whatsapp":    "BOOLEAN DEFAULT FALSE",
         "sent_at":          "TIMESTAMP NULL",
-        "acknowledged":     "BOOLEAN DEFAULT 0",
+        "acknowledged":     "BOOLEAN DEFAULT FALSE",
         "acknowledged_at":  "TIMESTAMP NULL",
         "report_pdf":       "VARCHAR(300) DEFAULT ''",
         "agronomist_note":  "TEXT DEFAULT ''",

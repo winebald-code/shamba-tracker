@@ -5,7 +5,11 @@ A product of Acre Insights.
 Flask + SQLite/Postgres + Tailwind (CDN) + vanilla JS. Ready for Railway (see Dockerfile).
 Run locally:  python app.py     (creates the DB and seeds the first admin)
 """
+import io
+import json
+import mimetypes
 import os
+from contextlib import contextmanager
 from datetime import datetime, date, timedelta
 from functools import wraps
 
@@ -15,19 +19,26 @@ from flask_login import (LoginManager, login_user, logout_user, login_required,
                          current_user)
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
-from sqlalchemy.exc import IntegrityError, OperationalError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError, OperationalError
 
-from models import (db, User, Farm, Flight, Finding, ROLES, ROLE_LABELS,
+from models import (db, User, Farm, Flight, Finding, SiteContent, ROLES, ROLE_LABELS,
                     ROLE_BLURB, ROLE_DASHBOARD, STATUS_LABELS, slugify)
 import parsing
 import integrations
 import pdf_gen
 import report_data
 import schema
+import bulk_import
+import homepage
+import storage as storage_backend
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Where uploads and generated reports actually live. Local disk by default;
+# object storage when the S3 variables are set, so files survive a redeploy.
+STORE = storage_backend.build_storage(UPLOAD_DIR)
 
 ALLOWED_CSV = {".csv"}
 ALLOWED_IMG = {".png", ".jpg", ".jpeg", ".webp"}
@@ -35,11 +46,15 @@ ALLOWED_IMG = {".png", ".jpg", ".jpeg", ".webp"}
 # Who may do what. Everything not listed here is open to any signed-in user.
 PERMISSIONS = {
     "manage_users":   {"admin"},
+    "manage_homepage": {"admin"},
     "manage_farms":   {"admin", "agronomist", "field_operator"},
     "manage_flights": {"admin", "agronomist", "field_operator"},
     "edit_findings":  {"admin", "agronomist"},
     "generate_report": {"admin", "agronomist"},
     "deliver_report": {"admin", "agronomist", "customer_success"},
+    # Customer success takes the farmer's call, so they own the farmer comment
+    # even though they cannot edit the finding itself.
+    "record_farmer_comment": {"admin", "agronomist", "customer_success"},
 }
 
 
@@ -88,6 +103,10 @@ def create_app():
             "pending_count": _pending_count(),
             "now": datetime.utcnow(),
             "PDF_AVAILABLE": pdf_gen.PDF_AVAILABLE,
+            "site": site_content(),
+            "split_lines": homepage.split_lines,
+            "rich": homepage.rich,
+            "asset_url": asset_url,
         }
 
     if pdf_gen.PDF_AVAILABLE:
@@ -205,8 +224,11 @@ def _save_upload(file_storage, prefix, allowed):
     if ext not in allowed:
         return None, f"Unsupported file type: {ext or 'unknown'}"
     name = secure_filename(f"{prefix}_{int(datetime.utcnow().timestamp())}{ext}")
-    path = os.path.join(UPLOAD_DIR, name)
-    file_storage.save(path)
+    try:
+        file_storage.stream.seek(0)
+        STORE.save_fileobj(file_storage.stream, name)
+    except Exception as exc:
+        return None, f"Could not store the file: {exc}"
     return name, None
 
 
@@ -229,7 +251,7 @@ def _float(v):
 
 
 def report_context(flight):
-    """Everything the report template needs, incl. prior-flight comparison."""
+    """Everything the report template needs, incl. the season-to-date trend."""
     # Any route that renders a report may also be about to hand its link out,
     # so this is the right place to make sure the link exists at all.
     if flight.ensure_share_token():
@@ -238,15 +260,24 @@ def report_context(flight):
         except Exception:
             db.session.rollback()
 
-    prev = (Flight.query
-            .filter_by(farm_id=flight.farm_id, season=flight.season,
-                       flight_number=flight.flight_number - 1)
-            .first())
+    # Every flight of this farm and season, so the report can show the season
+    # so far rather than only the flight before this one.
+    season_flights = (Flight.query
+                      .filter_by(farm_id=flight.farm_id, season=flight.season)
+                      .order_by(Flight.flight_number)
+                      .all())
+
+    prev = next((f for f in season_flights
+                 if f.flight_number == (flight.flight_number or 0) - 1), None)
     resolved = still_open = prev_total = None
     if prev:
         prev_total = len(prev.findings)
         resolved = sum(1 for f in flight.findings if f.resolved)
         still_open = len(flight.findings) - resolved
+
+    analysis = report_data.analyse(flight, prev)
+    points = report_data.season_trend(flight, season_flights)
+    season = report_data.season_summary(points, analysis["score"]) if points else None
 
     return {
         "flight": flight,
@@ -258,7 +289,9 @@ def report_context(flight):
         "prev_total": prev_total,
         "resolved": resolved,
         "still_open": still_open,
-        "a": report_data.analyse(flight, prev),
+        "a": analysis,
+        "season": season,
+        "season_flights": season_flights,
         "next_flight_no": flight.flight_number + 1,
     }
 
@@ -269,7 +302,10 @@ def register_routes(app):
     # ---- landing ----
     @app.route("/")
     def home():
-        if current_user.is_authenticated:
+        # A signed-in user lands on their dashboard rather than the sales page.
+        # `?preview=1` opts out of that, so an admin editing the homepage can
+        # open it in a new tab and see what a visitor sees without signing out.
+        if current_user.is_authenticated and not request.args.get("preview"):
             return redirect(url_for("dashboard"))
         return render_template("home.html")
 
@@ -583,6 +619,215 @@ def register_routes(app):
         flash("Farm removed.", "ok")
         return redirect(url_for("farms"))
 
+    # ---- homepage content ----
+    @app.route("/homepage")
+    @requires("manage_homepage")
+    def homepage_edit():
+        rows = {r.key: r for r in SiteContent.query.all()}
+        return render_template("homepage_edit.html",
+                               sections=homepage.SECTIONS,
+                               values=site_content(),
+                               defaults=homepage.DEFAULTS,
+                               rows=rows)
+
+    @app.route("/homepage/save", methods=["POST"])
+    @requires("manage_homepage")
+    def homepage_save():
+        """
+        Save the edited values.
+
+        A field is stored only when it differs from the default, and a row is
+        deleted when it returns to the default, so the table holds the changes
+        rather than a full copy of the page. That keeps a later release free to
+        reword an untouched default and have the change actually show.
+        """
+        changed = 0
+        rows = {r.key: r for r in SiteContent.query.all()}
+        for key, default in homepage.DEFAULTS.items():
+            if key not in request.form:
+                continue                       # a section posted on its own
+            value = request.form.get(key, "").replace("\r\n", "\n").strip()
+            row = rows.get(key)
+            if value == default.strip():
+                if row:
+                    db.session.delete(row)
+                    changed += 1
+                continue
+            if row:
+                if row.value != value:
+                    row.value = value
+                    row.updated_by_id = current_user.id
+                    changed += 1
+            else:
+                db.session.add(SiteContent(key=key, value=value,
+                                           updated_by_id=current_user.id))
+                changed += 1
+        db.session.commit()
+        flash(f"Homepage updated — {changed} field(s) changed." if changed
+              else "Nothing changed.", "ok" if changed else "warn")
+        return redirect(url_for("homepage_edit") + "#" + request.form.get("section", ""))
+
+    @app.route("/homepage/image/<key>", methods=["POST"])
+    @requires("manage_homepage")
+    def homepage_image(key):
+        """Replace one of the homepage images with an upload."""
+        if key not in homepage.IMAGE_KEYS:
+            abort(404)
+        file = request.files.get("image")
+        if not file or not file.filename:
+            flash("Choose an image to upload.", "warn")
+            return redirect(url_for("homepage_edit"))
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in ALLOWED_IMG:
+            flash("That image type is not supported. Use PNG, JPG or WEBP.", "warn")
+            return redirect(url_for("homepage_edit"))
+
+        # Stored under a per-key name, so an upload replaces the previous one
+        # instead of leaving orphans behind on every edit. It goes to the same
+        # store as map snapshots rather than to static/, because static/ is part
+        # of the container image and is recreated on every deploy.
+        name = f"home-{key.replace('_', '-')}{ext}"
+        try:
+            file.stream.seek(0)
+            STORE.save_fileobj(file.stream, name)
+        except Exception as exc:
+            flash(f"Could not store that image: {exc}", "warn")
+            return redirect(url_for("homepage_edit"))
+        rel = f"uploads/{name}"
+
+        row = SiteContent.query.filter_by(key=key).first()
+        if row:
+            row.value = rel
+            row.updated_by_id = current_user.id
+        else:
+            db.session.add(SiteContent(key=key, value=rel, updated_by_id=current_user.id))
+        db.session.commit()
+        flash("Image replaced.", "ok")
+        return redirect(url_for("homepage_edit") + "#" + homepage.section_of(key))
+
+    @app.route("/homepage/reset", methods=["POST"])
+    @requires("manage_homepage")
+    def homepage_reset():
+        """Drop every saved value so the homepage returns to its shipped text."""
+        n = SiteContent.query.delete()
+        db.session.commit()
+        flash(f"Homepage reset to defaults — {n} saved field(s) cleared.", "ok")
+        return redirect(url_for("homepage_edit"))
+
+    # ---- bulk import of farms and flights ----
+    @app.route("/import")
+    @requires("manage_farms")
+    def import_home():
+        return render_template("import.html", kind=request.args.get("kind", "farms"),
+                               plans=None, summary=None, headers=None)
+
+    @app.route("/import/template/<kind>.csv")
+    @requires("manage_farms")
+    def import_template(kind):
+        """The starter sheet, with the exact headings the importer reads."""
+        if kind not in ("farms", "flights"):
+            abort(404)
+        body = bulk_import.template_csv(kind)
+        name = f"SHAMBA Tracker {kind} import template.csv"
+        return Response(body, mimetype="text/csv",
+                        headers={"Content-Disposition": _content_disposition(name)})
+
+    @app.route("/import/<kind>/preview", methods=["POST"])
+    @requires("manage_farms")
+    def import_preview(kind):
+        """
+        Read the upload and show what it would do. Nothing is written here —
+        a bulk change to farms or flights is worth seeing before it lands.
+        """
+        if kind not in ("farms", "flights"):
+            abort(404)
+        file = request.files.get("sheet")
+        if not file or not file.filename:
+            flash("Choose a CSV or Excel file to import.", "warn")
+            return redirect(url_for("import_home", kind=kind))
+
+        ext = os.path.splitext(file.filename)[1].lower()
+        if ext not in bulk_import.ALLOWED_EXTS:
+            flash("That file type can't be read. Upload a .csv, .xlsx or .xlsm file.", "warn")
+            return redirect(url_for("import_home", kind=kind))
+
+        try:
+            headers, rows = bulk_import.read_rows(file.read(), file.filename)
+        except Exception as exc:
+            flash(f"Could not read that file: {exc}", "warn")
+            return redirect(url_for("import_home", kind=kind))
+
+        if not rows:
+            flash("That file has a heading row but no data rows under it.", "warn")
+            return redirect(url_for("import_home", kind=kind))
+        if len(rows) > bulk_import.MAX_ROWS:
+            flash(f"That file has {len(rows)} rows. Split it into files of "
+                  f"{bulk_import.MAX_ROWS} rows or fewer.", "warn")
+            return redirect(url_for("import_home", kind=kind))
+
+        plans, problem = _plan_import(kind, headers, rows)
+        if problem:
+            flash(problem, "warn")
+            return redirect(url_for("import_home", kind=kind))
+
+        return render_template("import.html", kind=kind, plans=plans,
+                               summary=bulk_import.summarise(plans),
+                               headers=headers, filename=file.filename,
+                               payload=json.dumps({"kind": kind, "headers": headers,
+                                                   "rows": rows}))
+
+    @app.route("/import/<kind>/apply", methods=["POST"])
+    @requires("manage_farms")
+    def import_apply(kind):
+        """Write the rows the preview showed. Rows in error are skipped."""
+        if kind not in ("farms", "flights"):
+            abort(404)
+        try:
+            payload = json.loads(request.form.get("payload", ""))
+            headers, rows = payload["headers"], payload["rows"]
+            if payload.get("kind") != kind:
+                raise ValueError("kind mismatch")
+        except Exception:
+            flash("That import expired. Upload the file again.", "warn")
+            return redirect(url_for("import_home", kind=kind))
+
+        # Re-planned against the database as it is now, not as it was when the
+        # preview was drawn — another person may have added a farm in between.
+        plans, problem = _plan_import(kind, headers, rows)
+        if problem:
+            flash(problem, "warn")
+            return redirect(url_for("import_home", kind=kind))
+
+        created = updated = 0
+        for plan in plans:
+            if plan["action"] not in ("create", "update"):
+                continue
+            if kind == "farms":
+                created, updated = _apply_farm(plan, created, updated)
+            else:
+                created, updated = _apply_flight(plan, created, updated)
+
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            flash("The import clashed with a record that changed while you were "
+                  "reviewing it. Upload the file again.", "warn")
+            return redirect(url_for("import_home", kind=kind))
+
+        skipped = sum(1 for p in plans if p["action"] == "error")
+        noun = "farm" if kind == "farms" else "flight"
+        parts = []
+        if created:
+            parts.append(f"{created} {noun}{'' if created == 1 else 's'} added")
+        if updated:
+            parts.append(f"{updated} updated")
+        if skipped:
+            parts.append(f"{skipped} skipped")
+        flash("Import finished — " + (", ".join(parts) if parts else "nothing to do") + ".",
+              "ok" if (created or updated) else "warn")
+        return redirect(url_for("farms") if kind == "farms" else url_for("import_home", kind=kind))
+
     # ---- flights ----
     @app.route("/farms/<int:farm_id>/flights/new", methods=["POST"])
     @requires("manage_flights")
@@ -751,6 +996,44 @@ def register_routes(app):
                         "incomplete": f.flight.incomplete_count,
                         "can_generate": f.flight.can_generate})
 
+    @app.route("/findings/<int:finding_id>/comment", methods=["POST"])
+    @requires("record_farmer_comment")
+    def finding_comment(finding_id):
+        """
+        Record what the farmer said back about a finding.
+
+        Kept apart from finding_update because the two answer to different
+        permissions: customer success may record a farmer's words without being
+        able to edit the finding those words are about.
+
+        Saving here deliberately does NOT clear report_generated. The comment
+        never appears in the report, so the generated PDF is still an accurate
+        copy of what was sent, and invalidating it would force a pointless
+        regeneration and re-send.
+        """
+        f = db.get_or_404(Finding, finding_id)
+        data = request.get_json(force=True)
+        comment = (data.get("farmer_comment") or "").strip()
+        had = f.has_farmer_comment
+        f.farmer_comment = comment
+        if comment and not had:
+            f.farmer_comment_at = datetime.utcnow()
+            f.farmer_comment_by_id = current_user.id
+        elif comment:
+            f.farmer_comment_at = datetime.utcnow()
+            f.farmer_comment_by_id = current_user.id
+        else:
+            f.farmer_comment_at = None
+            f.farmer_comment_by_id = None
+        db.session.commit()
+        return jsonify({
+            "ok": True,
+            "has_comment": f.has_farmer_comment,
+            "recorded_by": (f.farmer_comment_by.name if f.farmer_comment_by else ""),
+            "recorded_at": (f.farmer_comment_at.strftime("%d %b %Y") if f.farmer_comment_at else ""),
+            "flagged": f.flight.farmer_comment_count,
+        })
+
     @app.route("/findings/<int:finding_id>/delete", methods=["POST"])
     @requires("edit_findings")
     def finding_delete(finding_id):
@@ -768,7 +1051,14 @@ def register_routes(app):
     def flight_generate(flight_id):
         flight = db.get_or_404(Flight, flight_id)
         if not flight.can_generate:
-            flash("Complete every finding first — each needs an observation, cause and recommendation.", "warn")
+            # Say which of the two is missing, rather than blaming the findings
+            # when it is the map that is absent.
+            if flight.incomplete_count or not flight.findings:
+                flash("Complete every finding first — each needs an observation, "
+                      "cause and recommendation.", "warn")
+            else:
+                flash("Upload the annotated map snapshot first — the report's findings "
+                      "are numbered against it.", "warn")
             return redirect(url_for("flight_detail", flight_id=flight.id))
         ok = _build_pdf(flight)
         flight.report_generated = True
@@ -1027,11 +1317,16 @@ def register_routes(app):
     # ---- serve uploaded images ----
     @app.route("/uploads/<path:name>")
     def uploaded(name):
+        # Streamed through the application rather than redirected to a signed
+        # URL, so the bucket stays private and a link embedded in a report can
+        # never expire.
         safe = secure_filename(name)
-        path = os.path.join(UPLOAD_DIR, safe)
-        if not os.path.exists(path):
+        data = STORE.read(safe)
+        if data is None:
             abort(404)
-        return send_file(path)
+        mime = mimetypes.guess_type(safe)[0] or "application/octet-stream"
+        return send_file(io.BytesIO(data), mimetype=mime,
+                         download_name=safe, max_age=3600)
 
     # ---- errors ----
     @app.errorhandler(403)
@@ -1048,6 +1343,132 @@ def register_routes(app):
     def too_large(e):
         return render_template("error.html", code=413,
                                msg="That file is larger than the 25 MB upload limit."), 413
+
+
+# ------------------------------------------------------------------ homepage
+def asset_url(value):
+    """
+    Resolve a homepage image to a URL.
+
+    A value shipped with the project ("img/hero-map.jpg") is served from static/.
+    One an admin has uploaded ("uploads/home-hero-image.png") is served from the
+    store, which is where it survives a redeploy.
+    """
+    value = (value or "").strip()
+    if value.startswith("uploads/"):
+        return url_for("uploaded", name=value[len("uploads/"):])
+    return url_for("static", filename=value)
+
+
+def site_content():
+    """
+    Homepage defaults overlaid with whatever an admin has saved.
+
+    Read on every request that renders a template, so it must not raise. A
+    database that predates the table (or is mid-migration) falls back to the
+    defaults rather than taking the public homepage down with it.
+    """
+    values = dict(homepage.DEFAULTS)
+    try:
+        for row in SiteContent.query.all():
+            if row.key in values and row.value is not None:
+                values[row.key] = row.value
+    except SQLAlchemyError:
+        # Only a database problem is tolerated here — a table that does not exist
+        # yet on a database mid-migration. Catching everything would hide a real
+        # bug behind a page that quietly renders its defaults.
+        db.session.rollback()
+    return values
+
+
+# ------------------------------------------------------------------ bulk import
+def _plan_import(kind, headers, rows):
+    """
+    Ask bulk_import what the sheet would do, handing it the lookups it needs.
+
+    The database work lives here so bulk_import stays query-free and testable
+    on plain data, the same way parsing.py and report_data.py do.
+    """
+    if kind == "farms":
+        existing = {f.name.strip().lower(): f.id
+                    for f in Farm.query.all() if (f.name or "").strip()}
+        return bulk_import.plan_farms(headers, rows, existing)
+
+    farms_by_name = {f.name.strip().lower(): f.id
+                     for f in Farm.query.all() if (f.name or "").strip()}
+    flight_keys = {(fl.farm_id, (fl.season or "").strip().lower(), fl.flight_number): fl.id
+                   for fl in Flight.query.all()}
+    return bulk_import.plan_flights(headers, rows, farms_by_name, flight_keys)
+
+
+def _set_if_given(obj, attr, raw, convert=None):
+    """
+    Write a value only when the cell had something in it.
+
+    A blank cell on an update means "leave this alone". A part-filled sheet is
+    how somebody fixes two phone numbers across forty farms, and treating those
+    blanks as deletions would quietly empty every other column.
+    """
+    if raw is None or str(raw).strip() == "":
+        return
+    setattr(obj, attr, convert(raw) if convert else str(raw).strip())
+
+
+def _apply_farm(plan, created, updated):
+    v = plan["fields"]
+    if plan["action"] == "create":
+        farm = Farm(name=v["name"].strip())
+        db.session.add(farm)
+        created += 1
+    else:
+        farm = db.session.get(Farm, plan["target_id"])
+        if farm is None:                       # deleted while the preview was open
+            return created, updated
+        updated += 1
+
+    for field in ("crop", "location", "farmer_name", "farmer_email",
+                  "farmer_phone", "dronedeploy_project_url", "notes"):
+        _set_if_given(farm, field, v.get(field))
+    _set_if_given(farm, "acreage", v.get("acreage"), bulk_import.clean_float)
+    return created, updated
+
+
+def _apply_flight(plan, created, updated):
+    v = plan["fields"]
+    farm = db.session.get(Farm, plan["farm_id"])
+    if farm is None:
+        return created, updated
+
+    if plan["action"] == "create":
+        flight = Flight(
+            farm_id=farm.id,
+            season=v["season"].strip(),
+            flight_number=bulk_import.clean_int(v.get("flight_number")),
+            # The same defaults the flight form applies, so a sheet that leaves
+            # these blank produces the flight the form would have produced.
+            flights_planned=bulk_import.clean_int(v.get("flights_planned")) or 1,
+            crop=(v.get("crop") or "").strip() or farm.crop,
+            acreage=bulk_import.clean_float(v.get("acreage")) or farm.acreage,
+            flight_date=bulk_import.clean_date(v.get("flight_date")),
+            dronedeploy_project_url=((v.get("dronedeploy_project_url") or "").strip()
+                                     or farm.dronedeploy_project_url),
+            status=bulk_import.clean_status(v.get("status")) or "Draft",
+        )
+        db.session.add(flight)
+        created += 1
+        return created, updated
+
+    flight = db.session.get(Flight, plan["target_id"])
+    if flight is None:
+        return created, updated
+    updated += 1
+    for field in ("crop", "dronedeploy_project_url"):
+        _set_if_given(flight, field, v.get(field))
+    _set_if_given(flight, "flights_planned", v.get("flights_planned"), bulk_import.clean_int)
+    _set_if_given(flight, "acreage", v.get("acreage"), bulk_import.clean_float)
+    _set_if_given(flight, "flight_date", v.get("flight_date"), bulk_import.clean_date)
+    _set_if_given(flight, "status", v.get("status"), bulk_import.clean_status)
+    return created, updated
 
 
 def _notify_admins_of_signup(u):
@@ -1089,12 +1510,20 @@ def _public_base():
 
 
 # ------------------------------------------------------------------ PDF glue
+@contextmanager
 def _map_path(flight):
-    if flight.map_image:
-        p = os.path.join(UPLOAD_DIR, flight.map_image)
-        if os.path.exists(p):
-            return p
-    return None
+    """
+    A real path to the flight's map for the duration of a render.
+
+    The renderer inlines the image as base64 and reads it from disk, so an
+    object stored remotely is written to a temporary file and removed again as
+    soon as the render is done.
+    """
+    if not flight.map_image:
+        yield None
+        return
+    with STORE.local_path(flight.map_image) as p:
+        yield p
 
 
 # Cached renders live below the uploads folder rather than in it: /uploads/<name>
@@ -1157,13 +1586,16 @@ def _pdf_bytes(flight, use_cache=True):
 
     try:
         logo = os.path.join(BASE_DIR, "static", "img", "acre-logo.png")
-        html = render_template("report_print.html",
-                               pdf=True, public=True, share=None,
-                               base_url=_public_base_safe(),
-                               logo_uri=pdf_gen.data_uri(logo),
-                               map_uri=pdf_gen.data_uri(_map_path(flight)),
-                               **report_context(flight))
-        data = pdf_gen.render_pdf(html, base_url=BASE_DIR)
+        # The map is held on disk only for the length of the render; with object
+        # storage it is a temporary file that is removed on the way out.
+        with _map_path(flight) as map_file:
+            html = render_template("report_print.html",
+                                   pdf=True, public=True, share=None,
+                                   base_url=_public_base_safe(),
+                                   logo_uri=pdf_gen.data_uri(logo),
+                                   map_uri=pdf_gen.data_uri(map_file),
+                                   **report_context(flight))
+            data = pdf_gen.render_pdf(html, base_url=BASE_DIR)
     except Exception as exc:                      # never 500 on a report download
         import traceback
         print("[pdf] render failed:", exc)
@@ -1202,9 +1634,8 @@ def _build_pdf(flight):
     data = _pdf_bytes(flight)
     if data is None:
         return False
-    name = f"{flight.slug}.pdf"          # ASCII-safe name for the uploads folder
-    with open(os.path.join(UPLOAD_DIR, name), "wb") as fh:
-        fh.write(data)
+    name = f"{flight.slug}.pdf"          # ASCII-safe name for the store
+    STORE.save_bytes(data, name)
     flight.report_pdf = name
     return True
 
@@ -1226,7 +1657,7 @@ def _content_disposition(filename):
 
 def _serve_pdf(flight, fallback_url):
     data = _pdf_bytes(flight)
-    filename = flight.report_filename          # Farm Name_Crop Name_Season Year.pdf
+    filename = flight.report_filename          # Farm Name_Crop Name_Season Year_Flight No.pdf
     if data is None:
         # Server-side PDF isn't available on this host. The report itself is the
         # same document WeasyPrint would have rendered, so the browser's own

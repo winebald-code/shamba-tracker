@@ -1,0 +1,28 @@
+# Keep shell scripts as LF everywhere. Git on Windows converts to CRLF on
+# checkout by default, and a CRLF shell script fails on Linux and macOS with a
+# "bad interpreter" error, which is exactly where this one is likely to run.
+*.sh text eol=lf
+
+# Text files git should normalise, so a Windows checkout does not show every
+# line as changed.
+*.py   text
+*.html text
+*.md   text
+*.txt  text
+*.csv  text
+*.json text
+*.cfg  text
+.gitignore     text
+.gitattributes text
+
+# Binary, so git never tries to normalise line endings inside them.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.webp binary
+*.ico  binary
+*.pdf  binary
+*.ttf  binary
+*.woff binary
+*.woff2 binary
+*.xlsx binary

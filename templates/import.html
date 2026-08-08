@@ -1,0 +1,149 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Import{% endblock %}
+{% block heading %}Import from a spreadsheet{% endblock %}
+{% block subheading %}<p class="text-[12.5px] text-dove">Add or update farms and flights in bulk from a CSV or Excel file.</p>{% endblock %}
+
+{% block content %}
+<a href="{{ url_for('farms') }}" class="inline-flex items-center gap-1.5 text-[12.5px] text-dove hover:text-ink mb-5 transition">← Farms &amp; flights</a>
+
+<!-- which kind -->
+<div class="flex items-center gap-2 mb-5">
+  {% for k, label, ic in [('farms','Farms','farm'), ('flights','Flights','drone')] %}
+  <a href="{{ url_for('import_home', kind=k) }}"
+     class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold transition
+            {{ 'bg-sage text-ink' if kind == k else 'glass-solid text-dove hover:border-dove' }}">
+    {{ icon(ic,'w-4 h-4') }} {{ label }}
+  </a>
+  {% endfor %}
+</div>
+
+{% if not plans %}
+<div class="grid lg:grid-cols-3 gap-5">
+  <div class="lg:col-span-2 glass-solid rounded-xl2 p-5">
+    <h3 class="text-[15px] font-bold flex items-center gap-2">{{ icon('upload','w-4 h-4') }} Upload your {{ kind }} sheet</h3>
+    <p class="text-[12.5px] text-dove mt-1.5 leading-relaxed">
+      Nothing is saved until you have seen what the file would do. You will get a row-by-row
+      preview first, with anything that needs fixing called out.
+    </p>
+
+    <form method="post" action="{{ url_for('import_preview', kind=kind) }}" enctype="multipart/form-data" class="mt-4">
+      <label class="block">
+        <input type="file" name="sheet" accept=".csv,.xlsx,.xlsm" required
+               class="block w-full text-[12.5px] text-dove file:mr-3 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12.5px] file:cursor-pointer cursor-pointer">
+      </label>
+      <div class="mt-4 flex items-center gap-3">
+        <button class="px-5 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition flex items-center gap-2">
+          {{ icon('arrow-right','w-4 h-4') }} Preview the import
+        </button>
+        <a href="{{ url_for('import_template', kind=kind) }}"
+           class="px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition flex items-center gap-2">
+          {{ icon('download','w-4 h-4') }} Download template
+        </a>
+      </div>
+    </form>
+  </div>
+
+  <div class="glass-solid rounded-xl2 p-5">
+    <h3 class="text-[14px] font-bold">How it matches</h3>
+    <dl class="mt-3 space-y-3 text-[12.5px] leading-relaxed">
+      {% if kind == 'farms' %}
+      <div><dt class="font-bold">By farm name</dt>
+        <dd class="text-dove">A name already on record is updated. A new name is added.</dd></div>
+      {% else %}
+      <div><dt class="font-bold">By farm + season + flight number</dt>
+        <dd class="text-dove">The same triple the new-flight form calls unique. A match is updated; anything else is added.</dd></div>
+      <div><dt class="font-bold">The farm must exist</dt>
+        <dd class="text-dove">Import your farms first — a flight row naming a farm that isn't on record is flagged, not guessed at.</dd></div>
+      {% endif %}
+      <div><dt class="font-bold">Blank cells are left alone</dt>
+        <dd class="text-dove">An empty cell on an update keeps whatever is already there, so a part-filled sheet never wipes a record.</dd></div>
+      <div><dt class="font-bold">Headings are flexible</dt>
+        <dd class="text-dove">Case, spacing and the usual synonyms all work — &ldquo;Farm name&rdquo;, &ldquo;farm_name&rdquo; and &ldquo;FARM&rdquo; all read the same.</dd></div>
+    </dl>
+  </div>
+</div>
+
+{% else %}
+<!-- preview -->
+<div class="glass-solid rounded-xl2 overflow-hidden">
+  <div class="px-5 py-4 border-b border-silver">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <h3 class="text-[15px] font-bold">Preview{% if filename %} · <span class="text-dove font-semibold">{{ filename }}</span>{% endif %}</h3>
+        <p class="text-[12px] text-dove mt-0.5">{{ summary.total }} row{{ '' if summary.total == 1 else 's' }} read. Nothing has been saved yet.</p>
+      </div>
+      <div class="flex items-center gap-4 shrink-0">
+        <div class="text-center">
+          <p class="text-[19px] font-extrabold tnum leading-none text-sagedeep">{{ summary.to_add }}</p>
+          <p class="text-[10.5px] text-dove font-semibold mt-1">to add</p>
+        </div>
+        <div class="text-center">
+          <p class="text-[19px] font-extrabold tnum leading-none">{{ summary.to_update }}</p>
+          <p class="text-[10.5px] text-dove font-semibold mt-1">to update</p>
+        </div>
+        <div class="text-center">
+          <p class="text-[19px] font-extrabold tnum leading-none" style="{{ 'color:#D64550' if summary.to_skip else '' }}">{{ summary.to_skip }}</p>
+          <p class="text-[10.5px] text-dove font-semibold mt-1">to skip</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if summary.to_skip %}
+  <div class="px-5 py-3 bg-[#FBEAEB] border-b border-[#F0C2C5] flex items-start gap-2.5">
+    <span style="color:#B3323C" class="shrink-0 mt-0.5">{{ icon('alert','w-4 h-4') }}</span>
+    <p class="text-[12.5px] leading-relaxed">
+      <b>{{ summary.to_skip }} row{{ '' if summary.to_skip == 1 else 's' }} will be skipped.</b>
+      Everything else still imports. Fix the rows below in your sheet and upload it again to bring them in.
+    </p>
+  </div>
+  {% endif %}
+
+  <div class="hidden lg:grid lg:grid-cols-[56px_110px_minmax(0,1fr)_minmax(0,1.4fr)] gap-3 px-5 py-3 border-b border-silver text-[10.5px] font-bold uppercase tracking-wider text-dove">
+    <div>Row</div><div>Action</div><div>{{ 'Farm' if kind == 'farms' else 'Flight' }}</div><div>Detail</div>
+  </div>
+
+  <div class="divide-y divide-silver max-h-[52vh] overflow-y-auto">
+    {% for p in plans %}
+    {% set tone = {'create':('#B0D48C','Add'), 'update':('#7FB65E','Update'), 'error':('#D64550','Skip')} %}
+    <div class="px-5 py-3 lg:grid lg:grid-cols-[56px_110px_minmax(0,1fr)_minmax(0,1.4fr)] lg:gap-3 lg:items-start border-l-4"
+         style="border-left-color: {{ tone[p.action][0] }}">
+      <div class="text-[12.5px] font-bold tnum text-dove">{{ p.row }}</div>
+      <div class="mt-1 lg:mt-0">
+        <span class="text-[11px] font-bold px-2.5 py-1 rounded-full"
+              style="background:{{ '#FBEAEB' if p.action == 'error' else '#E7F1DB' }};color:{{ '#B3323C' if p.action == 'error' else '#3E7A24' }}">
+          {{ tone[p.action][1] }}
+        </span>
+      </div>
+      <div class="text-[13px] font-semibold mt-1.5 lg:mt-0 break-words">{{ p.label }}</div>
+      <div class="text-[12px] mt-1 lg:mt-0 {{ '' if p.action == 'error' else 'text-dove' }}"
+           style="{{ 'color:#B3323C' if p.action == 'error' else '' }}">
+        {% if p.error %}{{ p.error }}
+        {% else %}
+          {% set shown = [] %}
+          {% for f, val in p['fields'].items() if val and f not in ('name', 'farm', 'season', 'flight_number') %}
+            {% if shown.append(1) %}{% endif %}{{ '· ' if not loop.first }}{{ val }}
+          {% endfor %}
+          {% if not shown %}<span class="text-dove/70">No other columns filled in</span>{% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="px-5 py-4 border-t border-silver flex items-center justify-end gap-3 flex-wrap">
+    <a href="{{ url_for('import_home', kind=kind) }}" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas transition">Cancel</a>
+    <form method="post" action="{{ url_for('import_apply', kind=kind) }}">
+      <input type="hidden" name="payload" value="{{ payload }}">
+      <button {% if not (summary.to_add or summary.to_update) %}disabled{% endif %}
+              class="px-5 py-2.5 rounded-xl text-[13px] font-bold transition flex items-center gap-2
+                     {{ 'bg-sage text-ink hover:bg-sage/80' if (summary.to_add or summary.to_update) else 'bg-canvas text-dove cursor-not-allowed' }}">
+        {{ icon('check','w-4 h-4') }}
+        Import {{ summary.to_add + summary.to_update }} row{{ '' if (summary.to_add + summary.to_update) == 1 else 's' }}
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -70,6 +70,53 @@
   </div>
 </div>
 
+{# Season to date — the same trend the report carries, so the agronomist sees
+   where this flight sits before generating anything. #}
+{% if ctx.season and ctx.season.spark %}
+{% set s = ctx.season %}
+{% set sp = s.spark %}
+<div class="glass-solid rounded-xl2 p-5 mb-5">
+  <div class="flex items-start justify-between gap-4 flex-wrap">
+    <div>
+      <h3 class="text-[14px] font-bold flex items-center gap-2">{{ icon('chart','w-4 h-4') }} Season to date</h3>
+      <p class="text-[12px] text-dove mt-1.5">{{ s.flights_scored }} flight{{ '' if s.flights_scored == 1 else 's' }} of {{ flight.season }} with findings · field health is {{ s.verdict }}.</p>
+    </div>
+    <div class="flex items-center gap-5 shrink-0">
+      <div>
+        <p class="text-[20px] font-extrabold tnum leading-none {{ 'text-sagedeep' if s.swing > 0 else ('text-dove' if s.swing == 0 else '') }}"
+           style="{{ 'color:#D64550' if s.swing < 0 }}">{{ '+' if s.swing > 0 }}{{ s.swing }}</p>
+        <p class="text-[10.5px] text-dove font-semibold mt-1">since flight {{ s.first.number }}</p>
+      </div>
+      <div>
+        <p class="text-[20px] font-extrabold tnum leading-none">{{ s.average }}</p>
+        <p class="text-[10.5px] text-dove font-semibold mt-1">season average</p>
+      </div>
+      <div>
+        <p class="text-[20px] font-extrabold tnum leading-none text-sagedeep">{{ s.closed }}</p>
+        <p class="text-[10.5px] text-dove font-semibold mt-1">zones closed</p>
+      </div>
+    </div>
+  </div>
+
+  <svg viewBox="0 0 {{ sp.w }} {{ sp.h }}" preserveAspectRatio="none" class="w-full mt-4" style="height:58px">
+    <path d="{{ sp.area }}" fill="#7FB65E" fill-opacity="0.12"/>
+    <path d="{{ sp.line }}" fill="none" stroke="#7FB65E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    {% for p in sp.points %}
+    <circle cx="{{ p.x }}" cy="{{ p.y }}" r="{{ 4.2 if p.is_current else 3 }}"
+            fill="#fff" stroke="#7FB65E" stroke-width="{{ 2.4 if p.is_current else 1.8 }}"/>
+    {% endfor %}
+  </svg>
+  <div class="flex mt-1">
+    {% for p in sp.points %}
+    <div class="flex-1 text-center">
+      <span class="block text-[11px] font-bold tnum {{ 'text-ink' if p.is_current else 'text-dove' }}">{{ p.score }}</span>
+      <span class="block text-[10px] tnum {{ 'text-ink font-bold' if p.is_current else 'text-dove' }}">F{{ p.number }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <!-- completeness banner -->
 <div id="banner" class="rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3
      {{ 'bg-sagesoft border border-sage/50' if flight.can_generate else 'glass-solid' }}">
@@ -78,8 +125,9 @@
   </span>
   <p id="bannerText" class="text-[13px] font-semibold">
     {% if not flight.findings %}Import a DroneDeploy CSV to load the annotations, or add findings by hand.
-    {% elif flight.can_generate %}All {{ flight.findings|length }} findings are complete. You can generate the report.
-    {% else %}<span id="incCount">{{ flight.incomplete_count }}</span> of {{ flight.findings|length }} findings still need an observation, likely cause and recommendation.{% endif %}
+    {% elif flight.can_generate %}All {{ flight.findings|length }} findings are complete and the map is uploaded. You can generate the report.
+    {% elif flight.incomplete_count %}<span id="incCount">{{ flight.incomplete_count }}</span> of {{ flight.findings|length }} findings still need an observation, likely cause and recommendation.{% if not flight.map_image %} The map snapshot is missing too.{% endif %}
+    {% else %}All {{ flight.findings|length }} findings are complete. Upload the annotated map snapshot to generate the report.{% endif %}
   </p>
 </div>
 
@@ -105,7 +153,7 @@
     {% for f in flight.findings %}
     <div id="f{{ f.id }}" data-fid="{{ f.id }}"
          class="finding-row {{ '' if f.is_complete else 'incomplete' }} p-4 lg:p-0 lg:px-5 lg:py-3
-                border-l-4 lg:border-l-0 lg:grid lg:grid-cols-[44px_118px_64px_150px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px] lg:gap-3 lg:items-start transition"
+                border-l-4 lg:border-l-0 lg:grid lg:grid-cols-[44px_118px_64px_150px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px] lg:gap-x-3 lg:gap-y-0 lg:items-start transition"
          style="border-left-color: {{ '#B0D48C' if f.is_complete else '#D64550' }}">
 
       <!-- MOBILE meta row (pin · colour · area · actions) -->
@@ -165,6 +213,29 @@
           <button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Delete">{{ icon('trash','w-4 h-4') }}</button>
         </form>
       </div>
+
+      <!-- Farmer comment — internal only, never printed in the report -->
+      {% if can('record_farmer_comment') %}
+      <div class="mt-2.5 lg:mt-0 lg:col-span-8 lg:pt-2.5 lg:border-t lg:border-silver/70">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-[10px] font-bold uppercase tracking-wider text-dove">Farmer comment</span>
+          <span class="fc-meta text-[10.5px] text-dove ml-auto">
+            {%- if f.has_farmer_comment and f.farmer_comment_at %}
+              Recorded by {{ f.farmer_comment_by.name if f.farmer_comment_by else 'a colleague' }}
+              on {{ f.farmer_comment_at.strftime('%d %b %Y') }}
+            {%- endif %}
+          </span>
+        </div>
+        <textarea data-comment="{{ f.id }}" rows="2"
+                  placeholder="What did the farmer say back? Record it here if their knowledge of the field differs from this finding."
+                  class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.farmer_comment }}</textarea>
+      </div>
+      {% elif f.has_farmer_comment %}
+      <div class="mt-2.5 lg:mt-0 lg:col-span-8 lg:pt-2.5 lg:border-t lg:border-silver/70">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-dove">Farmer comment</span>
+        <p class="text-[12.5px] leading-snug mt-1">{{ f.farmer_comment }}</p>
+      </div>
+      {% endif %}
     </div>
     {% endfor %}
   </div>
@@ -217,21 +288,30 @@
     row.classList.toggle('incomplete', !complete);
   }
 
+  const HAS_MAP = {{ 'true' if flight.map_image else 'false' }};
+
   function setBanner(incomplete, total){
     const banner = document.getElementById('banner');
     const bt = document.getElementById('bannerText');
     const bi = document.getElementById('bannerIcon');
     const genBtn = document.getElementById('genBtn');
-    const canGenerate = total > 0 && incomplete === 0;
+    // The map is part of the gate, so completing the last finding does not by
+    // itself mean the report can be generated.
+    const hasMap = HAS_MAP;
+    const canGenerate = total > 0 && incomplete === 0 && hasMap;
     if (!banner) return;
     if (total === 0){
       banner.className = 'rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3 glass-solid';
       bi.className = 'text-dove'; bi.innerHTML = ALERT;
       bt.innerHTML = 'Import a DroneDeploy CSV to load the annotations, or add findings by hand.';
+    } else if (incomplete === 0 && !hasMap){
+      banner.className = 'rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3 glass-solid';
+      bi.className = 'text-dove'; bi.innerHTML = ALERT;
+      bt.innerHTML = `All ${total} findings are complete. Upload the annotated map snapshot to generate the report.`;
     } else if (canGenerate){
       banner.className = 'rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3 bg-sagesoft border border-sage/50';
       bi.className = 'text-sagedeep'; bi.innerHTML = CHECK;
-      bt.innerHTML = `All ${total} findings are complete. You can generate the report.`;
+      bt.innerHTML = `All ${total} findings are complete and the map is uploaded. You can generate the report.`;
     } else {
       banner.className = 'rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3 glass-solid';
       bi.className = 'text-dove'; bi.innerHTML = ALERT;
@@ -272,9 +352,38 @@
     }, 500);
   }
 
+  // The farmer comment saves to its own endpoint: it answers to a different
+  // permission and, unlike the finding fields, must not invalidate a report
+  // that has already been generated and sent.
+  const COMMENT_URL = fid => `/findings/${fid}/comment`;
+  function persistComment(el){
+    const fid = el.dataset.comment;
+    clearTimeout(timers['c'+fid]);
+    timers['c'+fid] = setTimeout(() => {
+      fetch(COMMENT_URL(fid), {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ farmer_comment: el.value })
+      })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        const meta = el.closest('div').querySelector('.fc-meta');
+        if (meta) meta.textContent = d.has_comment && d.recorded_by
+          ? `Recorded by ${d.recorded_by} on ${d.recorded_at}` : '';
+      })
+      .catch(e => console.error('comment save failed', e));
+    }, 600);
+  }
+
   document.querySelectorAll('.cell').forEach(el => {
     const ev = el.tagName === 'SELECT' ? 'change' : 'input';
-    el.addEventListener(ev, () => { recount(); persist(el); });
+    // A comment is not one of the three fields completeness is measured on, so
+    // it neither recounts nor goes to the finding endpoint.
+    if (el.dataset.comment){
+      el.addEventListener('input', () => persistComment(el));
+    } else {
+      el.addEventListener(ev, () => { recount(); persist(el); });
+    }
     if (el.tagName === 'TEXTAREA'){
       const grow = () => { el.style.height='auto'; el.style.height=(el.scrollHeight)+'px'; };
       el.addEventListener('input', grow); grow();

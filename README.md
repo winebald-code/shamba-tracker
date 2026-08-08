@@ -15,9 +15,11 @@ Built with Flask · SQLite · Tailwind CSS · vanilla JS · WeasyPrint. Ready fo
 1. **Farms & flights** — keep a record of each farm, its farmer contact, and every scouting flight (unique by *farm + season + flight number*).
 2. **Import** — upload the DroneDeploy annotation **CSV**; SHAMBA Tracker parses each pin, classifies its colour into the Acre colour code, normalises the area, and splits the comment into *observation / likely cause / recommendation*.
 3. **Review portal** — complete and correct every finding inline. The report can only be generated once all findings are complete.
-4. **Generate** — one click produces the branded report (web + **PDF**), named `Farm Name_Crop Name_Season Year.pdf`.
+4. **Generate** — one click produces the branded report (web + **PDF**), named `Farm Name_Crop Name_Season Year_Flight No.pdf`. A report needs both complete findings and the annotated map snapshot: the findings are numbered against the map, so without it they point at nothing.
 5. **Deliver** — send by email (report attached) and WhatsApp (link), with a message in Acre's voice.
 6. **Acknowledge** — the farmer opens a tokenised public link, reads the report, and taps to confirm receipt — logged back to the dashboard.
+7. **Bulk import** — add or update farms and flights in batches from a CSV or Excel sheet, with a row-by-row preview before anything is written.
+8. **Record the reply** — when a farmer disputes a finding, customer success logs what they said against that finding. Internal only; it never reaches the report.
 
 ### The annotation colour code
 | Colour | Meaning |
@@ -46,9 +48,10 @@ Open http://localhost:5000
 On first run the database is created and the **first admin is seeded**:
 
 - **Email:** `cathy@acre-insights.com`
-- **Password:** `AcreInsights2026`
+- **Password:** `Access Denied`
 
-(Override with `ADMIN_EMAIL` / `ADMIN_PASSWORD` env vars.)
+(The seeded password is not published here. Set `ADMIN_PASSWORD` before the first
+run to choose it, and `ADMIN_EMAIL` to change the address.)
 
 > **PDF note:** WeasyPrint needs system libraries (Pango/Cairo). If they're not
 > installed locally, the app still runs — it falls back to the print-friendly
@@ -60,6 +63,21 @@ A sample DroneDeploy export and annotated map are in `samples/`. Create a farm
 and a flight, upload `samples/sample_dronedeploy_export.csv`, then
 `samples/sample_annotated_map.jpg` as the map — complete the findings and
 generate.
+
+### Running the checks
+Each suite is a plain script against a throwaway SQLite database and a real
+Flask test client, so the templates actually render. Run them individually:
+
+```bash
+python tests/test_flow.py       # signup, roles, farms, flights, delivery
+python tests/test_report.py     # report links, caching, screen/paper parity
+python tests/test_filename.py   # the download name and the on-disk slug
+python tests/test_season.py     # the season trend across flights
+python tests/test_import.py     # CSV/Excel import of farms and flights
+python tests/test_homepage.py   # admin-managed homepage content
+python tests/test_farmer_comment.py   # the farmer's reply, and its isolation
+python tests/test_generate_gate.py    # what a report needs before it generates
+```
 
 ---
 
@@ -117,6 +135,74 @@ New public sign-ups become Agronomists (the very first ever account becomes Admi
 
 ---
 
+## Editing the homepage
+
+**Homepage** in the sidebar (admins only) edits every word on the public site:
+titles, headings, paragraphs, button labels, the six steps, the delivery bullet
+lists, the sample report, the footer, and the background images. Changes are
+live as soon as you save. *View homepage* opens the public page in a new tab —
+signing in normally redirects you to your dashboard, so the button adds
+`?preview=1` to bypass that without signing out.
+
+Two rules make it safe to leave alone:
+
+* **A field you have not edited keeps its shipped wording.** Only changed
+  fields are stored, so a later release that rewords an untouched default
+  actually shows that change instead of being masked by a stale copy.
+* **Returning a field to its default removes it from storage**, and *Reset all
+  to defaults* returns the whole page to the wording it shipped with.
+
+Repeating blocks — the steps, the bullet lists, the sample findings — are edited
+one item per line, with `|` between the parts of an item. A malformed line costs
+that one item rather than the page. In paragraph fields, `**double asterisks**`
+make text bold; everything else is escaped, so nothing typed into the editor can
+inject markup.
+
+## Recording what the farmer said back
+
+Sometimes a farmer's own knowledge of a field disagrees with a finding. On the
+flight's review page, customer success can record their reply against the
+individual finding it concerns.
+
+This is deliberately internal. The report is the record of what was advised, and
+a farmer disputing that advice is a note *about* it rather than part of it — so
+the comment appears nowhere in the web report, the farmer's share link, or the
+PDF. Saving one also does not invalidate a report that has already been
+generated and sent, because the PDF is still an accurate copy of what went out.
+
+Recording a comment needs the `record_farmer_comment` permission, which customer
+success holds without being able to edit the finding itself.
+
+## Importing farms and flights in bulk
+
+**Import** in the sidebar takes a `.csv`, `.xlsx` or `.xlsm` sheet and adds or
+updates farms and flights in batches. Nothing is written until you have seen a
+row-by-row preview of what the file would do, and a **template** for each kind
+is downloadable from that page with the exact headings the importer reads.
+
+Four rules are worth knowing before you upload:
+
+* **Matching follows the app's own keys.** A farm is matched on its name; a
+  flight on *farm + season + flight number*, the same triple the new-flight form
+  calls unique. A match updates the record; anything else creates one.
+* **The farm must already exist** before its flights are imported. A flight row
+  naming an unknown farm is flagged rather than guessed at, so a typo cannot
+  quietly create a second farm.
+* **A blank cell leaves the value alone.** A part-filled sheet is how you correct
+  two phone numbers across forty farms, so blanks are never read as deletions.
+  To clear a field, edit the record directly.
+* **A bad row is skipped, not fatal.** Each row is validated on its own and any
+  problem names the cell at fault. Everything valid still imports; fix the
+  flagged rows in your sheet and upload it again.
+
+Headings are matched loosely — case, spacing, punctuation and the common
+synonyms all work, so `Farm name`, `farm_name` and `FARM` read the same, as do
+`Acreage` / `Acres` / `Size` and `Phone` / `WhatsApp` / `Mobile`. Dates are
+accepted as `2026-03-14`, `14/03/2026` and several other common forms.
+
+Excel support needs `openpyxl` (already in `requirements.txt`). Without it the
+app still runs and CSV import still works; the upload page says so.
+
 ## The report
 
 The report is one document, `templates/report_doc.html`, composed as real A4
@@ -138,13 +224,24 @@ Two things hold that guarantee up:
 * **Findings are paginated in Python** (`report_data.paginate`), not left to the
   renderer, so a card is never split and both engines break in the same places.
 
-**Download** produces a real file named `Farm Name_Crop Name_Season Year.pdf` —
+**Download** produces a real file named `Farm Name_Crop Name_Season Year_Flight No.pdf` —
 `Content-Disposition: attachment` plus a matching `download` attribute on the
 link, so it saves straight to disk with no viewer tab and no Save-as dialog.
 Renders take about a second, so each one is cached against a key derived from
 the report's own content; edit any finding and the cache invalidates itself.
 The boot log states whether server-side PDF is available, and if it is not, the
 report page says so rather than letting a print dialog appear unexplained.
+
+Every flight of a season shares a farm, a crop and a season, so the **flight
+number is part of the name**: without it each new report would land on top of the
+last one in the farmer's downloads folder.
+
+The report also carries a **season page** once two or more flights of a season
+have findings: the field health score plotted flight by flight, the mix of marked
+zones per flight, and a record of every flight in the season. A single flight
+still reads as a baseline, and a flight whose CSV has not been imported yet is
+left out of the trend rather than plotted as a zero, which would read as a
+collapse in field health rather than as missing data.
 
 The **field health score** on the cover is the share of the field in good shape,
 counting watch zones at 55% and zones needing action at 0%. The report prints
@@ -159,15 +256,20 @@ shamba-tracker/
 ├── parsing.py         # CSV parsing + colour classification
 ├── integrations.py    # email + WhatsApp (env-key based, simulate if absent)
 ├── pdf_gen.py         # WeasyPrint PDF (graceful fallback)
-├── report_data.py     # field health score, banding, sheet pagination
+├── report_data.py     # field health score, banding, season trend, pagination
+├── bulk_import.py     # CSV/Excel import of farms and flights
+├── homepage.py        # editable homepage fields, defaults and helpers
 ├── schema.py          # additive migrations + share-token backfill
 ├── templates/         # Tailwind UI + report templates
 │   ├── report_doc.html    # THE report — screen, print and PDF, one file
 │   ├── report.html        # app chrome around the document
-│   └── report_print.html  # bare wrapper WeasyPrint renders
+│   ├── report_print.html  # bare wrapper WeasyPrint renders
+│   ├── import.html        # bulk import upload + preview
+│   └── homepage_edit.html # admin editor for the public homepage
 ├── static/img/        # Acre logo (transparent + white)
 ├── static/fonts/      # Montserrat, bundled (see below)
 ├── samples/           # sample DroneDeploy CSV + annotated map
+├── tests/             # run each with `python tests/<name>.py`
 ├── Dockerfile         # Railway build (installs WeasyPrint libs)
 ├── requirements.txt
 └── .env.example

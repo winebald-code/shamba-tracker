@@ -82,16 +82,22 @@ with APP.test_request_context("/", environ_overrides={"HTTP_HOST":"localhost:500
 print("\n=== 3. download filename ===")
 with APP.app_context():
     fl=db.session.get(Flight,FID)
-    chk("Farm Name_Crop Name_Season Year",
-        fl.report_filename=="Kilimo Bora Farm_Maize_2026LR.pdf", fl.report_filename)
+    chk("Farm Name_Crop Name_Season Year_Flight No",
+        fl.report_filename=="Kilimo Bora Farm_Maize_2026LR_Flight 1.pdf", fl.report_filename)
     fl.farm.name="O'Brien / Kariuki  Farm"; fl.crop="Maize (H614)"
     chk("illegal characters stripped, spaces kept",
-        fl.report_filename=="O'Brien Kariuki Farm_Maize (H614)_2026LR.pdf", fl.report_filename)
-    fl.farm.name="Kilimo Bora Farm"; fl.crop="Maize"; db.session.commit()
+        fl.report_filename=="O'Brien Kariuki Farm_Maize (H614)_2026LR_Flight 1.pdf", fl.report_filename)
+    fl.farm.name="Kilimo Bora Farm"; fl.crop="Maize"
+    # two flights of one season must not collide in the farmer's downloads
+    fl.flight_number=7
+    chk("the flight number moves with the flight",
+        fl.report_filename=="Kilimo Bora Farm_Maize_2026LR_Flight 7.pdf", fl.report_filename)
+    chk("the on-disk slug carries it too", fl.slug=="Kilimo_Bora_Farm_Maize_2026LR_F7", fl.slug)
+    fl.flight_number=1; db.session.commit()
 
 r=c2.get(f"/flights/{FID}/report.pdf")
 cd=r.headers.get("Content-Disposition","")
-chk("header carries the readable name", 'filename="Kilimo Bora Farm_Maize_2026LR.pdf"' in cd, cd)
+chk("header carries the readable name", 'filename="Kilimo Bora Farm_Maize_2026LR_Flight 1.pdf"' in cd, cd)
 chk("header carries an RFC 5987 copy", "filename*=UTF-8''" in cd, cd)
 chk("a real PDF comes back", r.data[:5]==b"%PDF-", r.data[:12])
 
@@ -110,8 +116,8 @@ chk("Content-Length is set so the browser can show progress",
 t=time.time(); c2.get(f"/flights/{FID}/report.pdf"); warm=time.time()-t
 chk("a repeat download is served from cache", warm < 0.15, f"{warm:.2f}s")
 page=c2.get(f"/flights/{FID}/report").data.decode()
-chk("the link carries download=\"Farm Name_Crop Name_Season Year.pdf\"",
-    'download="Kilimo Bora Farm_Maize_2026LR.pdf"' in page)
+chk("the link carries download=\"Farm Name_Crop Name_Season Year_Flight No.pdf\"",
+    'download="Kilimo Bora Farm_Maize_2026LR_Flight 1.pdf"' in page)
 with APP.app_context():
     fl=db.session.get(Flight,FID); fl.agronomist_note="edited"; db.session.commit()
 r2=c2.get(f"/flights/{FID}/report.pdf")

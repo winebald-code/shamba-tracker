@@ -1,4 +1,5 @@
 """SQLAlchemy models for SHAMBA Tracker."""
+import re
 import secrets
 from datetime import datetime
 
@@ -164,19 +165,25 @@ class Flight(db.Model):
     @property
     def slug(self):
         """Underscored, ASCII-safe. Used for filenames written to disk."""
-        return slugify(f"{self.farm.name}_{self.crop or self.farm.crop}_{self.season}")
+        return slugify(f"{self.farm.name}_{self.crop or self.farm.crop}_{self.season}"
+                       f"_F{self.flight_number}")
 
     @property
     def report_basename(self):
         """
         What the farmer sees when the PDF lands in their downloads:
-        `Farm Name_Crop Name_Season Year`. Spaces inside each part are kept, so
-        the three parts stay legible; only the separators are underscores.
+        `Farm Name_Crop Name_Season Year_Flight No`. Spaces inside each part are
+        kept, so the parts stay legible; only the separators are underscores.
+
+        The flight number is part of the name because the same farm, crop and
+        season recur on every flight of a season — without it, each new report
+        overwrites the last one in the farmer's downloads folder.
         """
         parts = [
             (self.farm.name or "Farm").strip(),
             (self.crop or self.farm.crop or "Crop").strip(),
             (self.season or "Season").strip(),
+            f"Flight {self.flight_number}" if self.flight_number is not None else "Flight",
         ]
         return "_".join(filename_safe(p) or "Report" for p in parts)
 
@@ -206,8 +213,22 @@ class Flight(db.Model):
         return sum(1 for f in self.findings if not f.is_complete)
 
     @property
+    def farmer_comment_count(self):
+        """Findings the farmer has commented on. Internal; never in the report."""
+        return sum(1 for f in self.findings if f.has_farmer_comment)
+
+    @property
     def can_generate(self):
-        return len(self.findings) > 0 and self.incomplete_count == 0
+        """
+        A report needs the map as well as the findings.
+
+        The annotated map is what the farmer reads first and what the numbered
+        findings refer back to, so a report without it is a list of pin numbers
+        pointing at nothing.
+        """
+        return (len(self.findings) > 0
+                and self.incomplete_count == 0
+                and bool(self.map_image))
 
     @property
     def is_delivered(self):
@@ -244,6 +265,14 @@ class Finding(db.Model):
     geometry_type = db.Column(db.String(40), default="")
     annotation_link = db.Column(db.String(600), default="")
     resolved = db.Column(db.Boolean, default=False)
+    # What the farmer said back about this finding, recorded by customer success
+    # after they have spoken to them. Internal only: it never reaches the report,
+    # because the report is the record of what was advised, and a farmer
+    # disputing a finding is a note about that advice rather than part of it.
+    farmer_comment = db.Column(db.Text, default="")
+    farmer_comment_at = db.Column(db.DateTime)
+    farmer_comment_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    farmer_comment_by = db.relationship("User", foreign_keys=[farmer_comment_by_id])
     sort_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -252,9 +281,30 @@ class Finding(db.Model):
         return bool(self.category and self.observation.strip()
                     and self.likely_cause.strip() and self.recommendation.strip())
 
+    @property
+    def has_farmer_comment(self):
+        return bool((self.farmer_comment or "").strip())
+
+
+class SiteContent(db.Model):
+    """
+    One editable homepage value, keyed by name.
+
+    A row exists only once an admin has saved that key; anything unsaved falls
+    back to the default in homepage.py. Storing one row per key rather than a
+    single JSON blob means a key added in a later release needs no migration —
+    it simply has no row yet.
+    """
+    __tablename__ = "site_content"
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    value = db.Column(db.Text, default="")
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
+
 
 def slugify(text):
-    import re
     text = (text or "").strip()
     text = re.sub(r"[^\w\s-]", "", text)
     text = re.sub(r"[\s]+", "_", text)
@@ -269,7 +319,6 @@ def filename_safe(text):
     underscore is reserved as the separator between the report's three parts,
     so any underscore already inside a name becomes a space.
     """
-    import re
     text = (text or "").strip()
     text = text.replace("_", " ")
     text = re.sub(r'[\\/:*?"<>|\r\n\t]', "", text)      # illegal on disk or in headers
