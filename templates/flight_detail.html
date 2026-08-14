@@ -231,15 +231,6 @@ where this flight sits before generating anything. #}
       <!-- DESKTOP area -->
       <div class="hidden lg:block text-[12.5px] font-semibold tnum whitespace-nowrap pt-0.5">{{ f.area_text or '—' }}
       </div>
-
-      <!-- Category -->
-      <div>
-        <div class="flex items-center gap-1.5">
-          {# The swatch is the colour this category gets on the report map, so the
-          label chosen here and the legend the farmer reads are visibly the
-          same thing rather than two lists that happen to agree. #}
-        </div>
-      </div>
       <!-- Observation -->
       <div class="mt-2.5 lg:mt-0">
         <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">What we saw</label>
@@ -339,7 +330,7 @@ where this flight sits before generating anything. #}
     return el ? el.value.trim() : '';
   };
   const rowComplete = row =>
-    !!(val(row, 'category') && val(row, 'observation') && val(row, 'likely_cause') && val(row, 'recommendation'));
+    !!(val(row, 'observation') && val(row, 'likely_cause') && val(row, 'recommendation'));
 
   const CHECK = '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9.2"/><path d="M8 12.3 11 15.3 16.3 9.2"/></svg>';
   const ALERT = '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16h.01"/></svg>';
