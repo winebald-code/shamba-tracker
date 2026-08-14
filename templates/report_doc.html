@@ -526,7 +526,7 @@
     {{ findings|length }} zone{{ '' if findings|length == 1 else 's' }} marked by your agronomist.
     Each row below carries the same colour the zone is drawn in on the map; the numbers are the order to work through them.
   </p>
-
+<br>
   {% if flight.dronedeploy_project_url %}
   {{ ddlink() }}
   {% endif %}
@@ -566,6 +566,7 @@
       <div class="todo">
 <div class="lb">{% if s.key == 'good' %}Nothing to do{% else %}What to do — {{ a.URGENCY_COPY[s.key][1]|lower }}{% endif %}</div>
         <div class="tx">{{ f.recommendation }}</div>
+      </div>
     </div>
   </div>
   {% endfor %}
