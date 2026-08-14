@@ -50,8 +50,19 @@
 .rd, .rd * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
 .sheet { position:relative; width:210mm; height:297mm; padding:13mm 14mm 11mm;
-         background:#fff; overflow:hidden; break-after:page; page-break-after:always; }
+         background:#fff; overflow:hidden; break-after:page; page-break-after:always;
+         margin-left:auto; margin-right:auto; }
 .sheet:last-child { break-after:auto; page-break-after:auto; }
+
+/* On screen the sheets are centred in whatever width they are given, with a
+   little separation so a reader can tell one page from the next. On paper the
+   page box supplies all of that, so none of it applies when printing. */
+@media screen {
+  .rd { display:block; }
+  .sheet { box-shadow:0 1px 3px rgba(3,9,32,.10), 0 8px 24px rgba(3,9,32,.06);
+           border-radius:2px; margin-bottom:18px; }
+  .sheet:last-child { margin-bottom:0; }
+}
 
 .num { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; }
 
@@ -117,6 +128,21 @@ h2.sec.tight { margin-top:13px !important; }
 .legend .dot { display:inline-block; width:9px; height:9px; border-radius:2px;
                vertical-align:middle; margin-right:6px; }
 .legend .lb { font-size:8.5px; font-weight:700; vertical-align:middle; }
+
+/* ---------------------------------------------------------------- map link
+   The document sets a { color:inherit; text-decoration:none } so that the
+   report reads as a printed page. That leaves a real link looking like body
+   text, so the one link a farmer is meant to follow is given a card of its own
+   rather than relying on colour alone. */
+.ddlink { display:block; border:1px solid #D6DBD5; border-left:3px solid #4A5D3A;
+          border-radius:5px; padding:9px 11px; margin-top:10px; background:#F7F9F4; }
+.ddlink td { vertical-align:middle; }
+.ddlink .ico { width:24px; }
+.ddlink .ico span { display:inline-block; width:18px; height:18px; border-radius:50%;
+                    background:#4A5D3A; color:#fff; font-size:11px; line-height:18px;
+                    text-align:center; }
+.ddlink .t { font-size:10.5px; font-weight:700; color:#3E5230; }
+.ddlink .d { font-size:9px; color:#6C6C6C; margin-top:1px; }
 
 /* ---------------------------------------------------------------- detail tables */
 .grp { margin-bottom:11px; }
@@ -280,10 +306,15 @@ h2.sec.tight { margin-top:13px !important; }
   </tr></table>
 
   {% if flight.dronedeploy_project_url %}
-  <p class="mapnote" style="margin-top:10px !important">
-    <a href="{{ flight.dronedeploy_project_url }}"{% if not pdf %} target="_blank" rel="noopener"{% endif %}>
-      Open the interactive map to pan and zoom any zone.</a>
-  </p>
+  <a class="ddlink" href="{{ flight.dronedeploy_project_url }}"{% if not pdf %} target="_blank" rel="noopener"{% endif %}>
+    <table><tr>
+      <td class="ico"><span>&#8599;</span></td>
+      <td>
+        <div class="t">Open the interactive map</div>
+        <div class="d">Pan, zoom and tap any zone in DroneDeploy to see it up close.</div>
+      </td>
+    </tr></table>
+  </a>
   {% endif %}
 
   {{ pagefoot(2, total_pages) }}
