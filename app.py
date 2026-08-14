@@ -96,6 +96,7 @@ def create_app():
         return {
             "COLOUR_CODE": parsing.COLOUR_CODE,
             "CATEGORIES": parsing.CATEGORIES,
+            "CATEGORY_COLOURS": aggregation.CATEGORY_COLOURS,
             "ROLE_LABELS": ROLE_LABELS,
             "ROLE_BLURB": ROLE_BLURB,
             "STATUS_LABELS": STATUS_LABELS,

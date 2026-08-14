@@ -30,7 +30,35 @@ Built with Flask · SQLite · Tailwind CSS · vanilla JS · WeasyPrint. Ready fo
 | Red | Needs testing (suspicious gap / suspected diagnosis) |
 | Grey | Pending review (logged, awaiting agronomist) |
 
-Any hex a pin uses in DroneDeploy is bucketed to the nearest meaning by hue, and the true pin colour is shown on the report as the data swatch.
+Any hex a pin uses in DroneDeploy is bucketed to the nearest meaning by hue.
+
+### Categories
+
+Separate from the colour code above, and shared by the review page and the
+report:
+
+| Category | Colour on the report map |
+|---|---|
+| Irrigation / Moisture | Blue |
+| Soil Fertility / Nutrition | Amber |
+| Crop Establishment | Terracotta |
+| Pest / Disease | Deep red |
+| Weeds | Slate green |
+| Needs Investigation | Purple |
+
+The colour code says *how urgent*; the category says *what kind*. Both matter,
+but only the category reaches the farmer's map, because that is the question a
+map answers well.
+
+These are defined once, in `aggregation.py`, and the review page reads the same
+list. They used to be two lists, so a finding filed as "Nutrient / Vigor" while
+reviewing appeared to the farmer as "Soil Fertility / Nutrition" — the words the
+agronomist chose were never the words the farmer read. Each category shows its
+map colour beside the dropdown on the review page, so the two are visibly the
+same thing.
+
+Findings recorded under the older names are moved on start-up by
+`schema.migrate_categories`, so an existing flight needs no re-filing.
 
 ---
 
@@ -79,6 +107,7 @@ python tests/test_farmer_comment.py   # the farmer's reply, and its isolation
 python tests/test_generate_gate.py    # what a report needs before it generates
 python tests/test_report_v2.py       # pattern grouping, report voice, security headers
 python tests/test_responsive.py      # every page on a phone-sized viewport
+python tests/test_categories.py      # one category list across review and report
 ```
 
 ---

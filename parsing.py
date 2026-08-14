@@ -27,17 +27,43 @@ COLOUR_CODE = {
 
 # suggested issue category per colour meaning (agronomist can override)
 MEANING_TO_CATEGORY = {
-    "New growth": "Nutrient / Vigor",
-    "Healthy": "Nutrient / Vigor",
+    "New growth": "Soil Fertility / Nutrition",
+    "Healthy": "Soil Fertility / Nutrition",
     "Monitor": "Needs Investigation",
     "Needs testing": "Pest / Disease",
     "Pending review": "Needs Investigation",
 }
 
-CATEGORIES = [
-    "Irrigation", "Drainage / Soil", "Nutrient / Vigor",
-    "Pest / Disease", "Planting Gap", "Needs Investigation",
-]
+# The categories an agronomist picks, and the ones the report map is keyed by.
+# These were two different lists: a finding filed under "Nutrient / Vigor" showed
+# up on the map legend as "Soil Fertility / Nutrition", so the label on the
+# review page and the label the farmer read were never the same words.
+#
+# Kept in aggregation.py, which owns the report legend, so there is one list
+# rather than two that have to be remembered to stay in step.
+from aggregation import CATEGORY_ORDER as CATEGORIES
+
+# What the older names became, for findings recorded before the two lists were
+# merged. Applied on read, so an existing flight's report groups correctly
+# without anyone having to re-file it.
+LEGACY_CATEGORIES = {
+    "Irrigation": "Irrigation / Moisture",
+    "Drainage / Soil": "Soil Fertility / Nutrition",
+    "Nutrient / Vigor": "Soil Fertility / Nutrition",
+    "Nutrient / Vigour": "Soil Fertility / Nutrition",
+    "Planting Gap": "Crop Establishment",
+}
+
+
+def normalise_category(name):
+    """Map a stored category onto the current list, leaving current ones alone."""
+    name = (name or "").strip()
+    if name in CATEGORIES:
+        return name
+    if name in LEGACY_CATEGORIES:
+        return LEGACY_CATEGORIES[name]
+    match = next((c for c in CATEGORIES if c.lower() == name.lower()), None)
+    return match or "Needs Investigation"
 
 
 def hex_to_meaning(hex_code):
@@ -191,9 +217,12 @@ def parse_csv(file_bytes):
 
         category = parsed["category"]
         if category not in CATEGORIES:
-            # try to snap a loose category string onto the enum, else suggest by colour
-            snap = next((c for c in CATEGORIES if c.lower() == category.lower()), None)
-            category = snap or MEANING_TO_CATEGORY.get(meaning, "Needs Investigation")
+            # Snap a loose or legacy category onto the current list. Where the
+            # text gives nothing to go on, fall back to what the annotation
+            # colour suggests rather than filing everything as unknown.
+            snapped = normalise_category(category)
+            category = (snapped if snapped != "Needs Investigation"
+                        else MEANING_TO_CATEGORY.get(meaning, "Needs Investigation"))
 
         findings.append({
             "annotation_id": _clean(row.get("AnnotationId")) or f"row-{i+1}",
