@@ -232,6 +232,18 @@ where this flight sits before generating anything. #}
       <!-- DESKTOP area -->
       <div class="hidden lg:block text-[12.5px] font-semibold tnum whitespace-nowrap pt-0.5">{{ f.area_text or '—' }}
       </div>
+
+      <!-- Category -->
+      <div>
+        <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">Category</label>
+        <div class="flex items-center gap-1.5">
+          {# The swatch is the colour this category gets on the report map, so the
+          label chosen here and the legend the farmer reads are visibly the
+          same thing rather than two lists that happen to agree. #}
+          <span class="shrink-0 w-2.5 h-2.5 rounded-sm" title="Colour on the report map"
+            style="background:{{ CATEGORY_COLOURS.get(f.category, '#6B4E8C') }}"></span>
+        </div>
+      </div>
       <!-- Observation -->
       <div class="mt-2.5 lg:mt-0">
         <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">What we saw</label>
