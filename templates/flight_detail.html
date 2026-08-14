@@ -339,15 +339,15 @@ where this flight sits before generating anything. #}
   function markRow(row, complete) {
     // desktop status bar
     row.querySelectorAll('.status-bar').forEach(function (bar) {
-      if (complete) {bar.style.background = ''; bar.classList.add('bg-sage');}
-      else {bar.style.background = '#D64550'; bar.classList.remove('bg-sage');}
+      if (complete) { bar.style.background = ''; bar.classList.add('bg-sage'); }
+      else { bar.style.background = '#D64550'; bar.classList.remove('bg-sage'); }
     });
     // mobile card left accent
     row.style.borderLeftColor = complete ? '#B0D48C' : '#D64550';
     row.classList.toggle('incomplete', !complete);
   }
 
-  const HAS_MAP = {{'true' if flight.map_image else 'false' }};
+  const HAS_MAP = {{ 'true' if flight.map_image else 'false' }};
 
   function setBanner(incomplete, total) {
     const banner = document.getElementById('banner');
@@ -405,8 +405,8 @@ where this flight sits before generating anything. #}
     clearTimeout(timers[fid + field]);
     timers[fid + field] = setTimeout(() => {
       fetch(UPDATE_URL(fid), {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({[field]: el.value})
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: el.value })
       }).catch(e => console.error('save failed', e));
     }, 500);
   }
@@ -420,8 +420,8 @@ where this flight sits before generating anything. #}
     clearTimeout(timers['c' + fid]);
     timers['c' + fid] = setTimeout(() => {
       fetch(COMMENT_URL(fid), {
-        method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({farmer_comment: el.value})
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ farmer_comment: el.value })
       })
         .then(r => r.ok ? r.json() : null)
         .then(d => {
@@ -441,10 +441,10 @@ where this flight sits before generating anything. #}
     if (el.dataset.comment) {
       el.addEventListener('input', () => persistComment(el));
     } else {
-      el.addEventListener(ev, () => {recount(); persist(el);});
+      el.addEventListener(ev, () => { recount(); persist(el); });
     }
     if (el.tagName === 'TEXTAREA') {
-      const grow = () => {el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px';};
+      const grow = () => { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; };
       el.addEventListener('input', grow); grow();
     }
   });
