@@ -72,7 +72,7 @@
             <img src="{{ asset_url(values[key]) }}" alt=""
                  class="w-28 h-20 object-cover rounded-lg border border-silver shrink-0"
                  onerror="this.style.opacity=.25">
-            <div class="flex-1 min-w-[240px]">
+            <div class="flex-1 basis-full sm:basis-auto sm:min-w-[240px]">
               <input type="text" id="f-{{ key }}" name="{{ key }}" value="{{ values[key] }}"
                      class="w-full text-[12.5px] px-3 py-2 rounded-lg border border-silver bg-white focus:border-dove outline-none">
               <p class="text-[11px] text-dove mt-1">Path under <code>static/</code>, or upload a replacement below.</p>

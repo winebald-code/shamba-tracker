@@ -77,6 +77,8 @@ python tests/test_import.py     # CSV/Excel import of farms and flights
 python tests/test_homepage.py   # admin-managed homepage content
 python tests/test_farmer_comment.py   # the farmer's reply, and its isolation
 python tests/test_generate_gate.py    # what a report needs before it generates
+python tests/test_report_v2.py       # pattern grouping, report voice, security headers
+python tests/test_responsive.py      # every page on a phone-sized viewport
 ```
 
 ---
@@ -205,7 +207,49 @@ app still runs and CSV import still works; the upload page says so.
 
 ## The report
 
-The report is one document, `templates/report_doc.html`, composed as real A4
+### What the farmer receives
+
+The report is **three pages**, and it does not list every annotation on the
+summary page:
+
+1. **Field scouting summary** — what was scouted, the categories found with
+   counts and acreage, the patterns behind them, and areas worth investigating.
+2. **Farm map** — the annotated image, with a legend keyed by category.
+3. **Detailed findings** — every annotation the agronomist wrote, unchanged,
+   grouped under the pattern it belongs to.
+
+V1 listed all fifteen zones one after another, nine of them near-identical
+entries under a single category. That is an annotation dump rather than a
+report. `aggregation.py` groups a flight's findings into the few patterns
+actually present in them, so the summary says *"reduced crop vigour across nine
+areas (~13.4 acres), associated with soil condition or nutrient availability"*
+once, instead of nine times.
+
+Two rules govern what the summary is allowed to say:
+
+* **It only summarises and combines what the agronomist actually wrote.** No
+  cause, diagnosis or recommendation appears that is not already in the source
+  annotations. Sentences are assembled from the agronomist's own counts,
+  acreages and words — there is no model in the loop and nothing is invented.
+* **It does not sound more certain than its source.** "Associated with", not
+  "caused by". "We suggest considering", not "work through these, in this
+  order". An annotation records what was seen and what the agronomist suspects,
+  not a result.
+
+Clustering reads the **likely cause** rather than the category label, which is
+what separates irrigation from soil fertility when both were filed under one
+broad heading. Patterns are ordered by acreage so the largest finding leads, and
+genuinely different causes stay apart rather than being merged for tidiness — on
+the sample flight that is what keeps a 4.1-acre mounding problem from
+disappearing into a nine-zone soil group.
+
+The report-facing colours are **by category, not by urgency**, and separate from
+the severity colours the agronomists use while annotating. Nothing is coloured to
+mean "healthy": every colour on the map marks something that was flagged.
+
+### How it is built
+
+The report is one document, `templates/report_v2.html`, composed as real A4
 sheets: each sheet is exactly 210 x 297 mm and the page box has no margin of its
 own. The browser shows those sheets, the browser prints those sheets, and
 WeasyPrint turns those sheets into pages — so the screen, the print dialog and
@@ -223,6 +267,11 @@ Two things hold that guarantee up:
   carries) and by tracking, rather than by a second family.
 * **Findings are paginated in Python** (`report_data.paginate`), not left to the
   renderer, so a card is never split and both engines break in the same places.
+
+Below 820px the sheets stop pretending to be paper: fixed millimetre heights
+would either clip the content or leave a long blank gap, so the sheet reflows and
+the detail tables become cards. The rest of the application is responsive
+throughout.
 
 **Download** produces a real file named `Farm Name_Crop Name_Season Year_Flight No.pdf` —
 `Content-Disposition: attachment` plus a matching `download` attribute on the
@@ -248,6 +297,40 @@ counting watch zones at 55% and zones needing action at 0%. The report prints
 that definition on its closing page, so a farmer can check the number rather
 than trust it.
 
+## Security headers
+
+Every response carries the headers a browser uses to defend the page. They are
+set in `app.py` rather than at the proxy, so they travel with the application to
+whatever host it is deployed on.
+
+| Header | Value |
+| --- | --- |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` |
+| `Content-Security-Policy` | `default-src 'self'`, with the Tailwind and Google Fonts origins allowed |
+| `X-Frame-Options` | `DENY` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | camera, microphone, geolocation and the rest denied |
+| `Cross-Origin-Opener-Policy` | `same-origin` |
+| `Cross-Origin-Resource-Policy` | `same-origin` |
+
+Two of those are worth explaining.
+
+**HSTS is withheld over plain HTTP** and sent only when the request arrived over
+HTTPS, directly or through a proxy's `X-Forwarded-Proto`. A browser ignores it on
+an insecure connection anyway, and sending it in development would pin a machine
+to `https://localhost`.
+
+**`Referrer-Policy` is not cosmetic here.** A farmer's report link contains a
+share token, and that token *is* the credential. Without this header, following
+any outbound link from a report page would put the full URL — token included — in
+a `Referer` header sent to somebody else's server.
+
+The CSP still permits `'unsafe-inline'` and `'unsafe-eval'` for scripts, because
+Tailwind is loaded from its CDN and compiles styles in the browser. Tightening
+that means moving to a compiled stylesheet, which is a build-step change rather
+than a header change.
+
 ## Project layout
 ```
 shamba-tracker/
@@ -259,9 +342,11 @@ shamba-tracker/
 ├── report_data.py     # field health score, banding, season trend, pagination
 ├── bulk_import.py     # CSV/Excel import of farms and flights
 ├── homepage.py        # editable homepage fields, defaults and helpers
+├── aggregation.py     # groups findings into the patterns the report is built from
 ├── schema.py          # additive migrations + share-token backfill
 ├── templates/         # Tailwind UI + report templates
 │   ├── report_doc.html    # THE report — screen, print and PDF, one file
+│   ├── report_v2.html     # THE report — three pages, screen, print and PDF
 │   ├── report.html        # app chrome around the document
 │   ├── report_print.html  # bare wrapper WeasyPrint renders
 │   ├── import.html        # bulk import upload + preview

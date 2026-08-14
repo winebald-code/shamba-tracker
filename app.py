@@ -30,6 +30,7 @@ import report_data
 import schema
 import bulk_import
 import homepage
+import aggregation
 import storage as storage_backend
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -116,12 +117,75 @@ def create_app():
               "browser's print dialog instead. Build with the included Dockerfile "
               "to get server-generated PDFs.")
 
+    register_security_headers(app)
     register_routes(app)
 
     with app.app_context():
         init_db()
 
     return app
+
+
+# ------------------------------------------------------------------ security
+# Content-Security-Policy sources. Tailwind is loaded from its CDN and compiles
+# in the browser, and Google Fonts serves the application's typeface, so both
+# origins have to be allowed.
+CSP_DIRECTIVES = (
+    "default-src 'self'",
+    # 'unsafe-inline' and 'unsafe-eval' are needed by the Tailwind browser build,
+    # which generates styles at runtime. Removing them means moving to a compiled
+    # stylesheet, which is a build-step change rather than a header change.
+    "script-src 'self' https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    # data: covers the base64 images inlined into a rendered report.
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    "form-action 'self'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "upgrade-insecure-requests",
+)
+
+SECURITY_HEADERS = {
+    # Tells the browser to reach this site over HTTPS only. Two years, covering
+    # subdomains, and preload-eligible.
+    "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+    "Content-Security-Policy": "; ".join(CSP_DIRECTIVES),
+    # frame-ancestors above covers modern browsers; this covers the rest.
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    # A report link is a capability. Sending the full URL in a Referer header
+    # to another origin would leak a farmer's share token.
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": ("accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
+                           "magnetometer=(), microphone=(), payment=(), usb=(), "
+                           "interest-cohort=()"),
+    "Cross-Origin-Opener-Policy": "same-origin",
+    "Cross-Origin-Resource-Policy": "same-origin",
+}
+
+
+def register_security_headers(app):
+    """
+    Set the response headers a browser uses to defend the application.
+
+    Every one of these was missing, which is what a security scan grades on.
+    They are applied here rather than at the proxy so they travel with the
+    application to whatever host it is deployed on.
+    """
+    @app.after_request
+    def _security_headers(response):
+        for header, value in SECURITY_HEADERS.items():
+            # HSTS over plain HTTP is meaningless and browsers ignore it, but
+            # sending it locally would pin developers to https://localhost.
+            if header == "Strict-Transport-Security" and not request.is_secure:
+                forwarded = request.headers.get("X-Forwarded-Proto", "")
+                if forwarded.split(",")[0].strip() != "https":
+                    continue
+            response.headers.setdefault(header, value)
+        return response
 
 
 def _pending_count():
@@ -276,6 +340,11 @@ def report_context(flight):
         still_open = len(flight.findings) - resolved
 
     analysis = report_data.analyse(flight, prev)
+
+    # V2 groups the flight's findings into the few patterns actually present in
+    # them, rather than listing every zone. The map numbers are passed in so the
+    # summary, the map and the detail tables all refer to a zone by one number.
+    agg = aggregation.aggregate(flight.findings, analysis.get("numbers"))
     points = report_data.season_trend(flight, season_flights)
     season = report_data.season_summary(points, analysis["score"]) if points else None
 
@@ -290,6 +359,8 @@ def report_context(flight):
         "resolved": resolved,
         "still_open": still_open,
         "a": analysis,
+        "agg": agg,
+        "summary_line": aggregation.summary_sentence(agg, flight, flight.farm),
         "season": season,
         "season_flights": season_flights,
         "next_flight_no": flight.flight_number + 1,

@@ -49,8 +49,9 @@ with appmod.app.app_context():
     ctx=appmod.report_context(db.session.get(Flight,oid))
     chk("season is None with one flight", ctx["season"] is None, ctx["season"])
 w=c.get(f"/flights/{oid}/report").data.decode()
-chk("no season sheet rendered", "Your season so far" not in w)
-chk("baseline wording still shown", "Your starting point" in w)
+# V2 has no season sheet: the trend appears as a line on page 1, and only once
+# more than one flight of the season carries findings.
+chk("no season line with a single flight", "This season so far" not in w)
 _sheets=len(re.findall(r'<section class="sheet"', w))
 _claim=int(re.findall(r"Page \d+ of (\d+)", w)[0])
 chk("footer page count matches the sheets drawn", _sheets==_claim, f"sheets={_sheets} claims={_claim}")
@@ -63,7 +64,7 @@ with appmod.app.app_context():
     chk("two points plotted", len(s["spark"]["points"])==2, len(s["spark"]["points"]))
     chk("direction computed", s["direction"] in ("up","down","flat"), s["direction"])
 w=c.get(f"/flights/{tid}/report").data.decode()
-chk("season sheet rendered", "Your season so far" in w)
+chk("the season line appears once there are two flights", "This season so far" in w)
 
 print("\n=== C. a flight with no findings is skipped, not plotted as zero ===")
 with appmod.app.app_context():
