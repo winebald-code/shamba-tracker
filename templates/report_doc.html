@@ -527,22 +527,6 @@
     Each row below carries the same colour the zone is drawn in on the map; the numbers are the order to work through them.
   </p>
 
-  <div class="zt">
-    <table>
-      <tr><th class="n">Do</th><th>Zone</th><th>Size</th><th>Reading</th><th>What it means</th></tr>
-      {% for f in a.findings_ordered %}
-      {% set s = S[sev(f)] %}
-      <tr>
-        <td class="n">{{ chip(a.numbers[f.id], f.colour_swatch or s.colour, 'nchip') }}</td>
-        <td class="cat">{{ f.category }}</td>
-        <td class="ac">{{ f.area_text or '—' }}</td>
-        <td class="st"><span class="mono" style="font-size:8px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:{{ s.colour }}">{{ s.label }}</span></td>
-        <td style="font-size:9.5px;color:#6C6C6C">{{ f.colour_meaning }}</td>
-      </tr>
-      {% endfor %}
-    </table>
-  </div>
-
   {% if flight.dronedeploy_project_url %}
   {{ ddlink() }}
   {% endif %}
@@ -582,10 +566,6 @@
       <div class="todo">
 <div class="lb">{% if s.key == 'good' %}Nothing to do{% else %}What to do — {{ a.URGENCY_COPY[s.key][1]|lower }}{% endif %}</div>
         <div class="tx">{{ f.recommendation }}</div>
-      </div>
-      {% if f.annotation_link %}
-      <div class="link"><a href="{{ f.annotation_link }}"{% if not pdf %} target="_blank" rel="noopener"{% endif %}>{{ arrow('#5C8A3C') }}See this zone on the map</a></div>
-      {% endif %}
     </div>
   </div>
   {% endfor %}
