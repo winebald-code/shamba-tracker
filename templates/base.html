@@ -10,62 +10,22 @@
 <link rel="icon" type="image/png" sizes="256x256" href="{{ url_for('static', filename='img/favicon-256.png') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
 <meta name="theme-color" content="#030920">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,500&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          ink: '#030920', dove: '#6C6C6C', silver: '#D6DBD5',
-          sage: '#B0D48C', sagedeep: '#7FB65E', sagesoft: '#E7F1DB',
-          canvas: '#F2F5EF',
-        },
-        fontFamily: { sans: ['Montserrat', 'system-ui', 'sans-serif'], mono: ['Montserrat', 'system-ui', 'sans-serif'] },
-        borderRadius: { xl2: '1.1rem' },
-      }
-    }
-  }
-</script>
-<style>
-  html{ -webkit-text-size-adjust:100%; }
-  body{ font-family:'Montserrat',system-ui,sans-serif; letter-spacing:-0.006em; -webkit-font-smoothing:antialiased; }
-  .glass{ background:rgba(255,255,255,0.66); backdrop-filter:saturate(140%) blur(14px); -webkit-backdrop-filter:saturate(140%) blur(14px); border:1px solid rgba(3,9,32,0.08); }
-  .glass-solid{ background:#fff; border:1px solid #D6DBD5; }
-  .tnum{ font-variant-numeric:tabular-nums; }
-  /* Instrument type: one family throughout, so readings are set apart by
-     tabular figures and tracking rather than by a second typeface. Montserrat
-     carries tnum, which keeps a column of numbers aligned and makes 1 occupy
-     the same width as 8. */
-  .inst{ font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-weight:600; }
-  .eyebrow{ font-size:10px; font-weight:700; letter-spacing:.17em; text-transform:uppercase; }
-  /* Scroll reveal as pure enhancement: content is visible by default, and only
-     starts hidden once the script has confirmed it can reveal it again. */
-  body.js-motion .reveal{ opacity:0; transform:translateY(18px); transition:opacity .7s cubic-bezier(.2,.7,.3,1), transform .7s cubic-bezier(.2,.7,.3,1); }
-  body.js-motion .reveal.in{ opacity:1; transform:none; }
-  @media (prefers-reduced-motion: reduce){
-    body.js-motion .reveal{ opacity:1 !important; transform:none !important; transition:none !important; }
-    *{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
-  }
-  a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-visible{
-    outline:2px solid #7FB65E; outline-offset:2px; border-radius:6px;
-  }
-  .field{ transition:.15s; }
-  .field:focus{ outline:none; border-color:#B0D48C; box-shadow:0 0 0 3px rgba(176,212,140,.35); }
-  /* editable cells in the review table */
-  .cell{ transition:.15s; border:1px solid transparent; border-radius:8px; }
-  .cell:hover{ background:rgba(3,9,32,.03); }
-  .cell:focus{ outline:none; background:#fff; border-color:#B0D48C; box-shadow:0 0 0 3px rgba(176,212,140,.35); }
-  .flash-enter{ animation:flashIn .3s ease both; }
-  @keyframes flashIn{ from{opacity:0; transform:translateY(-6px)} to{opacity:1; transform:none} }
-  /* dialogs never overflow small screens */
-  dialog{ max-width:calc(100vw - 1.5rem); }
-  ::-webkit-scrollbar{ height:10px; width:10px; }
-  ::-webkit-scrollbar-thumb{ background:#D6DBD5; border-radius:99px; }
-  @media print{ .no-print{ display:none !important; } body{ background:#fff; } }
-</style>
+{#
+  One stylesheet, served from this origin.
+
+  The Tailwind play CDN and the Google Fonts CDN were both removed here. The CDN
+  compiled utilities in the browser on every page load and warns against
+  production use, and — more to the point — a content security policy that has
+  to whitelist a third party's script is a policy that trusts that third party
+  with every session in the application. static/css/app.css is built from these
+  same templates (see build/), and the Montserrat faces it references are the
+  ones already bundled for the report, so screen and PDF set in the same metal.
+#}
+<link rel="preload" as="font" type="font/woff2" crossorigin
+      href="{{ url_for('static', filename='fonts/montserrat-latin-400-normal.woff2') }}">
+<link rel="preload" as="font" type="font/woff2" crossorigin
+      href="{{ url_for('static', filename='fonts/montserrat-latin-700-normal.woff2') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 {% block head %}{% endblock %}
 </head>
 <body class="bg-canvas text-ink min-h-screen">
@@ -85,14 +45,14 @@
       {% endif %}
     </span>
     <p class="text-[13px] font-medium leading-snug flex-1 min-w-0 break-words pt-0.5">{{ msg }}</p>
-    <button type="button" onclick="this.closest('[data-cat]').remove()" aria-label="Dismiss"
+    <button type="button" data-action="dismiss-flash" aria-label="Dismiss"
             class="shrink-0 -mt-0.5 w-7 h-7 grid place-items-center rounded-lg text-dove hover:text-ink hover:bg-ink/5 transition">
       <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
   </div>
   {% endfor %}
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
   // Success messages fade on their own; warnings/errors stay until dismissed.
   document.querySelectorAll('#flashwrap [data-cat="ok"]').forEach(function(el){
     setTimeout(function(){ el.style.transition='opacity .5s'; el.style.opacity='0'; setTimeout(function(){ el.remove(); }, 500); }, 5000);
@@ -103,14 +63,103 @@
 
 {% block body %}{% endblock %}
 
-<script>
-  // Disable right-click and keyboard shortcuts
-  document.addEventListener('contextmenu', event => event.preventDefault());
-  document.addEventListener('keydown', function(e) {
-      if (e.ctrlKey && (e.key === 'u' || e.key === 'U' || e.key === 's' || e.key === 'S')) {
-          e.preventDefault();
-      }
+{#
+  The behaviour layer.
+
+  Every interaction in this application is declared on the element as a data
+  attribute and handled here, rather than written into an onclick. That is not a
+  style preference: the content security policy runs on nonces, and a nonce
+  cannot be attached to an inline event handler. The choice is this file or
+  'unsafe-inline' on script-src, and 'unsafe-inline' would give away most of what
+  the policy is for.
+
+  Delegated from the document, so markup rendered after load — a dialog, a row
+  added to the review table — works without rebinding anything.
+
+  The right-click and Ctrl+U/Ctrl+S blocker that used to sit here has been
+  removed. It stopped no one (view-source is a request away, and the page is
+  public HTML either way), it blocked Ctrl+S on the very report the fallback
+  print path asks people to save, and on a phone `contextmenu` is the long-press
+  that copies text and saves the map image. It cost real users real functionality
+  and bought nothing.
+#}
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var CSRF = {{ csrf_token()|tojson }};
+
+  // Every state-changing request carries the session's CSRF token. Forms get a
+  // hidden field stamped in at load; fetch() and sendBeacon send the header.
+  function stampForms(root) {
+    (root || document).querySelectorAll('form[method="post"], form[method="POST"]')
+      .forEach(function (form) {
+        if (form.querySelector('input[name="csrf_token"]')) return;
+        var input = document.createElement('input');
+        input.type = 'hidden'; input.name = 'csrf_token'; input.value = CSRF;
+        form.appendChild(input);
+      });
+  }
+  stampForms(document);
+  window.SHAMBA_CSRF = CSRF;
+
+  function dialog(id) { return document.getElementById(id); }
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-open],[data-close],[data-submit],[data-action],[data-share]');
+    if (!el) return;
+
+    var open = el.getAttribute('data-open');
+    if (open && dialog(open) && dialog(open).showModal) { dialog(open).showModal(); return; }
+
+    var close = el.getAttribute('data-close');
+    if (close && dialog(close) && dialog(close).close) { dialog(close).close(); return; }
+
+    var submit = el.getAttribute('data-submit');
+    if (submit && dialog(submit)) { stampForms(document); dialog(submit).submit(); return; }
+
+    // Recording a hand-off share must not block the link that opens WhatsApp,
+    // so it fires and returns immediately without preventing the default.
+    var share = el.getAttribute('data-share');
+    if (share && typeof window.markShared === 'function') window.markShared(share);
+
+    var action = el.getAttribute('data-action');
+    if (!action) return;
+    if (action === 'toggle-nav' && typeof window.toggleNav === 'function') window.toggleNav();
+    else if (action === 'toggle-sidebar' && typeof window.toggleSidebar === 'function') window.toggleSidebar();
+    else if (action === 'print') (window.printReport || window.print)();
+    else if (action === 'copy-link' && typeof window.copyShareLink === 'function') window.copyShareLink(el);
+    else if (action === 'acknowledge' && typeof window.acknowledge === 'function') window.acknowledge();
+    else if (action === 'dismiss-flash') { var f = el.closest('[data-cat]'); if (f) f.remove(); }
   });
+
+  // A destructive form states what it is about to destroy before it does it.
+  document.addEventListener('submit', function (e) {
+    var msg = e.target.getAttribute && e.target.getAttribute('data-confirm');
+    if (msg && !window.confirm(msg)) { e.preventDefault(); return; }
+    stampForms(e.target.parentNode || document);
+  });
+
+  // Selects and file inputs that submit as soon as they change.
+  document.addEventListener('change', function (e) {
+    var el = e.target;
+    if (el.hasAttribute && el.hasAttribute('data-autosubmit') && el.form) {
+      stampForms(document); el.form.submit(); return;
+    }
+    if (el.hasAttribute && el.hasAttribute('data-role-note')) {
+      var note = document.getElementById('roleNote');
+      var opt = el.selectedOptions && el.selectedOptions[0];
+      if (note && opt) note.textContent = opt.dataset.blurb || '';
+    }
+  });
+
+  // Images whose file is missing get out of the way rather than showing a
+  // broken-image glyph in the middle of the page.
+  document.addEventListener('error', function (e) {
+    var el = e.target;
+    if (!el || el.tagName !== 'IMG') return;
+    if (el.hasAttribute('data-hide-on-error')) el.style.display = 'none';
+    if (el.hasAttribute('data-dim-on-error')) el.style.opacity = '.25';
+  }, true);
+})();
 </script>
 </body>
 </html>

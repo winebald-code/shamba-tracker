@@ -4,7 +4,7 @@
 {% block heading %}{{ farm.name }}{% endblock %}
 {% block subheading %}<p class="text-[12.5px] text-dove">{{ farm.crop or 'Crop not set' }}{% if farm.acreage %} · {{ farm.acreage|round(0)|int }} ac{% endif %}{% if farm.location %} · {{ farm.location }}{% endif %}</p>{% endblock %}
 {% block topbar_actions %}
-<button onclick="document.getElementById('newFlight').showModal()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition">
+<button data-open="newFlight" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition">
   {{ icon('plus','w-4 h-4') }} <span class="hidden sm:inline">New flight</span>
 </button>
 {% endblock %}
@@ -43,7 +43,7 @@
       <span class="inline-grid place-items-center w-12 h-12 rounded-xl bg-sagesoft text-sagedeep mb-3">{{ icon('drone','w-6 h-6') }}</span>
       <h3 class="text-[15px] font-bold">No flights yet</h3>
       <p class="text-[12.5px] text-dove mt-1">Create a flight, then import its DroneDeploy annotations.</p>
-      <button onclick="document.getElementById('newFlight').showModal()" class="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-sage text-ink font-bold text-[13px] hover:bg-sage/80 transition">{{ icon('plus','w-4 h-4') }} New flight</button>
+      <button data-open="newFlight" class="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-sage text-ink font-bold text-[13px] hover:bg-sage/80 transition">{{ icon('plus','w-4 h-4') }} New flight</button>
     </div>
     {% endif %}
   </div>
@@ -53,7 +53,7 @@
     <div class="glass-solid rounded-xl2 p-5">
       <div class="flex items-center justify-between">
         <h3 class="text-[14px] font-bold">Farm details</h3>
-        <button onclick="document.getElementById('editFarm').showModal()" class="text-dove hover:text-ink" title="Edit">{{ icon('edit','w-4 h-4') }}</button>
+        <button data-open="editFarm" class="text-dove hover:text-ink" title="Edit">{{ icon('edit','w-4 h-4') }}</button>
       </div>
       <dl class="mt-4 space-y-3 text-[13px]">
         {% for label, val, ic in [('Crop', farm.crop, 'crop'),('Acreage', (farm.acreage|round(1) ~ ' ac') if farm.acreage else None, 'area'),('Location', farm.location, 'pin')] %}
@@ -77,14 +77,15 @@
         {% if farm.farmer_email %}<div class="flex items-center gap-2.5"><span class="text-dove">{{ icon('mail','w-4 h-4') }}</span><span class="font-semibold truncate">{{ farm.farmer_email }}</span></div>{% endif %}
       </dl>
       {% else %}
-      <p class="text-[12.5px] text-dove mt-3">No contact on file. <button onclick="document.getElementById('editFarm').showModal()" class="text-sagedeep font-semibold">Add details</button> to enable delivery.</p>
+      <p class="text-[12.5px] text-dove mt-3">No contact on file. <button data-open="editFarm" class="text-sagedeep font-semibold">Add details</button> to enable delivery.</p>
       {% endif %}
       {% if farm.dronedeploy_project_url %}
       <a href="{{ farm.dronedeploy_project_url }}" target="_blank" class="mt-4 inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-sagedeep hover:underline">{{ icon('external','w-4 h-4') }} DroneDeploy project</a>
       {% endif %}
     </div>
 
-    <form method="post" action="{{ url_for('farm_delete', farm_id=farm.id) }}" onsubmit="return confirm('Remove {{ farm.name }} and all its flights? This cannot be undone.')">
+    <form method="post" action="{{ url_for('farm_delete', farm_id=farm.id) }}" data-confirm="Remove {{ farm.name }} and all its flights? This cannot be undone.">
+      {{ csrf_field() }}
       <button class="w-full text-[12.5px] text-dove hover:text-ink font-semibold py-2 flex items-center justify-center gap-2 transition">{{ icon('trash','w-4 h-4') }} Remove farm</button>
     </form>
   </div>
@@ -93,12 +94,13 @@
 <!-- new flight modal -->
 <dialog id="newFlight" class="rounded-xl2 p-0 w-full max-w-md backdrop:bg-ink/40 shadow-2xl">
   <form method="post" action="{{ url_for('flight_new', farm_id=farm.id) }}" class="bg-white">
+    {{ csrf_field() }}
     <div class="px-6 py-4 border-b border-silver flex items-center justify-between">
       <h3 class="text-[16px] font-extrabold">New flight</h3>
-      <button type="button" onclick="document.getElementById('newFlight').close()" class="text-dove hover:text-ink text-xl leading-none">&times;</button>
+      <button type="button" data-close="newFlight" class="text-dove hover:text-ink text-xl leading-none">&times;</button>
     </div>
     <div class="p-6 space-y-4">
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label class="block text-[12px] font-semibold mb-1.5">Season <span class="text-sagedeep">*</span></label>
           <input name="season" required placeholder="2026LR" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]">
@@ -108,7 +110,7 @@
           <input name="flight_date" type="date" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]">
         </div>
       </div>
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label class="block text-[12px] font-semibold mb-1.5">Flight number <span class="text-sagedeep">*</span></label>
           <input name="flight_number" type="number" min="1" value="1" required class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]">
@@ -118,7 +120,7 @@
           <input name="flights_planned" type="number" min="1" value="12" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]">
         </div>
       </div>
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label class="block text-[12px] font-semibold mb-1.5">Crop</label>
           <input name="crop" value="{{ farm.crop }}" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]">
@@ -131,7 +133,7 @@
       <p class="text-[11.5px] text-dove">A flight is unique by <b>farm + season + flight number</b> — the same flight number recurs each season.</p>
     </div>
     <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
-      <button type="button" onclick="document.getElementById('newFlight').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
+      <button type="button" data-close="newFlight" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
       <button class="px-5 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 flex items-center gap-2">{{ icon('check','w-4 h-4') }} Create flight</button>
     </div>
   </form>
@@ -140,19 +142,20 @@
 <!-- edit farm modal -->
 <dialog id="editFarm" class="rounded-xl2 p-0 w-full max-w-lg backdrop:bg-ink/40 shadow-2xl">
   <form method="post" action="{{ url_for('farm_edit', farm_id=farm.id) }}" class="bg-white">
+    {{ csrf_field() }}
     <div class="px-6 py-4 border-b border-silver flex items-center justify-between">
       <h3 class="text-[16px] font-extrabold">Edit farm</h3>
-      <button type="button" onclick="document.getElementById('editFarm').close()" class="text-dove hover:text-ink text-xl leading-none">&times;</button>
+      <button type="button" data-close="editFarm" class="text-dove hover:text-ink text-xl leading-none">&times;</button>
     </div>
     <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
       <div><label class="block text-[12px] font-semibold mb-1.5">Farm name</label><input name="name" value="{{ farm.name }}" required class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div><label class="block text-[12px] font-semibold mb-1.5">Crop</label><input name="crop" value="{{ farm.crop }}" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
         <div><label class="block text-[12px] font-semibold mb-1.5">Acreage</label><input name="acreage" type="number" step="0.1" value="{{ farm.acreage or '' }}" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
       </div>
       <div><label class="block text-[12px] font-semibold mb-1.5">Location</label><input name="location" value="{{ farm.location }}" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
       <div class="h-px bg-silver"></div>
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div><label class="block text-[12px] font-semibold mb-1.5">Farmer name</label><input name="farmer_name" value="{{ farm.farmer_name }}" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
         <div><label class="block text-[12px] font-semibold mb-1.5">Phone (WhatsApp)</label><input name="farmer_phone" value="{{ farm.farmer_phone }}" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]"></div>
       </div>
@@ -160,7 +163,7 @@
       <div><label class="block text-[12px] font-semibold mb-1.5">DroneDeploy project URL</label><input name="dronedeploy_project_url" value="{{ farm.dronedeploy_project_url }}" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[13px]"></div>
     </div>
     <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
-      <button type="button" onclick="document.getElementById('editFarm').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
+      <button type="button" data-close="editFarm" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
       <button class="px-5 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 flex items-center gap-2">{{ icon('check','w-4 h-4') }} Save changes</button>
     </div>
   </form>

@@ -1,0 +1,79 @@
+/* SHAMBA Tracker application stylesheet.
+   Built from the templates with the Tailwind CLI, not pulled from a CDN at
+   runtime. Two reasons: the play CDN compiles utilities in the browser on every
+   page load and warns against production use, and a content security policy
+   that has to whitelist a CDN's script is a policy that trusts that CDN with
+   the whole application. Rebuild with:
+
+       npm install tailwindcss@3.4.17
+       npx tailwindcss -c tailwind.config.js -i input.css -o static/css/app.css --minify
+*/
+
+/* ---------------------------------------------------------------- fonts
+   The same four Montserrat faces the report uses, served from this origin.
+   Weights 300 and 500 are not bundled; the browser resolves them to the nearest
+   available face, which is what it already did for the italic Google served. */
+@font-face { font-family:'Montserrat'; src:url('../fonts/montserrat-latin-400-normal.woff2') format('woff2'); font-weight:400; font-style:normal; font-display:swap; }
+@font-face { font-family:'Montserrat'; src:url('../fonts/montserrat-latin-600-normal.woff2') format('woff2'); font-weight:600; font-style:normal; font-display:swap; }
+@font-face { font-family:'Montserrat'; src:url('../fonts/montserrat-latin-700-normal.woff2') format('woff2'); font-weight:700; font-style:normal; font-display:swap; }
+@font-face { font-family:'Montserrat'; src:url('../fonts/montserrat-latin-800-normal.woff2') format('woff2'); font-weight:800; font-style:normal; font-display:swap; }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-text-size-adjust:100%; }
+  body { font-family:'Montserrat',system-ui,sans-serif; letter-spacing:-0.006em; -webkit-font-smoothing:antialiased; }
+}
+
+@layer components {
+  .glass { background:rgba(255,255,255,0.66); backdrop-filter:saturate(140%) blur(14px); -webkit-backdrop-filter:saturate(140%) blur(14px); border:1px solid rgba(3,9,32,0.08); }
+  .glass-solid { background:#fff; border:1px solid #D6DBD5; }
+  .tnum { font-variant-numeric:tabular-nums; }
+  /* Instrument type: one family throughout, so readings are set apart by
+     tabular figures and tracking rather than by a second typeface. */
+  .inst { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-weight:600; }
+  .eyebrow { font-size:10px; font-weight:700; letter-spacing:.17em; text-transform:uppercase; }
+  .field { transition:.15s; }
+  .field:focus { outline:none; border-color:#B0D48C; box-shadow:0 0 0 3px rgba(176,212,140,.35); }
+  /* editable cells in the review table */
+  .cell { transition:.15s; border:1px solid transparent; border-radius:8px; }
+  .cell:hover { background:rgba(3,9,32,.03); }
+  .cell:focus { outline:none; background:#fff; border-color:#B0D48C; box-shadow:0 0 0 3px rgba(176,212,140,.35); }
+}
+
+@layer utilities {
+  /* Scroll reveal as pure enhancement: content is visible by default, and only
+     starts hidden once the script has confirmed it can reveal it again. */
+  body.js-motion .reveal { opacity:0; transform:translateY(18px); transition:opacity .7s cubic-bezier(.2,.7,.3,1), transform .7s cubic-bezier(.2,.7,.3,1); }
+  body.js-motion .reveal.in { opacity:1; transform:none; }
+  .flash-enter { animation:flashIn .3s ease both; }
+  @keyframes flashIn { from { opacity:0; transform:translateY(-6px) } to { opacity:1; transform:none } }
+
+  a:focus-visible, button:focus-visible, [tabindex]:focus-visible, summary:focus-visible {
+    outline:2px solid #7FB65E; outline-offset:2px; border-radius:6px;
+  }
+
+  /* Touch targets: a tap is about 9mm of finger, so every control on a phone
+     gets at least 44px of height whatever its padding says. */
+  @media (max-width: 640px) {
+    button, [type="button"], [type="submit"], select, summary,
+    a.tap, .tap { min-height:44px; }
+    input[type="text"], input[type="email"], input[type="password"],
+    input[type="tel"], input[type="number"], input[type="date"], select, textarea {
+      font-size:16px;   /* anything smaller makes iOS Safari zoom on focus */
+    }
+  }
+
+  /* dialogs never overflow small screens */
+  dialog { max-width:calc(100vw - 1.5rem); }
+  ::-webkit-scrollbar { height:10px; width:10px; }
+  ::-webkit-scrollbar-thumb { background:#D6DBD5; border-radius:99px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    body.js-motion .reveal { opacity:1 !important; transform:none !important; transition:none !important; }
+    *, *::before, *::after { animation-duration:.001ms !important; transition-duration:.001ms !important; }
+  }
+  @media print { .no-print { display:none !important; } body { background:#fff; } }
+}

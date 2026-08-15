@@ -36,6 +36,7 @@
       </p>
 
       <form method="post" class="mt-7 space-y-4">
+        {{ csrf_field() }}
         <div>
           <label class="block text-[12.5px] font-semibold mb-1.5" for="s-name">Full name</label>
           <input id="s-name" name="name" required autofocus placeholder="Jane Wanjiru"
@@ -50,14 +51,14 @@
         <div>
           <label class="block text-[12.5px] font-semibold mb-1.5" for="s-role">What do you do here?</label>
           <select id="s-role" name="requested_role" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px] bg-white"
-                  onchange="document.getElementById('roleNote').textContent = this.selectedOptions[0].dataset.blurb">
+                  data-role-note>
             {% for r in ROLES if r != 'admin' %}
             <option value="{{ r }}" data-blurb="{{ ROLE_BLURB[r] }}" {{ 'selected' if r=='agronomist' }}>{{ ROLE_LABELS[r] }}</option>
             {% endfor %}
           </select>
           <p id="roleNote" class="text-[11.5px] text-dove mt-1.5 leading-snug">{{ ROLE_BLURB['agronomist'] }}</p>
         </div>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-[12.5px] font-semibold mb-1.5" for="s-title">Job title <span class="text-dove font-normal">(optional)</span></label>
             <input id="s-title" name="job_title" placeholder="Field agronomist"

@@ -27,6 +27,7 @@
         <p class="text-[11.5px] text-white/55 truncate">{{ u.email }} · asked for {{ u.requested_role_label }}</p>
       </div>
       <form method="post" action="{{ url_for('user_approve', user_id=u.id) }}" class="shrink-0">
+        {{ csrf_field() }}
         <input type="hidden" name="role" value="{{ u.requested_role or 'agronomist' }}">
         <button class="px-3.5 py-2 rounded-xl bg-sage text-ink text-[12px] font-bold hover:bg-sage/80 transition">Approve</button>
       </form>

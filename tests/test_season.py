@@ -2,9 +2,14 @@
 Checks for the season-level trend: the arc across every flight of a season,
 rather than only the comparison with the flight before.
 
+Since V2 the season trend is an internal read only. The farmer's report is the
+three pages the specification asks for and carries no season sheet, so the
+checks below assert the maths still holds, that it still reaches the
+agronomist's own flight screen, and that it stays out of the report.
+
 Covers the fall back to the single-flight view, flights with no findings being
 left out rather than plotted as zero, one season never bleeding into another,
-and a full twelve-flight season still fitting on one A4 sheet.
+and a twelve-flight season's findings paginating without losing a row.
 
 Runs against a throwaway SQLite file with a real Flask test client. Run it with:
 
@@ -17,6 +22,7 @@ TMP=tempfile.mkdtemp()
 os.environ.update(DATABASE_URL="sqlite:///"+os.path.join(TMP,"e.db"), SECRET_KEY="t",
                   ADMIN_EMAIL="a@a.com", ADMIN_PASSWORD="password123")
 import app as appmod, pdf_gen
+appmod.app.config["TESTING"] = True
 from models import db, Farm, Flight, Finding
 from datetime import date
 from flask import render_template
@@ -43,16 +49,18 @@ def mk(fm,n,mix,day=1,season="2026LR"):
 c=appmod.app.test_client()
 c.post("/login",data={"email":"a@a.com","password":"password123"},follow_redirects=True)
 
-print("\n=== A. single flight: no season sheet, falls back to baseline ===")
+print("\n=== A. single flight: no trend to draw ===")
 with appmod.app.app_context():
     fm=mkfarm("Solo Farm"); one=mk(fm,1,{"urgent":2,"watch":1,"good":3},1); oid=one.id
     ctx=appmod.report_context(db.session.get(Flight,oid))
     chk("season is None with one flight", ctx["season"] is None, ctx["season"])
 w=c.get(f"/flights/{oid}/report").data.decode()
-# V2 has no season sheet: the trend appears as a line on page 1, and only once
-# more than one flight of the season carries findings.
-chk("no season line with a single flight", "This season so far" not in w)
+chk("no season sheet in the farmer's report", "Your season so far" not in w)
+chk("summary page rendered", "Field scouting summary" in w)
+chk("map page rendered", "Farm map" in w)
+chk("detailed findings rendered", "Detailed findings" in w)
 _sheets=len(re.findall(r'<section class="sheet"', w))
+chk("the report is three pages", _sheets==3, _sheets)
 _claim=int(re.findall(r"Page \d+ of (\d+)", w)[0])
 chk("footer page count matches the sheets drawn", _sheets==_claim, f"sheets={_sheets} claims={_claim}")
 
@@ -63,8 +71,12 @@ with appmod.app.app_context():
     chk("season summary exists", s is not None)
     chk("two points plotted", len(s["spark"]["points"])==2, len(s["spark"]["points"]))
     chk("direction computed", s["direction"] in ("up","down","flat"), s["direction"])
+# The trend belongs to the people reading the field, not to the farmer's
+# three-page report — so it shows on the flight screen and nowhere else.
 w=c.get(f"/flights/{tid}/report").data.decode()
-chk("the season line appears once there are two flights", "This season so far" in w)
+chk("trend stays out of the farmer's report", "Season to date" not in w)
+d=c.get(f"/flights/{tid}").data.decode()
+chk("trend shown on the agronomist's flight screen", "Season to date" in d)
 
 print("\n=== C. a flight with no findings is skipped, not plotted as zero ===")
 with appmod.app.app_context():
@@ -90,7 +102,7 @@ with appmod.app.app_context():
     chk("only this season's flights appear", all(sn=="2026LR" for sn,_ in nums), nums)
     chk("exactly two of them", len(nums)==2, nums)
 
-print("\n=== E. a full 12-flight season still fits one A4 sheet ===")
+print("\n=== E. a long season paginates without losing a finding ===")
 with appmod.app.app_context():
     fm=mkfarm("Long Season Farm")
     last=None
@@ -111,11 +123,18 @@ with appmod.app.app_context():
     pages=int([l for l in subprocess.run(["pdfinfo",os.path.join(TMP,"long.pdf")],capture_output=True,text=True)
                .stdout.split("\n") if l.startswith("Pages")][0].split()[-1])
     chk("sheets == PDF pages (nothing overflowed)", sheets==pages, f"sheets={sheets} pages={pages}")
+    # The real guarantee: every annotation reached the paper. Pagination that
+    # silently drops a row would still produce a tidy page count.
+    import subprocess as _sp
+    txt=_sp.run(["pdftotext",os.path.join(TMP,"long.pdf"),"-"],capture_output=True,text=True).stdout
+    zones=len(db.session.get(Flight,lid).findings)
+    found=sum(1 for n in range(1,zones+1) if re.search(rf"(?m)^\s*{n}\s", txt))
+    chk("every zone number printed", found==zones, f"found={found} of {zones}")
 
-print("\n=== F. score shown on the season page equals the cover score ===")
+print("\n=== F. the internal score is computed consistently ===")
 with appmod.app.app_context():
     fl=db.session.get(Flight,lid); ctx=appmod.report_context(fl)
-    chk("last season point == cover score",
+    chk("last season point == this flight's score",
         ctx["season"]["scored"][-1]["score"]==ctx["a"]["score"],
         (ctx["season"]["scored"][-1]["score"], ctx["a"]["score"]))
 

@@ -146,7 +146,9 @@ with APP.test_request_context("/"):
         logo_uri="",map_uri="",**appmod.report_context(fl))
 sheets_pdf=len(re.findall(r'<section class="sheet"', html))
 chk("same number of A4 sheets in both", sheets_web==sheets_pdf, f"web={sheets_web} pdf={sheets_pdf}")
-chk("both are built from the one document", "@page { size: A4; margin: 0; }" in web and "@page { size: A4; margin: 0; }" in html)
+chk("both are built from the one document",
+    all(("size: A4" in doc and "@bottom-right" in doc and 'class="sheet"' in doc)
+        for doc in (web, html)))
 chk("no Tailwind utility classes inside the document",
     'class="sheet"' in web and "text-[13px]" not in web.split('<section class="sheet"')[1])
 chk("print CSS drops the app chrome", "@media print" in web and "no-print" in web)

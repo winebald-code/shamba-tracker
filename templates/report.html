@@ -5,17 +5,11 @@
 {#
   Everything on this page that is not the report itself carries .no-print, so
   Ctrl+P produces the document and nothing else. The document is included, not
-  duplicated — report_v2.html is also what WeasyPrint renders, which is what
+  duplicated — report_doc.html is also what WeasyPrint renders, which is what
   makes the screen, the print dialog and the downloaded PDF agree.
 #}
 
 {% block body %}
-<style>
-  /* Breathing room around the sheets on screen. The print path takes none of
-     this, so the page box still supplies the only margin on paper. */
-  @media screen { .rdwrap { padding: 20px 16px 40px; } }
-  @media print  { .rdwrap { padding: 0; } }
-</style>
 <div class="min-h-screen bg-canvas">
 
 {% if not public %}
@@ -24,12 +18,12 @@
   <div class="max-w-[900px] mx-auto px-3 sm:px-5 h-16 flex items-center justify-between gap-2">
     <a href="{{ url_for('flight_detail', flight_id=flight.id) }}" class="inline-flex items-center gap-1.5 text-[13px] font-semibold text-ink hover:bg-ink/5 px-2.5 sm:px-3 py-2 rounded-xl transition whitespace-nowrap">← <span class="hidden sm:inline">Back to review</span><span class="sm:hidden">Back</span></a>
     <div class="flex items-center gap-2">
-      <button onclick="window.print()" class="hidden md:inline-flex items-center gap-2 px-3 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition" title="Prints exactly what you see">{{ icon('report','w-4 h-4') }} Print</button>
+      <button data-action="print" class="hidden md:inline-flex items-center gap-2 px-3 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition" title="Prints exactly what you see">{{ icon('report','w-4 h-4') }} Print</button>
       <a href="{{ url_for('flight_report_pdf', flight_id=flight.id) }}"
          {% if PDF_AVAILABLE %}download="{{ flight.report_filename }}"{% endif %}
          title="Downloads as {{ flight.report_filename }}"
          class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition"><span class="shrink-0">{{ icon('download','w-4 h-4') }}</span><span class="hidden sm:inline">Download PDF</span></a>
-      <button onclick="document.getElementById('sendPanel').showModal()" class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition"><span class="shrink-0">{{ icon('send','w-4 h-4') }}</span><span class="hidden sm:inline">Share with farmer</span><span class="sm:hidden">Share</span></button>
+      <button data-open="sendPanel" class="inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition"><span class="shrink-0">{{ icon('send','w-4 h-4') }}</span><span class="hidden sm:inline">Share with farmer</span><span class="sm:hidden">Share</span></button>
     </div>
   </div>
 </div>
@@ -48,6 +42,31 @@
 </div>
 {% endif %}
 
+{#
+  The review checkpoint from section 4 of the V2 specification.
+
+  Page 1 is written by the aggregation layer rather than by a person, so
+  somebody reads it before a farmer does. That is not a new step: the same
+  person already checks the report before it goes out over WhatsApp or email.
+  This just tells them which part of the page was assembled rather than typed,
+  and what it was assembled from.
+#}
+{% if not public %}
+<div class="no-print max-w-[900px] mx-auto px-4 pt-4">
+  <div class="rounded-xl border border-silver bg-white px-4 py-3">
+    <p class="text-[12.5px] leading-relaxed">
+      <span class="font-bold">Check the summary before sending.</span>
+      <span class="text-dove">The categories, patterns and suggested areas on page 1 are grouped
+      from the {{ findings|length }} annotation{{ '' if findings|length == 1 else 's' }} recorded for
+      this flight — no cause or recommendation is added that the agronomist did not write. Page 3
+      carries every annotation unchanged. Anything that reads wrong is fixed by editing the
+      finding itself on the
+      <a href="{{ url_for('flight_detail', flight_id=flight.id) }}" class="font-semibold text-ink underline decoration-silver hover:decoration-ink">review screen</a>.</span>
+    </p>
+  </div>
+</div>
+{% endif %}
+
 {% if not public and not PDF_AVAILABLE %}
 <div class="no-print max-w-[900px] mx-auto px-4 pt-4">
   <div class="rounded-xl border border-silver bg-white px-4 py-3 text-[12.5px] leading-relaxed">
@@ -59,7 +78,7 @@
 </div>
 {% endif %}
 
-<div class="rdwrap">{% include 'report_v2.html' %}</div>
+{% include 'report_doc.html' %}
 
 {% if public %}
 <p class="text-center text-[11.5px] text-dove pb-8 px-4 no-print">Questions? Reply to the message this came from, or call Acre Insights any time.</p>
@@ -75,7 +94,7 @@
         <h3 class="text-[16px] font-extrabold">Share with {{ farm.farmer_name or 'the farmer' }}</h3>
         <p class="text-[11.5px] text-dove mt-0.5">Two ways out. Both log the delivery here.</p>
       </div>
-      <button type="button" onclick="document.getElementById('sendPanel').close()" class="text-dove hover:text-ink shrink-0" aria-label="Close">{{ icon('x','w-5 h-5') }}</button>
+      <button type="button" data-close="sendPanel" class="text-dove hover:text-ink shrink-0" aria-label="Close">{{ icon('x','w-5 h-5') }}</button>
     </div>
 
     <!-- 1. straight from your own apps: needs no provider account -->
@@ -90,7 +109,7 @@
 
       <div class="space-y-2.5">
         <a href="{{ share.whatsapp }}" target="_blank" rel="noopener"
-           onclick="markShared('whatsapp')"
+           data-share="whatsapp"
            class="flex items-center gap-3 rounded-xl border border-silver px-4 py-3.5 hover:border-sagedeep hover:bg-sagesoft/40 transition group">
           <span class="w-10 h-10 rounded-xl bg-[#25D366]/12 text-[#128C7E] grid place-items-center shrink-0">{{ icon('whatsapp','w-5 h-5') }}</span>
           <span class="min-w-0 flex-1">
@@ -103,7 +122,7 @@
         </a>
 
         <a href="{{ share.mailto }}"
-           onclick="markShared('email')"
+           data-share="email"
            class="flex items-center gap-3 rounded-xl border border-silver px-4 py-3.5 hover:border-sagedeep hover:bg-sagesoft/40 transition group">
           <span class="w-10 h-10 rounded-xl bg-canvas text-ink grid place-items-center shrink-0">{{ icon('mail','w-5 h-5') }}</span>
           <span class="min-w-0 flex-1">
@@ -116,7 +135,7 @@
         </a>
 
         <a href="{{ share.gmail }}" target="_blank" rel="noopener"
-           onclick="markShared('email')"
+           data-share="email"
            class="flex items-center gap-3 rounded-xl border border-silver px-4 py-3.5 hover:border-sagedeep hover:bg-sagesoft/40 transition group">
           <span class="w-10 h-10 rounded-xl bg-canvas text-ink grid place-items-center shrink-0">{{ icon('external','w-5 h-5') }}</span>
           <span class="min-w-0 flex-1">
@@ -136,7 +155,7 @@
              class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-silver text-[11.5px] font-bold hover:border-dove transition shrink-0">
             {{ icon('external','w-3.5 h-3.5') }} <span>Test</span>
           </a>
-          <button type="button" onclick="copyShareLink(this)"
+          <button type="button" data-action="copy-link"
                   class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-silver text-[11.5px] font-bold hover:border-dove transition shrink-0">
             {{ icon('copy','w-3.5 h-3.5') }} <span>Copy</span>
           </button>
@@ -154,6 +173,7 @@
         <span class="inst text-ink">{{ flight.report_filename }}</span>.
       </p>
       <form method="post" action="{{ url_for('flight_send', flight_id=flight.id) }}" class="space-y-2.5">
+        {{ csrf_field() }}
         <label class="flex items-center gap-3 bg-white border border-silver rounded-xl px-4 py-3 cursor-pointer">
           <input type="checkbox" name="channel" value="email" {{ 'checked' if farm.farmer_email }} class="w-4 h-4 accent-sagedeep">
           <span class="text-dove shrink-0">{{ icon('mail','w-5 h-5') }}</span>
@@ -167,7 +187,7 @@
             <span class="text-dove font-normal block text-[11.5px] truncate">{{ farm.farmer_phone or 'No phone on file' }}</span></span>
         </label>
         <div class="flex items-center justify-end gap-3 pt-2">
-          <button type="button" onclick="document.getElementById('sendPanel').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-white">Close</button>
+          <button type="button" data-close="sendPanel" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-white">Close</button>
           <button class="px-5 py-2.5 rounded-xl bg-ink text-white text-[13px] font-bold hover:bg-ink/90 flex items-center gap-2">{{ icon('send','w-4 h-4') }} Send automatically</button>
         </div>
       </form>
@@ -175,17 +195,22 @@
   </div>
 </dialog>
 
-<script>
+<script nonce="{{ csp_nonce }}">
   // A hand-off share is recorded the moment the external app opens. The link
   // still follows normally; this only tells the server the report went out.
   function markShared(channel){
     try{
-      var body = JSON.stringify({channel: channel});
+      // sendBeacon cannot set a header, so the token travels in the body —
+      // which the server checks for exactly this reason.
+      var body = JSON.stringify({channel: channel, csrf_token: window.SHAMBA_CSRF});
       var url = '{{ url_for("flight_mark_shared", flight_id=flight.id) }}';
       if(navigator.sendBeacon){
         navigator.sendBeacon(url, new Blob([body], {type:'application/json'}));
       }else{
-        fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:body, keepalive:true});
+        fetch(url, {method:'POST',
+                    headers:{'Content-Type':'application/json',
+                             'X-CSRFToken': window.SHAMBA_CSRF},
+                    body:body, keepalive:true});
       }
     }catch(e){ /* never block the share */ }
   }
@@ -209,10 +234,11 @@
 {% endif %}
 
 {% if public %}
-<script>
+<script nonce="{{ csp_nonce }}">
   async function acknowledge(){
     try{
-      const res = await fetch('{{ url_for("public_ack", token=flight.share_token) }}', {method:'POST'});
+      const res = await fetch('{{ url_for("public_ack", token=flight.share_token) }}',
+        {method:'POST', headers:{'X-CSRFToken': window.SHAMBA_CSRF}});
       const data = await res.json();
       if(data.ok){
         document.getElementById('ackArea').innerHTML =
@@ -224,7 +250,7 @@
 {% endif %}
 
 {% if request.args.get('print') %}
-<script>
+<script nonce="{{ csp_nonce }}">
   // Reached only when server-side PDF is unavailable on this host. The document
   // is the same one WeasyPrint would have rendered, so the browser's own
   // "Save as PDF" produces the same pages — it just needs the right filename,

@@ -15,6 +15,7 @@ from functools import wraps
 
 from flask import (Flask, render_template, request, redirect, url_for, flash,
                    jsonify, abort, send_file, Response)
+from markupsafe import Markup, escape
 from flask_login import (LoginManager, login_user, logout_user, login_required,
                          current_user)
 from werkzeug.utils import secure_filename
@@ -27,10 +28,11 @@ import parsing
 import integrations
 import pdf_gen
 import report_data
+import aggregate
 import schema
 import bulk_import
 import homepage
-import aggregation
+import security
 import storage as storage_backend
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -59,6 +61,27 @@ PERMISSIONS = {
 }
 
 
+def _secret_key():
+    """
+    The key every session cookie and CSRF token is signed with.
+
+    A shipped default is worse than no default: it is public, so anyone can
+    forge a session cookie for any deployment that never changed it, and
+    nothing about the running app looks wrong. So an unset SECRET_KEY gets a
+    random one — which logs everybody out on each restart, loudly enough that
+    it gets set — rather than a convenient constant.
+    """
+    key = os.environ.get("SECRET_KEY", "").strip()
+    if key and key not in ("dev-change-me-in-production",
+                           "change-this-to-a-long-random-string"):
+        return key
+    import secrets as _secrets
+    print("[security] SECRET_KEY is not set. Using a random key for this "
+          "process — sessions will not survive a restart and will not be "
+          "shared between workers. Set SECRET_KEY before running for real.")
+    return _secrets.token_urlsafe(48)
+
+
 def create_app():
     app = Flask(__name__)
     # Railway (and every other PaaS) terminates TLS at a proxy and forwards
@@ -68,7 +91,7 @@ def create_app():
     # container. ProxyFix reads the X-Forwarded-* headers so every generated
     # link carries the public https origin instead.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
-    app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-change-me-in-production")
+    app.config["SECRET_KEY"] = _secret_key()
     db_url = os.environ.get("DATABASE_URL", "sqlite:///" + os.path.join(BASE_DIR, "shamba.db"))
     if db_url.startswith("postgres://"):          # Railway hands out the legacy prefix
         db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -81,6 +104,11 @@ def create_app():
     app.config["UPLOAD_DIR"] = UPLOAD_DIR
 
     db.init_app(app)
+    app.jinja_env.filters["css_string"] = css_string
+    app.jinja_env.globals["csrf_field"] = csrf_field
+
+    # Security headers, the CSP nonce and CSRF, applied to every request.
+    security.install(app)
 
     login = LoginManager(app)
     login.login_view = "login"
@@ -96,7 +124,6 @@ def create_app():
         return {
             "COLOUR_CODE": parsing.COLOUR_CODE,
             "CATEGORIES": parsing.CATEGORIES,
-            "CATEGORY_COLOURS": aggregation.CATEGORY_COLOURS,
             "ROLE_LABELS": ROLE_LABELS,
             "ROLE_BLURB": ROLE_BLURB,
             "STATUS_LABELS": STATUS_LABELS,
@@ -118,75 +145,12 @@ def create_app():
               "browser's print dialog instead. Build with the included Dockerfile "
               "to get server-generated PDFs.")
 
-    register_security_headers(app)
     register_routes(app)
 
     with app.app_context():
         init_db()
 
     return app
-
-
-# ------------------------------------------------------------------ security
-# Content-Security-Policy sources. Tailwind is loaded from its CDN and compiles
-# in the browser, and Google Fonts serves the application's typeface, so both
-# origins have to be allowed.
-CSP_DIRECTIVES = (
-    "default-src 'self'",
-    # 'unsafe-inline' and 'unsafe-eval' are needed by the Tailwind browser build,
-    # which generates styles at runtime. Removing them means moving to a compiled
-    # stylesheet, which is a build-step change rather than a header change.
-    "script-src 'self' https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval'",
-    "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'",
-    "font-src 'self' https://fonts.gstatic.com data:",
-    # data: covers the base64 images inlined into a rendered report.
-    "img-src 'self' data: blob:",
-    "connect-src 'self'",
-    "form-action 'self'",
-    "base-uri 'self'",
-    "frame-ancestors 'none'",
-    "object-src 'none'",
-    "upgrade-insecure-requests",
-)
-
-SECURITY_HEADERS = {
-    # Tells the browser to reach this site over HTTPS only. Two years, covering
-    # subdomains, and preload-eligible.
-    "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
-    "Content-Security-Policy": "; ".join(CSP_DIRECTIVES),
-    # frame-ancestors above covers modern browsers; this covers the rest.
-    "X-Frame-Options": "DENY",
-    "X-Content-Type-Options": "nosniff",
-    # A report link is a capability. Sending the full URL in a Referer header
-    # to another origin would leak a farmer's share token.
-    "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": ("accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
-                           "magnetometer=(), microphone=(), payment=(), usb=(), "
-                           "interest-cohort=()"),
-    "Cross-Origin-Opener-Policy": "same-origin",
-    "Cross-Origin-Resource-Policy": "same-origin",
-}
-
-
-def register_security_headers(app):
-    """
-    Set the response headers a browser uses to defend the application.
-
-    Every one of these was missing, which is what a security scan grades on.
-    They are applied here rather than at the proxy so they travel with the
-    application to whatever host it is deployed on.
-    """
-    @app.after_request
-    def _security_headers(response):
-        for header, value in SECURITY_HEADERS.items():
-            # HSTS over plain HTTP is meaningless and browsers ignore it, but
-            # sending it locally would pin developers to https://localhost.
-            if header == "Strict-Transport-Security" and not request.is_secure:
-                forwarded = request.headers.get("X-Forwarded-Proto", "")
-                if forwarded.split(",")[0].strip() != "https":
-                    continue
-            response.headers.setdefault(header, value)
-        return response
 
 
 def _pending_count():
@@ -297,6 +261,36 @@ def _save_upload(file_storage, prefix, allowed):
     return name, None
 
 
+def csrf_field():
+    """
+    The hidden input every state-changing form carries.
+
+    Rendered server-side rather than stamped in by script, so a form still
+    submits when JavaScript has not run, has failed, or has been blocked. The
+    behaviour layer in base.html stamps any form this missed as a second line,
+    but no form should be relying on it.
+    """
+    return Markup('<input type="hidden" name="csrf_token" value="%s">'
+                  % escape(security.csrf_token()))
+
+
+def css_string(value):
+    """
+    Quote a value for use inside a CSS string, e.g. the report's page footer.
+
+    The farmer's farm name reaches the printed page through a CSS `content`
+    property, which is a string literal — an apostrophe in "Ol' Kalou Farm" or a
+    backslash in a name typed on the wrong keyboard would otherwise end the
+    literal early and take the rest of the stylesheet with it. Non-ASCII is left
+    alone: the document is served as UTF-8, so `Kĩambu` sets correctly as
+    written, and CSS's own escape form would only obscure it.
+    """
+    text = str(value or "")
+    text = "".join(ch for ch in text if ch >= " " and ch != "\x7f")
+    text = text.replace("\\", "\\\\").replace('"', '\\"')
+    return Markup(f'"{text}"')
+
+
 def _parse_date(s):
     if not s:
         return None
@@ -341,18 +335,21 @@ def report_context(flight):
         still_open = len(flight.findings) - resolved
 
     analysis = report_data.analyse(flight, prev)
-
-    # V2 groups the flight's findings into the few patterns actually present in
-    # them, rather than listing every zone. The map numbers are passed in so the
-    # summary, the map and the detail tables all refer to a zone by one number.
-    agg = aggregation.aggregate(flight.findings, analysis.get("numbers"))
     points = report_data.season_trend(flight, season_flights)
     season = report_data.season_summary(points, analysis["score"]) if points else None
+
+    # `a` is the internal read: the severity colour code, the score, the season
+    # trend. It drives the agronomist's screens and never reaches the farmer.
+    # `r` is the report itself — the patterns found across the agronomist's own
+    # annotations, which is all the three pages are built from.
+    report = aggregate.build(flight)
+    report["pages"] = aggregate.paginate(report["groups"])
 
     return {
         "flight": flight,
         "farm": flight.farm,
         "findings": flight.findings,
+        "r": report,
         "category_counts": flight.category_counts(),
         "meaning_counts": flight.meaning_counts(),
         "prev": prev,
@@ -360,8 +357,6 @@ def report_context(flight):
         "resolved": resolved,
         "still_open": still_open,
         "a": analysis,
-        "agg": agg,
-        "summary_line": aggregation.summary_sentence(agg, flight, flight.farm),
         "season": season,
         "season_flights": season_flights,
         "next_flight_no": flight.flight_number + 1,

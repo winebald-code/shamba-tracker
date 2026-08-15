@@ -27,7 +27,8 @@
     {% endfor %}
     <div class="border-t border-silver mt-2 pt-2">
       <form method="post" action="{{ url_for('homepage_reset') }}"
-            onsubmit="return confirm('Reset every field back to the shipped wording? Your edits will be lost.')">
+            data-confirm="Reset every field back to the shipped wording? Your edits will be lost.">
+        {{ csrf_field() }}
         <button class="w-full text-left px-2.5 py-2 rounded-lg text-[12.5px] font-semibold text-dove hover:bg-canvas transition">
           Reset all to defaults
         </button>
@@ -50,6 +51,7 @@
     {% for group, anchor, fields in sections %}
     <section id="{{ anchor }}" data-section="{{ anchor }}" class="scroll-mt-4 space-y-5">
     <form method="post" action="{{ url_for('homepage_save') }}" class="glass-solid rounded-xl2 overflow-hidden block">
+      {{ csrf_field() }}
       <input type="hidden" name="section" value="{{ anchor }}">
       <div class="px-5 py-3.5 border-b border-silver flex items-center justify-between gap-3">
         <h3 class="text-[14px] font-bold">{{ group }}</h3>
@@ -71,8 +73,8 @@
           <div class="mt-2 flex items-start gap-3 flex-wrap">
             <img src="{{ asset_url(values[key]) }}" alt=""
                  class="w-28 h-20 object-cover rounded-lg border border-silver shrink-0"
-                 onerror="this.style.opacity=.25">
-            <div class="flex-1 basis-full sm:basis-auto sm:min-w-[240px]">
+                 data-dim-on-error>
+            <div class="flex-1 min-w-[240px]">
               <input type="text" id="f-{{ key }}" name="{{ key }}" value="{{ values[key] }}"
                      class="w-full text-[12.5px] px-3 py-2 rounded-lg border border-silver bg-white focus:border-dove outline-none">
               <p class="text-[11px] text-dove mt-1">Path under <code>static/</code>, or upload a replacement below.</p>
@@ -104,6 +106,7 @@
         {% for key, label, kind, default, help in image_fields %}
         <form method="post" action="{{ url_for('homepage_image', key=key) }}" enctype="multipart/form-data"
               class="flex items-center gap-3 flex-wrap">
+          {{ csrf_field() }}
           <span class="text-[12px] font-semibold w-32 shrink-0">{{ label }}</span>
           <input type="file" name="image" accept=".png,.jpg,.jpeg,.webp" required
                  class="text-[12px] text-dove file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12px] file:cursor-pointer cursor-pointer">
@@ -118,7 +121,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
   // Keep the section list in step with what is on screen. Without this the
   // sidebar looks static while the page moves, and on a page of ten forms it is
   // easy to lose track of which one you are editing.

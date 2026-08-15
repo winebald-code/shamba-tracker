@@ -47,7 +47,7 @@
       <a href="{{ url_for('login') }}" class="hidden sm:inline-flex px-4 py-2 rounded-xl text-[13.5px] font-semibold text-ink hover:bg-ink/5 transition">Sign in</a>
       <a href="{{ url_for('signup') }}" class="hidden sm:inline-flex px-4 py-2 rounded-xl text-[13.5px] font-bold bg-sage text-ink hover:bg-sage/80 transition whitespace-nowrap">Get started</a>
       <!-- hamburger: small screens only -->
-      <button id="navToggle" onclick="toggleNav()" aria-label="Open menu" aria-expanded="false" aria-controls="navdrawer"
+      <button id="navToggle" data-action="toggle-nav" aria-label="Open menu" aria-expanded="false" aria-controls="navdrawer"
               class="md:hidden w-10 h-10 grid place-items-center rounded-xl text-ink hover:bg-ink/5 transition">
         {{ icon('menu','w-6 h-6') }}
       </button>
@@ -56,11 +56,11 @@
 </header>
 
 <!-- mobile drawer -->
-<div id="navscrim" onclick="toggleNav()" class="fixed inset-0 bg-ink/50 z-40 hidden md:hidden"></div>
+<div id="navscrim" data-action="toggle-nav" class="fixed inset-0 bg-ink/50 z-40 hidden md:hidden"></div>
 <aside id="navdrawer" class="fixed top-0 right-0 bottom-0 w-[82%] max-w-xs z-50 bg-white translate-x-full md:hidden flex flex-col shadow-2xl">
   <div class="h-16 px-5 flex items-center justify-between border-b border-silver shrink-0">
     <img src="{{ asset_url(site.brand_logo) }}" alt="Acre Insights" class="h-6">
-    <button onclick="toggleNav()" aria-label="Close menu" class="w-10 h-10 -mr-2 grid place-items-center rounded-xl text-dove hover:text-ink hover:bg-ink/5 transition">{{ icon('x','w-5 h-5') }}</button>
+    <button data-action="toggle-nav" aria-label="Close menu" class="w-10 h-10 -mr-2 grid place-items-center rounded-xl text-dove hover:text-ink hover:bg-ink/5 transition">{{ icon('x','w-5 h-5') }}</button>
   </div>
   <nav class="p-4 flex-1 overflow-y-auto">
     <p class="eyebrow text-dove px-2 pb-2">{{ site.brand_name }}</p>
@@ -68,7 +68,7 @@
        an admin editing the links never has to name an icon. #}
     {% set DRAWER_ICONS = {'#how':'send', '#code':'pin', '#deliver':'whatsapp', '#report':'report'} %}
     {% for href, label in split_lines(site.nav_links, 2) %}
-    <a href="{{ href }}" onclick="toggleNav()"
+    <a href="{{ href }}" data-action="toggle-nav"
        class="flex items-center gap-3 px-3 py-3 rounded-xl text-[14px] font-semibold text-ink hover:bg-canvas transition">
       <span class="text-sagedeep shrink-0">{{ icon(DRAWER_ICONS.get(href, 'chevron'),'w-[18px] h-[18px]') }}</span>{{ label }}
     </a>
@@ -308,7 +308,7 @@
           {% endfor %}
         </div>
         <img src="{{ asset_url(site.report_image) }}" alt="Annotated field map"
-             onerror="this.style.display='none'" class="w-full h-48 sm:h-56 object-cover border-y border-silver">
+             data-hide-on-error class="w-full h-48 sm:h-56 object-cover border-y border-silver">
         <div class="p-5 space-y-4">
           {% for colour, cat, obs, act in split_lines(site.report_sample_rows, 4) %}
           <div class="flex gap-3.5">
@@ -363,7 +363,7 @@
 </footer>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
   function toggleNav(){
     var d=document.getElementById('navdrawer'), s=document.getElementById('navscrim'), b=document.getElementById('navToggle');
     var opening = d.classList.contains('translate-x-full');

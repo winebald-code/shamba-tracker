@@ -12,7 +12,7 @@
         <a href="{{ url_for('dashboard') }}" class="flex items-center gap-2.5 hover:opacity-90 transition" aria-label="Go to dashboard">
           <img src="{{ url_for('static', filename='img/acre-logo-white.png') }}" alt="Acre Insights" class="h-6">
         </a>
-        <button class="lg:hidden text-white/60 hover:text-white -mr-1" onclick="toggleSidebar()" aria-label="Close menu">{{ icon('x','w-5 h-5') }}</button>
+        <button class="lg:hidden text-white/60 hover:text-white -mr-1" data-action="toggle-sidebar" aria-label="Close menu">{{ icon('x','w-5 h-5') }}</button>
       </div>
       <div class="mt-4 flex items-center gap-2">
         <span class="text-[15px] font-bold tracking-wide text-white">SHAMBA Tracker</span>
@@ -69,12 +69,12 @@
       </div>
     </div>
   </aside>
-  <div id="scrim" class="fixed inset-0 bg-ink/50 z-30 hidden lg:hidden" onclick="toggleSidebar()"></div>
+  <div id="scrim" class="fixed inset-0 bg-ink/50 z-30 hidden lg:hidden" data-action="toggle-sidebar"></div>
 
   <!-- Main -->
   <div class="flex-1 min-w-0">
     <header class="sticky top-0 z-20 glass border-b border-ink/5 px-4 sm:px-5 lg:px-8 h-16 flex items-center gap-3 sm:gap-4">
-      <button class="lg:hidden text-ink shrink-0" onclick="toggleSidebar()" aria-label="Open menu" aria-controls="sidebar">{{ icon('menu','w-6 h-6') }}</button>
+      <button class="lg:hidden text-ink shrink-0" data-action="toggle-sidebar" aria-label="Open menu" aria-controls="sidebar">{{ icon('menu','w-6 h-6') }}</button>
       <div class="flex-1 min-w-0">
         <h1 class="text-[16px] sm:text-[17px] font-bold tracking-tight truncate">{% block heading %}{% endblock %}</h1>
         {% block subheading %}{% endblock %}
@@ -94,7 +94,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
   function toggleSidebar(){
     var s=document.getElementById('sidebar'), sc=document.getElementById('scrim');
     var opening = s.classList.contains('-translate-x-full');

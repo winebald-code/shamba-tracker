@@ -61,6 +61,7 @@
         <p class="text-[12px] text-dove">These appear next to anything you review or send.</p></div>
       </div>
       <form method="post" action="{{ url_for('profile_edit') }}" class="p-5 sm:p-6 space-y-4">
+        {{ csrf_field() }}
         <div class="grid sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-[12.5px] font-semibold mb-1.5" for="p-name">Full name</label>
@@ -103,6 +104,7 @@
         <p class="text-[12px] text-dove">At least 6 characters.</p></div>
       </div>
       <form method="post" action="{{ url_for('profile_password') }}" class="p-5 sm:p-6 space-y-4">
+        {{ csrf_field() }}
         <div class="grid sm:grid-cols-3 gap-4">
           <div>
             <label class="block text-[12.5px] font-semibold mb-1.5" for="p-cur">Current</label>
@@ -129,7 +131,7 @@
         <p class="text-[12px] text-dove">Permanent. Farms, flights and reports stay in the workspace.</p></div>
       </div>
       <div class="p-5 sm:p-6">
-        <button onclick="document.getElementById('delPanel').showModal()"
+        <button data-open="delPanel"
                 class="px-5 py-2.5 rounded-xl border border-silver text-[13px] font-bold text-ink hover:bg-canvas transition">Delete my account</button>
       </div>
     </div>
@@ -138,9 +140,10 @@
 
 <dialog id="delPanel" class="rounded-xl2 p-0 w-full max-w-md backdrop:bg-ink/50 shadow-2xl">
   <form method="post" action="{{ url_for('profile_delete') }}" class="bg-white">
+    {{ csrf_field() }}
     <div class="px-6 py-4 border-b border-silver flex items-center justify-between">
       <h3 class="text-[16px] font-extrabold">Delete your account</h3>
-      <button type="button" onclick="document.getElementById('delPanel').close()" class="text-dove hover:text-ink" aria-label="Close">{{ icon('x','w-5 h-5') }}</button>
+      <button type="button" data-close="delPanel" class="text-dove hover:text-ink" aria-label="Close">{{ icon('x','w-5 h-5') }}</button>
     </div>
     <div class="p-6 space-y-4">
       <p class="text-[13px] text-dove leading-relaxed">This signs you out and removes your account for good. To confirm, type your email address below.</p>
@@ -148,7 +151,7 @@
              class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
     </div>
     <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
-      <button type="button" onclick="document.getElementById('delPanel').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Keep my account</button>
+      <button type="button" data-close="delPanel" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Keep my account</button>
       <button class="px-5 py-2.5 rounded-xl bg-ink text-white text-[13px] font-bold hover:bg-ink/90 flex items-center gap-2">{{ icon('trash','w-4 h-4') }} Delete for good</button>
     </div>
   </form>

@@ -1,16 +1,17 @@
 {% from '_icons.html' import icon %}
 <dialog id="addFarm" class="rounded-xl2 p-0 w-full max-w-lg backdrop:bg-ink/40 shadow-2xl">
   <form method="post" action="{{ url_for('farm_new') }}" class="bg-white">
+    {{ csrf_field() }}
     <div class="px-6 py-4 border-b border-silver flex items-center justify-between">
       <h3 class="text-[16px] font-extrabold">Add a farm</h3>
-      <button type="button" onclick="document.getElementById('addFarm').close()" class="text-dove hover:text-ink text-xl leading-none">&times;</button>
+      <button type="button" data-close="addFarm" class="text-dove hover:text-ink text-xl leading-none">&times;</button>
     </div>
     <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
       <div>
         <label class="block text-[12px] font-semibold mb-1.5">Farm name <span class="text-sagedeep">*</span></label>
         <input name="name" required placeholder="e.g. IPM Farm" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]">
       </div>
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label class="block text-[12px] font-semibold mb-1.5">Crop</label>
           <input name="crop" placeholder="e.g. Potatoes" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]">
@@ -26,7 +27,7 @@
       </div>
       <div class="h-px bg-silver"></div>
       <p class="text-[11px] font-bold uppercase tracking-wider text-dove">Farmer contact (for delivery)</p>
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label class="block text-[12px] font-semibold mb-1.5">Farmer name</label>
           <input name="farmer_name" placeholder="Full name" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[14px]">
@@ -46,7 +47,7 @@
       </div>
     </div>
     <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
-      <button type="button" onclick="document.getElementById('addFarm').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas transition">Cancel</button>
+      <button type="button" data-close="addFarm" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas transition">Cancel</button>
       <button class="px-5 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition flex items-center gap-2">{{ icon('check','w-4 h-4') }} Add farm</button>
     </div>
   </form>
