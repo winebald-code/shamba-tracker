@@ -14,6 +14,7 @@ import os, sys, tempfile, re, random
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0,ROOT); os.chdir(ROOT)
 TMP=tempfile.mkdtemp()
+os.environ["REPORT_SEASON_PAGE"] = "1"     # V2: the season sheet is opt-in
 os.environ.update(DATABASE_URL="sqlite:///"+os.path.join(TMP,"e.db"), SECRET_KEY="t",
                   ADMIN_EMAIL="a@a.com", ADMIN_PASSWORD="password123")
 import app as appmod, pdf_gen
@@ -49,9 +50,8 @@ with appmod.app.app_context():
     ctx=appmod.report_context(db.session.get(Flight,oid))
     chk("season is None with one flight", ctx["season"] is None, ctx["season"])
 w=c.get(f"/flights/{oid}/report").data.decode()
-# V2 has no season sheet: the trend appears as a line on page 1, and only once
-# more than one flight of the season carries findings.
-chk("no season line with a single flight", "This season so far" not in w)
+chk("no season sheet rendered", "Your season so far" not in w)
+chk("the summary sheet still leads", "Field scouting summary" in w)
 _sheets=len(re.findall(r'<section class="sheet"', w))
 _claim=int(re.findall(r"Page \d+ of (\d+)", w)[0])
 chk("footer page count matches the sheets drawn", _sheets==_claim, f"sheets={_sheets} claims={_claim}")
@@ -64,7 +64,19 @@ with appmod.app.app_context():
     chk("two points plotted", len(s["spark"]["points"])==2, len(s["spark"]["points"]))
     chk("direction computed", s["direction"] in ("up","down","flat"), s["direction"])
 w=c.get(f"/flights/{tid}/report").data.decode()
-chk("the season line appears once there are two flights", "This season so far" in w)
+chk("season sheet rendered when asked for", "Your season so far" in w)
+chk("it reports counts, not a score", "out of 100" not in w and "Field health" not in w)
+
+# ...and stays off unless it is asked for, which is the shipped default.
+appmod.SEASON_PAGE=False
+off=c.get(f"/flights/{tid}/report").data.decode()
+appmod.SEASON_PAGE=True
+chk("absent by default, so the report is three pages", "Your season so far" not in off)
+# These fixtures carry no map image, so the map sheet is skipped and the
+# default report is summary + detailed findings.
+chk("summary and findings only, no season sheet",
+    len(re.findall(r'<section class="sheet"', off))==2,
+    len(re.findall(r'<section class="sheet"', off)))
 
 print("\n=== C. a flight with no findings is skipped, not plotted as zero ===")
 with appmod.app.app_context():
@@ -112,7 +124,7 @@ with appmod.app.app_context():
                .stdout.split("\n") if l.startswith("Pages")][0].split()[-1])
     chk("sheets == PDF pages (nothing overflowed)", sheets==pages, f"sheets={sheets} pages={pages}")
 
-print("\n=== F. score shown on the season page equals the cover score ===")
+print("\n=== F. the season data layer still agrees with the flight ===")
 with appmod.app.app_context():
     fl=db.session.get(Flight,lid); ctx=appmod.report_context(fl)
     chk("last season point == cover score",

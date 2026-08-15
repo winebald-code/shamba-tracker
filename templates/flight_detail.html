@@ -185,15 +185,20 @@
       <div class="hidden lg:block text-[12.5px] font-semibold tnum whitespace-nowrap pt-0.5">{{ f.area_text or '—' }}</div>
 
       <!-- Category -->
+      {#
+        The category decides which pattern this zone is grouped under on page 1
+        of the report and which colour its pin carries on the map, so the swatch
+        beside the dropdown is the same colour the farmer will see. It follows
+        the selection immediately, without waiting for a save.
+      #}
       <div>
         <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">Category</label>
-        <div class="flex items-center gap-1.5">
-          {# The swatch is the colour this category gets on the report map, so the
-             label chosen here and the legend the farmer reads are visibly the
-             same thing rather than two lists that happen to agree. #}
-          <span class="shrink-0 w-2.5 h-2.5 rounded-sm" title="Colour on the report map"
-                style="background:{{ CATEGORY_COLOURS.get(f.category, '#6B4E8C') }}"></span>
-          <select data-field="category" class="cell w-full text-[12.5px] font-semibold px-2 py-1.5 bg-transparent">
+        <div class="flex items-center gap-2">
+          <span class="cat-dot w-3 h-3 rounded-[3px] shrink-0 border border-ink/10"
+                style="background: {{ CATEGORY_COLOURS.get(f.category, '#6C6C6C') }}"
+                title="{{ f.category }}"></span>
+          <select data-field="category" onchange="paintCategory(this)"
+                  class="cell w-full min-w-0 text-[12.5px] font-semibold px-2 py-1.5 bg-transparent">
             {% for c in CATEGORIES %}<option value="{{ c }}" {{ 'selected' if f.category==c }}>{{ c }}</option>{% endfor %}
           </select>
         </div>
@@ -399,5 +404,13 @@
 
   // sync once on load so the count is always right after an import
   recount();
+
+  // Keep the category swatch in step with the dropdown. The colours come from
+  // patterns.py so the review page, the report and the map never disagree.
+  var CATEGORY_COLOURS = {{ CATEGORY_COLOURS|tojson }};
+  function paintCategory(sel){
+    var dot = sel.closest('div').querySelector('.cat-dot');
+    if(dot){ dot.style.background = CATEGORY_COLOURS[sel.value] || '#6C6C6C'; dot.title = sel.value; }
+  }
 </script>
 {% endblock %}
