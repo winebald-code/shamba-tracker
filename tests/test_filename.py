@@ -105,8 +105,10 @@ chk("header carries an RFC 5987 copy", "filename*=UTF-8''" in cd, cd)
 page = c.get(f"/flights/{ids[1]}/report").data.decode()
 chk("the download link suggests the same name",
     'download="Kilimo Bora Farm_Maize_2026LR_Flight 2.pdf"' in page)
+# The rename only runs on the print fallback, which is reached with ?print=1.
+print_page = c.get(f"/flights/{ids[1]}/report?print=1").data.decode()
 chk("the print path renames the document to match",
-    '"Kilimo Bora Farm_Maize_2026LR_Flight 2"' in page)
+    '"Kilimo Bora Farm_Maize_2026LR_Flight 2"' in print_page)
 
 print("\n=== 5. the emailed attachment uses it too ===")
 with APP.app_context():

@@ -190,7 +190,7 @@ def analyse(flight, prev=None):
     ordered = sorted(findings, key=lambda f: (SEVERITY[severity_of(f)]["rank"],
                                               -(_pos(f.area_acres) or 0.0),
                                               f.sort_order or 0))
-    numbers = zone_numbers(findings)
+    numbers = {f.id: i + 1 for i, f in enumerate(ordered)}
 
     return {
         "findings_ordered": ordered,
@@ -228,22 +228,6 @@ def _pos(v):
         return v if v > 0 else None
     except (TypeError, ValueError):
         return None
-
-
-def zone_numbers(findings):
-    """
-    The number printed against each finding, everywhere it appears.
-
-    Numbered in the agronomist's own annotation order — the order the pins came
-    out of DroneDeploy — because those are the numbers already drawn on the map
-    image the farmer is looking at. An earlier version numbered by urgency,
-    which only lined up with the map while every zone happened to be flagged in
-    descending order of size; a single out-of-order pin would have had the
-    report pointing at the wrong part of the field.
-    """
-    ordered = sorted(findings, key=lambda f: ((f.sort_order if f.sort_order is not None else 10**6),
-                                              f.id or 0))
-    return {f.id: i + 1 for i, f in enumerate(ordered)}
 
 
 # ---------------------------------------------------------------- season trend
