@@ -83,6 +83,7 @@ python tests/test_homepage.py   # admin-managed homepage content
 python tests/test_farmer_comment.py   # the farmer's reply, and its isolation
 python tests/test_generate_gate.py    # what a report needs before it generates
 python tests/test_aggregate.py  # the patterns, the voice, and the guardrail
+python tests/test_generalisation.py   # whether it holds up on flights it never saw
 python tests/test_security.py   # response headers, the CSP, and CSRF
 python tests/test_storage.py    # S3-backed uploads (needs `pip install moto boto3`)
 ```
@@ -90,7 +91,9 @@ python tests/test_storage.py    # S3-backed uploads (needs `pip install moto bot
 `test_aggregate.py` runs the real IPM Farm flight through the aggregation layer
 and checks it produces the four patterns the specification describes — so a
 change that quietly re-flattens the report fails the suite rather than reaching
-a farmer. `test_security.py` runs with CSRF deliberately switched on, since the
+a farmer. `test_generalisation.py` then checks the properties that must hold for
+*every* flight, on flights the module was not written against, because a module
+tuned until one flight comes out right is a module that works on one flight. `test_security.py` runs with CSRF deliberately switched on, since the
 other suites disable it via `TESTING` in order to post forms directly.
 
 ---
@@ -303,6 +306,44 @@ statements, while "nutrient uptake" is one even though two words in it are on
 the soil list. When two categories tie, the cause the agronomist wrote first
 leads.
 
+### Flights it has never seen
+
+The vocabulary in `aggregate.py` is a labelling aid, not the source of the
+patterns. Every flight has to work — a new crop, a new pest, an agronomist with
+their own shorthand — so nothing depends on a word being on a list:
+
+* **Stems, not words.** `irrig` covers irrigation, irrigated and irrigating;
+  `fertil` covers fertility, fertiliser and fertilizer. An inflection nobody
+  anticipated still counts.
+* **Crop names are stripped first**, since they carry no diagnosis and only
+  cause mistakes — a watermelon field should not acquire a water problem.
+* **Invented categories are read, not ignored.** A label an agronomist adds in
+  DroneDeploy — "Fungal disease", "Water management" — is read the same way the
+  observation text is, rather than falling straight to unknown.
+* **Unrecognised annotations look at the flight they are in.** Where no
+  vocabulary matches, a finding takes the category of the annotation it most
+  resembles, judged by word overlap weighted so that a word common to the whole
+  flight counts for little and a rare one counts for a lot. "The same as that
+  one" is a real inference from the agronomist's own text.
+* **When nothing matches either, the heading still says something.** The
+  pattern stays *Needs investigation*, but carries the agronomist's own dominant
+  cause: a hail-damaged wheat field — not a word of which appears anywhere in
+  this project — reports as *Needs Investigation — hail event on 12 March*, as
+  its own pattern, separate from the machinery damage beside it.
+* **Sibling patterns are told apart.** Where one category holds two patterns,
+  each takes its own cause into the heading, so a farmer reads *Irrigation /
+  Moisture — moisture deficit at flowering* and *Irrigation / Moisture — emitter
+  blockage*, not the same heading twice.
+
+`tests/test_generalisation.py` is what keeps this honest. It runs flights from
+other crops, regions and writing habits, flights in vocabulary absent from this
+project, flights with invented categories, eleven deliberately broken ones
+(no text, one word, identical text, no areas, negative areas, punctuation only)
+and twenty randomly generated flights of 1 to 120 findings — asserting on each
+that every annotation reaches exactly one pattern, every heading says something,
+every sentence traces back to the source, the totals add up, the voice holds,
+and pagination keeps every row.
+
 Patterns are then found *within* a category by single-linkage similarity on the
 cause and recommendation wording, so nine differently-worded soil notes form one
 pattern. A pattern is never folded into a different category: on the reference
@@ -427,6 +468,8 @@ shamba-tracker/
 ├── build/             # Tailwind config + input for rebuilding app.css
 ├── samples/           # sample DroneDeploy CSV + annotated map
 ├── tests/             # run each with `python tests/<name>.py`
+│   ├── test_aggregate.py       # the reference flight, the voice, the guardrail
+│   └── test_generalisation.py  # flights the module was not written against
 ├── Dockerfile         # Railway build (installs WeasyPrint libs)
 ├── requirements.txt
 └── .env.example

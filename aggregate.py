@@ -115,43 +115,82 @@ ENUM_FALLBACK = {
 }
 
 # ---------------------------------------------------------------- evidence
-# Phrases that indicate a category, matched against the agronomist's own words.
+# Word stems that point at a category, matched against the agronomist's own
+# words. Stems rather than whole words: "irrig" catches irrigation, irrigated
+# and irrigating, and "fertil" catches fertility, fertiliser and fertilizer,
+# without needing a line in this file for each spelling somebody might use.
 #
-# They are phrases rather than single words wherever a single word would be
-# ambiguous: "soil" appears in both "soil fertility" and "excess soil cover",
-# which are two different findings, so neither list claims the bare word.
+# A single-token entry matches a word whose stem begins with it. An entry
+# containing a space is matched against the phrase as written, because
+# "water stress" means something the two words apart do not.
+#
+# This list is a labelling aid, not the source of the patterns. A flight whose
+# vocabulary is absent from it still produces real patterns — see `classify`
+# and `_infer_unknown` — so the cost of a gap here is a less specific heading,
+# never a lost or mis-grouped finding.
 KEYWORDS = {
     "irrigation": [
-        "water stress", "waterlogg", "water logg", "moisture", "irrigation",
-        "irrigated", "drip", "sprinkler", "watering", "water distribution",
-        "water pressure", "low pressure", "drought", "dry spell", "water",
+        "water stress", "water logging", "low pressure", "water distribution",
+        "moistur", "irrig", "drip", "sprinkl", "waterlog", "watering",
+        "drought", "dry spell", "furrow", "pivot", "emitter", "wilting point",
+        "run off", "runoff", "puddl", "pond", "saturat", "standing water",
+        "water", "dri", "hydrat", "rainfall", "soak",
     ],
     "soil_fertility": [
-        "soil fertility", "fertility", "soil condition", "soil test",
-        "soil analys", "soil sampl", "nutrient", "nutrition", "deficien",
-        "fertiliser", "fertilizer", "npk", "nitrogen", "phosphor", "potassium",
-        "manure", "compost", "organic matter", "top dress", "topdress",
-        "uptake", "soil ph",
+        "soil fertility", "soil condition", "soil test", "soil analys",
+        "soil sampl", "organic matter", "top dress", "topdress", "soil ph",
+        "fertil", "nutrien", "nutrit", "deficien", "npk", "nitrogen", "urea",
+        "phosph", "potass", "potash", "manure", "compost", "uptake",
+        "chloros", "acidic", "alkalin", "salin", "leach", "micronutrient",
+        "sulphur", "sulfur", "calcium", "magnesium", "boron", "zinc",
+        "cec", "humus", "lime", "liming",
     ],
     "crop_establishment": [
-        "germinat", "emergence", "emerg", "mound", "ridging", "soil cover",
-        "plant population", "planting", "replant", "seedling", "sowing",
-        "seed rate", "spacing", "establishment", "stand count", "planting gap",
-        "crop cover", "gap",
+        "soil cover", "mound height", "plant population", "stand count",
+        "planting gap", "seed rate", "crop cover", "double planting",
+        "germinat", "emergen", "emerg", "mound", "ridg", "replant", "seedling",
+        "sowing", "spacing", "establish", "transplant", "thinning", "nursery",
+        "seedbed", "furrow depth", "skips", "blank", "patchy stand", "gap",
+        "tiller", "vigor gap", "hilling", "earthing",
     ],
     "pest_disease": [
-        "pest", "disease", "aphid", "blight", "mildew", "rust", "virus",
-        "fungal", "fungus", "fungicide", "insecticide", "rot ", "rotting",
-        "worm", "larva", "caterpillar", "borer", "mite", "nematode",
-        "infestation", "lesion", "scout", "spray", "wilt",
+        "fall armyworm", "leaf miner", "stem borer", "root rot", "leaf spot",
+        "powdery mildew", "downy mildew", "coffee berry", "late blight",
+        "early blight", "bacterial wilt",
+        "pest", "diseas", "aphid", "blight", "mildew", "rust", "virus",
+        "fungal", "fungus", "fungicid", "insecticid", "pesticid", "rot",
+        "worm", "larva", "caterpillar", "borer", "mite", "nematod",
+        "infest", "lesion", "spray", "wilt", "thrip", "whitefly", "mealybug",
+        "scale insect", "smut", "anthracnos", "canker", "chafer", "cutworm",
+        "locust", "quelea", "mole", "rodent", "damping off", "necros",
+        "galls", "chewed", "defoliat", "webbing", "frass",
     ],
     "weeds": [
-        "weed", "striga", "couch grass",
+        "weed", "striga", "couch grass", "nutsedge", "oxalis", "amaranth",
+        "blackjack", "wandering jew", "bindweed", "volunteer crop", "magugu",
+        "herbicid", "overgrown",
     ],
     "needs_investigation": [
-        "unclear", "unknown", "undetermined", "not established", "unconfirmed",
+        "unclear", "unknown", "undetermined", "not established", "unconfirm",
         "further investigation", "to be confirmed", "cannot tell", "uncertain",
+        "inconclusive", "needs checking", "to confirm", "unidentified",
+        "unexplain", "no obvious",
     ],
+}
+
+# Crop names carry no diagnostic signal, and leaving them in the text is how a
+# watermelon field acquires a water problem and a bean field a pest one. They
+# are removed before any matching happens.
+CROP_WORDS = {
+    "maize", "corn", "potato", "potatoes", "coffee", "tea", "avocado",
+    "avocados", "bean", "beans", "wheat", "barley", "sugarcane", "cane",
+    "tomato", "tomatoes", "onion", "onions", "cabbage", "kale", "sukuma",
+    "watermelon", "melon", "banana", "bananas", "mango", "mangoes", "sorghum",
+    "millet", "rice", "cotton", "sunflower", "groundnut", "cassava", "napier",
+    "capsicum", "pepper", "peppers", "spinach", "carrot", "carrots", "pea",
+    "peas", "soya", "soybean", "macadamia", "cashew", "citrus", "pineapple",
+    "strawberry", "courgette", "cucumber", "broccoli", "lettuce", "garlic",
+    "ginger", "chilli", "pyrethrum", "canola", "lucerne", "sisal",
 }
 
 # The agronomist's likely cause is the strongest signal, then what they
@@ -164,6 +203,12 @@ FIELD_WEIGHTS = (("likely_cause", 3), ("recommendation", 2), ("observation", 1))
 # words. Deliberately low: the job is to separate genuinely different stories
 # (overmounding from soil fertility), not to split hairs over phrasing.
 SIMILARITY = 0.25
+
+# How much an unrecognised annotation must resemble a recognised one before it
+# takes its category. Higher than the clustering threshold on purpose: joining a
+# pattern is a claim about one annotation, and it should need better evidence
+# than merely sitting in the same group.
+INHERIT_SIMILARITY = 0.34
 
 # Ceiling on how many patterns page 1 tells. Above this the smallest patterns
 # are folded into the largest pattern *of their own category* — never across
@@ -289,9 +334,69 @@ def _pos(value):
 
 
 def _words(text):
-    """Content words of a phrase, lowercased, stopwords dropped."""
+    """Content words of a phrase, lowercased, stopwords and crop names dropped."""
     return {w.lower() for w in _WORD_RE.findall(str(text or ""))
-            if w.lower() not in _STOPWORDS and len(w) > 2}
+            if w.lower() not in _STOPWORDS and w.lower() not in CROP_WORDS
+            and len(w) > 2}
+
+
+def _stem(word):
+    """
+    A crude stem: enough to see that irrigating, irrigated and irrigation are
+    the same idea, and not so aggressive that it starts merging ideas that are
+    not. Suffixes only, shortest first, and never below four characters.
+    """
+    w = word.lower()
+    for suffix in ("ational", "ation", "ings", "ing", "edly", "ies", "ied",
+                   "ed", "es", "s", "ly"):
+        if w.endswith(suffix) and len(w) - len(suffix) >= 4:
+            w = w[:-len(suffix)]
+            break
+    if len(w) > 4 and w[-1] == w[-2] and w[-1] not in "aeiou":
+        w = w[:-1]                       # logg -> log, skipp -> skip
+    return w
+
+
+def _matches(phrase, keys):
+    """
+    Whether any of a category's stems is evidence for this phrase.
+
+    Multi-word entries are matched against the phrase as written; single stems
+    are matched against the stem of each word, which is what makes an unseen
+    inflection ("irrigating") count the same as a seen one ("irrigation").
+    """
+    low = " " + re.sub(r"[^a-z0-9 ]", " ", phrase.lower()) + " "
+    words = [w for w in low.split() if w not in CROP_WORDS]
+    stems = [_stem(w) for w in words]
+    for key in keys:
+        if " " in key:
+            if key in low:
+                return True
+        else:
+            if any(s.startswith(key) or key.startswith(s) and len(s) >= 4
+                   for s in stems):
+                return True
+    return False
+
+
+def _term_weights(findings):
+    """
+    How much each word is worth, judged against this flight alone.
+
+    A word in nearly every annotation says nothing about which of them belong
+    together — on the reference flight "vigour" appears in twelve of fifteen —
+    while a word in one or two is exactly what distinguishes a pattern. Weights
+    are computed per flight rather than from a fixed list, so the measure
+    calibrates itself to whatever vocabulary this agronomist happens to use, in
+    whatever crop, without knowing any of it in advance.
+    """
+    n = max(1, len(findings))
+    seen = {}
+    for f in findings:
+        for word in _signature(f):
+            seen[word] = seen.get(word, 0) + 1
+    return {word: math.log((n + 1.0) / (count + 0.5))
+            for word, count in seen.items()}
 
 
 def _rank_phrases(items, limit=None):
@@ -365,9 +470,8 @@ def classify(finding):
 
     for field, weight in FIELD_WEIGHTS:
         for position, part in enumerate(phrases(getattr(finding, field, ""))):
-            low = part.lower()
             for key in CATEGORY_ORDER:
-                if any(word in low for word in KEYWORDS[key]):
+                if _matches(part, KEYWORDS[key]):
                     scores[key] += weight
                     evidence[key].append(part)
                     if field == "likely_cause" and key not in earliest:
@@ -375,8 +479,7 @@ def classify(finding):
 
     best = max(scores.values())
     if best == 0:
-        enum = str(getattr(finding, "category", "") or "").strip().lower()
-        return ENUM_FALLBACK.get(enum, "needs_investigation"), evidence
+        return _from_enum(finding), evidence
 
     winners = [k for k in CATEGORY_ORDER if scores[k] == best]
     if len(winners) == 1:
@@ -389,11 +492,32 @@ def classify(finding):
     if placed:
         return min(placed, key=lambda k: earliest[k]), evidence
 
-    enum = str(getattr(finding, "category", "") or "").strip().lower()
-    fallback = ENUM_FALLBACK.get(enum)
-    if fallback in winners:
-        return fallback, evidence
-    return winners[0], evidence
+    fallback = _from_enum(finding)
+    return fallback if fallback in winners else winners[0], evidence
+
+
+def _from_enum(finding):
+    """
+    The category implied by whatever label the annotation carries.
+
+    The six labels this project ships are looked up directly. Anything else —
+    a category an agronomist added in DroneDeploy, a label from a different
+    workspace, a crop-specific one nobody has seen here — is read the same way
+    the observation text is, so "Fungal disease" or "Water management" lands
+    somewhere sensible rather than in the unknown bucket by default.
+
+    Returns None when the label says nothing, which is the signal for the
+    caller to look at the rest of the flight instead.
+    """
+    label = str(getattr(finding, "category", "") or "").strip().lower()
+    if not label:
+        return None
+    if label in ENUM_FALLBACK:
+        return ENUM_FALLBACK[label]
+    for key in CATEGORY_ORDER:
+        if _matches(label, KEYWORDS[key]):
+            return key
+    return None
 
 
 # ---------------------------------------------------------------- clustering
@@ -403,10 +527,62 @@ def _signature(finding):
         getattr(finding, "recommendation", ""))
 
 
-def _similarity(a, b):
+def _similarity(a, b, weights=None):
+    """
+    Overlap of two annotations' words.
+
+    Unweighted by default, and deliberately so. Rarity weighting is the right
+    tool for telling documents apart and the wrong one for grouping them: the
+    words nine soil notes have in common are common *because* they are the
+    pattern, and discounting them for being frequent is discounting the very
+    evidence that the nine belong together.
+
+    Weights are passed in for the one job where discrimination is the point —
+    deciding which single annotation an unrecognised one most resembles, where
+    agreeing on "monitor" should count for far less than agreeing on "hail".
+    """
     if not a or not b:
         return 0.0
-    return len(a & b) / float(len(a | b))
+    if weights is None:
+        return len(a & b) / float(len(a | b))
+    shared = sum(weights.get(w, 1.0) for w in a & b)
+    total = sum(weights.get(w, 1.0) for w in a | b)
+    return shared / total if total else 0.0
+
+
+def _infer_unknown(findings, assigned, weights):
+    """
+    Place the annotations no vocabulary recognised.
+
+    A flight can be written entirely in words this file has never seen — a new
+    crop, a new pest, an agronomist with their own shorthand — and dropping all
+    of it into "needs investigation" would hand the farmer one purple block and
+    call it a report.
+
+    So an unrecognised annotation looks at the flight it is part of and takes
+    the category of the annotation it most resembles, using the same weighted
+    similarity that forms the patterns. "Same as that one" is a real inference
+    from the agronomist's own text, and it degrades honestly: when nothing in
+    the flight resembles it either, it stays as needs investigation, which is
+    then a true statement about the annotation rather than a gap in this list.
+    """
+    known = [f for f in findings if assigned.get(f.id)]
+    if not known:
+        return
+    signatures = {f.id: _signature(f) for f in findings}
+    for f in findings:
+        if assigned.get(f.id):
+            continue
+        mine = signatures[f.id]
+        if not mine:
+            continue
+        best, score = None, 0.0
+        for other in known:
+            s = _similarity(mine, signatures[other.id], weights)
+            if s > score:
+                best, score = other, s
+        if best is not None and score >= INHERIT_SIMILARITY:
+            assigned[f.id] = assigned[best.id]
 
 
 def _cluster(findings, threshold=SIMILARITY):
@@ -552,12 +728,31 @@ def build(flight, findings=None):
     numbers = {f.id: i + 1 for i, f in enumerate(ordered)}
 
     # ---- classify, then find the patterns inside each category --------------
-    by_category = {}
+    # Weights first: what counts as a distinctive word is a property of this
+    # flight, not of a list written against a different one.
+    weights = _term_weights(ordered)
+
     classified = {}
+    assigned = {}
     for f in ordered:
         key, evidence = classify(f)
-        classified[f.id] = {"category": key, "evidence": evidence}
-        by_category.setdefault(key, []).append(f)
+        classified[f.id] = {"category": key, "evidence": evidence,
+                            "inferred": False}
+        if key:
+            assigned[f.id] = key
+
+    # Anything no vocabulary recognised takes the category of the annotation in
+    # this same flight that it most resembles, before falling back to unknown.
+    before = dict(assigned)
+    _infer_unknown(ordered, assigned, weights)
+    for f in ordered:
+        key = assigned.get(f.id) or "needs_investigation"
+        classified[f.id]["category"] = key
+        classified[f.id]["inferred"] = f.id not in before
+
+    by_category = {}
+    for f in ordered:
+        by_category.setdefault(classified[f.id]["category"], []).append(f)
 
     patterns = []
     for key in CATEGORY_ORDER:
@@ -591,6 +786,27 @@ def build(flight, findings=None):
         p.update(text)
         p["suggestion"] = _suggestion(CATEGORIES[p["category"]], p["zones"],
                                       p["zone_numbers"], text)
+        # The heading. Normally the category, but where the category is only
+        # "needs investigation" that name tells the farmer nothing about what
+        # was actually seen — so the agronomist's own dominant cause carries it
+        # instead, and a flight full of vocabulary this module has never met
+        # still produces headings that mean something.
+        p["theme"] = text["causes"][0] if text["causes"] else ""
+        p["heading"] = p["label"]
+        if p["category"] == "needs_investigation" and p["theme"]:
+            p["heading"] = f"{p['label']} — {lower_first(p['theme'])}"
+
+    # Where one category holds more than one pattern, the category name alone
+    # would head both of them identically — two "Irrigation / Moisture" blocks,
+    # one about moisture at flowering and one about a blocked emitter, which
+    # reads as the report repeating itself rather than as two findings. Each
+    # then takes its own dominant cause into the heading.
+    counts = {}
+    for p in patterns:
+        counts[p["category"]] = counts.get(p["category"], 0) + 1
+    for p in patterns:
+        if counts[p["category"]] > 1 and p["theme"] and "—" not in p["heading"]:
+            p["heading"] = f"{p['label']} — {lower_first(p['theme'])}"
 
     # ---- category totals for the summary cards ------------------------------
     cards = []
@@ -671,7 +887,7 @@ def _group_rows(patterns):
     """
     return [{
         "pattern": p,
-        "title": p["label"],
+        "title": p.get("heading") or p["label"],
         "colour": p["colour"],
         "soft": p["soft"],
         "line": p["line"],

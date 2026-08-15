@@ -124,12 +124,15 @@
    first and WeasyPrint the second. */
 .mono { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; }
 .h-farm { font-size:24px; font-weight:800; letter-spacing:-0.8px; line-height:1.05; }
-.sec { margin:13px 0 8px; }
-.sec td { vertical-align:middle; }
-.sec td:first-child { width:1%; white-space:nowrap; }
-.sec h2 { font-size:13px; font-weight:800; letter-spacing:-0.2px; white-space:nowrap;
-          padding-right:10px; color:#4A5A28; }
-.sec .rule { height:1px; background:#D4DAC9; width:100%; font-size:0; line-height:0; }
+/* A section heading rules off underneath itself rather than beside itself.
+   Set as a heading with a rule running out to the right, the line lands on the
+   type's own x-height and reads as struck through it — and the box below then
+   sits flush against that line with nothing between them. Underneath, with room
+   after it, the rule separates two things instead of crossing one. */
+.sec { margin:15px 0 0; padding-bottom:5px; border-bottom:1px solid #D4DAC9; }
+.sec h2 { font-size:13px; font-weight:800; letter-spacing:-0.2px;
+          color:#4A5A28; }
+.sec + * { margin-top:9px !important; }
 .lede { font-size:11px; line-height:1.6; margin-top:11px !important; }
 .lede b { font-weight:800; }
 
@@ -198,8 +201,14 @@
                 font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; }
 
 /* ---------------------------------------------------------------- map sheet */
-.mapbox { border:1px solid #D4DAC9; border-radius:9px; overflow:hidden; background:#F2F5EF; }
-.mapbox img { width:100%; }
+.mapbox { border:1px solid #D4DAC9; border-radius:9px; overflow:hidden; background:#F2F5EF;
+          text-align:center; }
+/* The snapshot is whatever shape the drone flew, and a tall one would push the
+   legend and the zone index onto a page of their own — leaving the map alone on
+   page 2 and its key somewhere else. Capping the height keeps the three things
+   that have to be read together on one sheet, whatever the aspect ratio.
+   width:auto with max-height scales it without distorting either engine. */
+.mapbox img { width:auto; max-width:100%; max-height:132mm; margin:0 auto; }
 .mapempty { padding:40px 20px; text-align:center; color:#6C7360; font-size:10px; }
 .mapcap { font-size:9px; color:#6C7360; margin-top:7px !important; line-height:1.55; }
 
@@ -228,11 +237,12 @@
 .zidx .ct { color:#6C7360; }
 
 /* ---------------------------------------------------------------- findings */
-.grouphead { margin:12px 0 6px; }
-.grouphead td { vertical-align:middle; }
-.grouphead td:first-child { width:1%; white-space:nowrap; }
-.grouphead h3 { font-size:11.5px; font-weight:800; letter-spacing:-0.15px; padding-right:10px; }
-.grouphead .rule { height:1px; width:100%; font-size:0; line-height:0; background:#D4DAC9; }
+/* The group heading takes the same treatment as a section heading: nothing
+   drawn through the type, and a clear gap before the table starts. No rule of
+   its own — the table's coloured header band immediately below is already a
+   strong horizontal, and a hairline four pixels above it only crowds it. */
+.grouphead { margin:14px 0 8px; }
+.grouphead h3 { font-size:11.5px; font-weight:800; letter-spacing:-0.15px; }
 .grouphead .sw { display:inline-block; width:9px; height:9px; border-radius:2px;
                  margin-right:6px; vertical-align:0; }
 .grouphead .cont { font-weight:600; color:#6C7360; }
@@ -289,14 +299,8 @@
   .cards .ac { font-size:10.5px; }
 
   .lede { font-size:13.5px; }
-  /* The heading and its rule sit in one table so the rule fills the leftover
-     width on paper. On a phone there is no leftover width, and the rule cell
-     squeezes "Issue Categories" onto two lines — so the rule goes and the
-     heading takes the row. */
-  .sec h2 { font-size:15px; white-space:normal; padding-right:0; }
-  .sec td:first-child { width:auto; }
-  .sec td + td { display:none; }
-  .sec { margin:16px 0 8px; border-bottom:1px solid #D4DAC9; padding-bottom:5px; }
+  .sec h2 { font-size:15px; }
+  .sec { margin-top:18px; }
   .obs .tx { font-size:13px; }
   .obs .zn { font-size:11px; }
   .obs .no { width:26px; }
@@ -336,9 +340,7 @@
   .dt .z::before, .dt .a::before { display:inline; margin-right:5px; }
   .dt table { table-layout:auto; }
 
-  .grouphead h3 { font-size:13.5px; white-space:normal; }
-  .grouphead td:first-child { width:auto; }
-  .grouphead td + td { display:none; }
+  .grouphead h3 { font-size:13.5px; }
   .foot { margin-top:16px; font-size:9.5px; }
   .foot .r { float:none; display:block; margin-top:2px; }
 }
@@ -355,7 +357,7 @@
 {%- endmacro %}
 
 {% macro sectionhead(title) -%}
-<table class="sec"><tr><td><h2>{{ title }}</h2></td><td><div class="rule"></div></td></tr></table>
+<div class="sec"><h2>{{ title }}</h2></div>
 {%- endmacro %}
 
 {# The screen's copy of the page-margin footer the PDF prints. #}
@@ -426,7 +428,7 @@
     <td class="no"><div class="chip" style="background:{{ p.colour }}">{{ p.index }}</div></td>
     <td>
       <div class="tx"><b>{{ p.lead }}</b>{{ p.body }}</div>
-      <div class="zn">{{ p.label }} &middot; zone{{ '' if p.count == 1 else 's' }}
+      <div class="zn">{{ p.heading }} &middot; zone{{ '' if p.count == 1 else 's' }}
         {{ p.zone_numbers|join(', ') }}</div>
     </td>
   </tr></table>
@@ -508,7 +510,7 @@
   {% if r.count %}
   {{ sectionhead('Zone index') }}
   <div class="zidx"><table>
-    {% for row in r.zones|batch(3) %}
+    {% for row in r.zones[:30]|batch(3) %}
     <tr>
       {% for z in row %}
       {% set cat = r.category_of(z) %}
@@ -522,6 +524,10 @@
     </tr>
     {% endfor %}
   </table></div>
+  {% if r.zones|length > 30 %}
+  <p class="mapcap">Zones 31 to {{ r.zones|length }} are listed with the detailed findings
+    that follow.</p>
+  {% endif %}
   {% endif %}
 
   {{ pagefoot(2) }}
@@ -545,12 +551,11 @@
 
   {% for block in page %}
   {% set g = block.group %}
-  <table class="grouphead"><tr>
-    <td><h3><span class="sw" style="background:{{ g.colour }}"></span>{{ g.title }} &mdash;
+  <div class="grouphead">
+    <h3><span class="sw" style="background:{{ g.colour }}"></span>{{ g.title }} &mdash;
       {{ g.count }} area{{ '' if g.count == 1 else 's' }}, ~{{ g.acres_text }} ac{% if block.continued %}
-      <span class="cont">(continued)</span>{% endif %}</h3></td>
-    <td><div class="rule"></div></td>
-  </tr></table>
+      <span class="cont">(continued)</span>{% endif %}</h3>
+  </div>
 
   <div class="dt"><table>
     <thead><tr style="background:{{ g.colour }}">
