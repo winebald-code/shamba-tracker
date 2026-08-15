@@ -194,17 +194,6 @@ they picked, because in V1 the same broad label was applied to genuinely
 different problems. Reading the cause is what separates irrigation from soil
 fertility when both were filed under one heading.
 
-The keyword lists behind that are ordered most specific first, and the order is
-a judgement rather than an accident. A cause naming mounding is a crop
-establishment problem even when it also mentions water stress, because the
-mounding is the thing being blamed. A cause naming an organism is a pest problem
-even when it mentions the weedy edge that organism came in from, so Weeds sits
-last and claims a finding only when nothing else explains it.
-
-Keywords are matched as substrings, so each has to be long enough not to fire
-inside an unrelated word: "ph" matched the "ph" in "aphid" and is now "soil ph",
-and "rot" would have matched "rotation" so it is "root rot" and "rotting".
-
 Two rules govern what the output is allowed to say:
 
   * It only summarises and combines what the agronomist actually wrote. No
@@ -215,11 +204,6 @@ Two rules govern what the output is allowed to say:
   * It does not sound more certain than its source. "Associated with", not
     "caused by"; an annotation records what was seen and what the agronomist
     suspects, not a result.
-
-Suggested actions are built from the recommendations already written against
-each finding, with distinct ones separated by semicolons — several are
-themselves two clauses joined by "and", and chaining those produced a sentence
-that ran on without a break in it.
 
 Patterns are ordered by acreage so the largest finding leads, and genuinely
 different causes stay apart rather than being merged for tidiness. On the sample
@@ -380,17 +364,12 @@ MSG
 unit tests/test_report_v2.py <<'MSG'
 test(report): cover the pattern grouping, the report voice and the headers
 
-37 checks, driven against two real flights. The first is the worked example the
-V2 brief was written from, so if the clustering is right for it the numbers on
-page 1 match a report a person has already checked by hand. The second is a
-later flight whose six findings had all been filed under one category, and it
-earns its place: it caught three faults the first could not, where "nitrogen"
-and "sprinkler" appeared in no keyword list and a pest finding was filed under
-Weeds because its cause mentioned the weedy edge the aphids came from.
-
-For the first flight it asserts the four expected patterns land at 9, 1, 4 and 1
-zones with the matching acreage, that the largest pattern leads, and that the
-4.1-acre mounding zone stays out of the nine-zone soil group.
+26 checks, driven against the real IPM Farm annotations, because that flight is
+the worked example the V2 brief was written from — if the clustering is right
+for it, the numbers on page 1 match a report a person has already checked by
+hand. It asserts the four expected patterns land at 9, 1, 4 and 1 zones with the
+matching acreage, that the largest pattern leads, and that the 4.1-acre mounding
+zone stays out of the nine-zone soil group.
 
 It also asserts the phrasing the brief rules out. Tone is not decoration here:
 "under pressure" and "work through these, in this order" are the specific lines

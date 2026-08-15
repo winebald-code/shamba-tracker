@@ -61,45 +61,25 @@ DIRECT_MAP = {
 #
 # Ordered most specific first: a cause naming both mounding and water stress is
 # a crop establishment problem, because the mounding is the thing being blamed.
-# Ordered most specific first, and the first match wins.
-#
-# The order is a judgement rather than an accident. A cause naming mounding is a
-# crop establishment problem even when it also mentions water stress, because
-# the mounding is the thing being blamed. A cause naming an organism is a pest
-# problem even when it mentions the weedy edge that organism came in from — so
-# Weeds sits last and claims a finding only when nothing else explains it.
-#
-# Keywords are matched as substrings, so each has to be long enough not to fire
-# inside an unrelated word. "ph" used to sit in the fertility list and matched
-# the "ph" in "aphid"; it is now "soil ph".
 CAUSE_PATTERNS = [
     ("Crop Establishment", [
-        "overmound", "over-mound", "mounding", "mound height", "mound",
-        "excess soil cover", "soil cover", "planting depth", "planting gap",
-        "germinat", "establishment", "established", "establish", "replant",
-        "seedling", "transplant", "poor stand", "crop stand",
-    ]),
-    ("Pest / Disease", [
-        "pest", "disease", "aphid", "thrips", "whitefly", "caterpillar",
-        "larvae", "nematode", "beetle", "insect", "infestation", "blight",
-        "fungal", "fungus", "mildew", "leaf spot", "leaf-spot", "spotting",
-        "lesion", "wilt", "virus", "bacterial", "root rot", "soft rot",
-        "rotting", "borer", "mites",
-    ]),
-    ("Irrigation / Moisture", [
-        "water stress", "irrigation", "drip", "sprinkler", "moisture",
-        "waterlog", "water-log", "short of water", "watering", "drought",
-        "dry patch", "dry wedge", "drying", "low pressure", "pressure at",
-        "overwater", "under-water", "flooding",
-    ]),
-    ("Soil Fertility / Nutrition", [
-        "soil fertility", "fertility", "nutrient", "nutrition", "soil condition",
-        "deficien", "uptake", "nitrogen", "phosph", "potass", "npk", "manure",
-        "fertiliser", "fertilizer", "top-dress", "topdress", "soil ph",
-        "acidity", "organic matter",
+        "overmound", "over-mound", "mound", "excess soil cover", "soil cover",
+        "planting depth", "germination", "establishment", "seed", "gap",
     ]),
     ("Weeds", [
         "weed",
+    ]),
+    ("Pest / Disease", [
+        "pest", "disease", "aphid", "blight", "fungal", "fungus", "insect",
+        "larvae", "infestation", "virus", "rot",
+    ]),
+    ("Irrigation / Moisture", [
+        "water stress", "irrigation", "drip", "moisture", "waterlog", "water-log",
+        "dry", "drought", "pressure at", "watering",
+    ]),
+    ("Soil Fertility / Nutrition", [
+        "soil fertility", "fertility", "nutrient", "nutrition", "soil condition",
+        "deficien", "uptake", "ph", "manure", "fertiliser", "fertilizer",
     ]),
 ]
 
@@ -175,10 +155,7 @@ def _phrases(findings, field, limit=3):
         if key not in seen:
             seen[key] = [raw, 0]
         seen[key][1] += 1
-    # Most common first, and on a tie the order they arrived in — the findings
-    # are sorted largest-first, so the biggest area leads the sentence rather
-    # than whichever one happens to sort earliest alphabetically.
-    ordered = sorted(seen.values(), key=lambda x: -x[1])
+    ordered = sorted(seen.values(), key=lambda x: (-x[1], x[0].lower()))
     # Drop a phrase already contained in a longer one that is being kept:
     # "plant vigour" alongside "poor plant vigour" says the same thing twice.
     kept = []
@@ -240,18 +217,16 @@ def _suggestion(group):
     """
     recs = _phrases(group["findings"], "recommendation", 3)
     if not recs:
-        return (f"No specific next step was recorded against the "
-                f"{group['name'].lower()} areas, so they may be worth a closer look.")
-    cleaned = [r[0].lower() + r[1:] for r in recs]
+        return (f"The {group['name'].lower()} areas may be worth a closer look, "
+                "as no specific next step was recorded against them.")
+    joined = _join([r[0].lower() + r[1:] for r in recs])
     if group["count"] == 1:
         zone = group["zones"][0]
-        return f"For the one area here (zone {zone}), the agronomist recorded: {cleaned[0]}."
-    # Separate recommendations are joined with semicolons rather than "and".
-    # Several of them are themselves two clauses joined by "and", so chaining
-    # them that way produced a sentence that ran on without a break in it.
-    return (f"Across the {_count_word(group['count'])} areas here, the agronomist "
-            f"recorded: {'; '.join(cleaned)}. The largest of them may be the most "
-            "useful place to start.")
+        return (f"For the single area in this group (zone {zone}), the agronomist "
+                f"noted {joined} as worth considering.")
+    return (f"Across the {_count_word(group['count'])} areas in this group, the "
+            f"agronomist noted {joined}. Starting with the largest of them may be "
+            "the most useful place to look first.")
 
 
 # ----------------------------------------------------------------- aggregation
