@@ -238,9 +238,18 @@ _NUMBER_WORDS = {
 
 
 # ---------------------------------------------------------------- text utils
+_SHIFT_SLIP = re.compile(r"\b([A-Z])([A-Z])(?=[a-z])")
+
+
 def clean(text):
     """Collapse whitespace and strip list punctuation from the edges."""
-    return re.sub(r"\s+", " ", str(text or "")).strip(" \t\r\n.;,:-\u2013\u2014")
+    text = re.sub(r"\s+", " ", str(text or "")).strip(" \t\r\n.;,:-\u2013\u2014")
+    # "PLant vigour" is a held shift key, and on page 1 it becomes the opening
+    # words of a farmer's report. Only a doubled capital followed by lower case
+    # is touched, so NPK, CAN and DAP are left exactly as typed. The annotation
+    # itself is never altered: page 3 still shows what the agronomist wrote,
+    # character for character.
+    return _SHIFT_SLIP.sub(lambda m: m.group(1) + m.group(2).lower(), text)
 
 
 def phrases(text):
@@ -278,6 +287,23 @@ def lower_first(text):
     if first.isupper() or (len(first) > 1 and first[1:].lower() != first[1:]):
         return text
     return text[:1].lower() + text[1:]
+
+
+def shorten(text, limit=44):
+    """
+    Trim a phrase to heading length, on a word boundary.
+
+    An agronomist's likely cause can be a whole sentence — "water stress: low
+    pressure at the end of the drip line which cause slow growth" is one real
+    entry — and a heading that long stops working as a heading. The full text is
+    never lost: it is on page 3 exactly as written, against every zone in the
+    pattern.
+    """
+    text = clean(text)
+    if len(text) <= limit:
+        return text
+    cut = text[:limit].rsplit(" ", 1)[0].rstrip(" ,;:-")
+    return (cut or text[:limit].rstrip()) + "\u2026"
 
 
 def number_word(n):
@@ -794,7 +820,7 @@ def build(flight, findings=None):
         p["theme"] = text["causes"][0] if text["causes"] else ""
         p["heading"] = p["label"]
         if p["category"] == "needs_investigation" and p["theme"]:
-            p["heading"] = f"{p['label']} — {lower_first(p['theme'])}"
+            p["heading"] = f"{p['label']} — {shorten(lower_first(p['theme']))}"
 
     # Where one category holds more than one pattern, the category name alone
     # would head both of them identically — two "Irrigation / Moisture" blocks,
@@ -806,7 +832,7 @@ def build(flight, findings=None):
         counts[p["category"]] = counts.get(p["category"], 0) + 1
     for p in patterns:
         if counts[p["category"]] > 1 and p["theme"] and "—" not in p["heading"]:
-            p["heading"] = f"{p['label']} — {lower_first(p['theme'])}"
+            p["heading"] = f"{p['label']} — {shorten(lower_first(p['theme']))}"
 
     # ---- category totals for the summary cards ------------------------------
     cards = []

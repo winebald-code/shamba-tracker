@@ -73,7 +73,14 @@
 .rd { font-family:'AcreSans','Helvetica Neue',Arial,sans-serif; color:#1D2410;
       font-size:10.5px; line-height:1.55; letter-spacing:-0.004em; }
 .rd *, .rd *::before, .rd *::after { box-sizing:border-box; }
-.rd p, .rd h1, .rd h2, .rd h3, .rd table, .rd figure, .rd ul, .rd li { margin:0; padding:0; }
+.rd p, .rd h1, .rd h2, .rd h3, .rd figure, .rd ul, .rd li { margin:0; padding:0; }
+/* Tables are deliberately not in that reset. `.rd table` is a class *and* an
+   element, so it outranks a bare component class like `.facts` — a reset
+   written to remove browser defaults ends up silently overriding every margin
+   set on a table further down the file. That is what put the masthead rule
+   directly on top of the facts card, cutting across its rounded corners, and
+   what closed up the spacing between the key observations. Tables carry no
+   default margin in either engine, so there is nothing here worth resetting. */
 .rd ul { list-style:none; }
 .rd table { border-collapse:collapse; width:100%; }
 .rd img { display:block; max-width:100%; }
@@ -137,13 +144,18 @@
 .lede b { font-weight:800; }
 
 /* ---------------------------------------------------------------- masthead */
-.mastwrap { border-bottom:2px solid #4A5A28; padding-bottom:9px; }
+.mastwrap { border-bottom:2px solid #4A5A28; padding-bottom:10px; }
 .mast td { vertical-align:bottom; }
 .mast .logo { height:26px; }
 .mast .right { text-align:right; }
 
-/* the facts strip: what was flown, in four readings */
-.facts { margin-top:11px; background:#4A5A28; border-radius:6px; overflow:hidden; }
+/* the facts strip: what was flown, in four readings
+   The gap above it is doing real work. This card and the masthead rule are the
+   same olive, and set close together the rule reads as part of the card — a
+   straight edge cutting across its rounded corners, which looks like a fault in
+   the rendering rather than two separate things. They need daylight between
+   them to be read as two separate things. */
+.facts { margin-top:19px; background:#4A5A28; border-radius:6px; overflow:hidden; }
 .facts td { width:25%; padding:8px 12px; vertical-align:top;
             border-right:1px solid rgba(255,255,255,.16); }
 .facts td:last-child { border-right:0; }

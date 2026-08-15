@@ -166,6 +166,18 @@ chk("numbering descends by area",
     all(a >= b for (_, a), (_, b) in zip(ordered, ordered[1:])), ordered)
 chk("every zone numbered exactly once", sorted(number.values()) == list(range(1, 16)))
 
+print("\n=== 6b. the agronomist's words, tidied only where it is safe ===")
+chk("a held shift key is repaired", ag.clean("PLant vigour") == "Plant vigour")
+chk("acronyms are left alone",
+    [ag.clean(x) for x in ("NPK deficiency", "DAP applied", "pH low")]
+    == ["NPK deficiency", "DAP applied", "pH low"])
+chk("deliberate mid-word capitals survive", ag.clean("McKenzie block") == "McKenzie block")
+chk("a long cause is cut to heading length on a word boundary",
+    ag.shorten("water stress: low pressure at the end of the drip line which cause slow growth")
+    == "water stress: low pressure at the end of\u2026",
+    ag.shorten("water stress: low pressure at the end of the drip line which cause slow growth"))
+chk("a short cause is left whole", ag.shorten("water stress") == "water stress")
+
 print("\n=== 7. edge cases that reach real farms ===")
 Row._n = 0
 empty = ag.build(Flight([], acreage=12.0), [])

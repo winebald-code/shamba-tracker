@@ -255,6 +255,16 @@ Three things hold that guarantee up:
   which lets a long sheet flow onto another page that is still footed and still
   numbered correctly.
 
+Two element-level rules earn their comments in that file. Tables are kept out of
+the margin reset, because `.rd table` is a class *and* an element and so
+outranks a bare component class — a reset written to clear browser defaults
+otherwise overrides every margin set on a table below it, which is what once put
+the masthead rule flat on top of the facts card. And a section heading rules off
+*underneath* itself rather than beside itself: set with the line running out to
+the right, it lands on the type's own x-height and reads as struck through the
+words. `tests/test_report.py` asserts both, since both are easy to reintroduce
+and neither shows up in a page count.
+
 On a phone the sheets stop being sheets. Below 880px the document reflows to the
 width of the device: the layout tables become blocks, and the findings table
 becomes one labelled card per area. Print and PDF are untouched, because
@@ -353,6 +363,13 @@ finding on the farm.
 
 Zones are numbered largest area first, so zone 1 is the biggest thing on the
 field and the number means something when read off the map.
+
+The summary tidies the agronomist's text in exactly two ways, both presentation
+rather than content, and page 3 always shows the annotation as written: a
+doubled capital followed by lower case is a held shift key and is repaired
+("PLant vigour"), leaving acronyms like NPK and DAP alone; and a cause too long
+to work as a heading is cut on a word boundary, with the full text still against
+every zone in the pattern.
 
 ### The report-facing colour system
 
