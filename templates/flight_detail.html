@@ -1,21 +1,15 @@
 {% extends 'app_base.html' %}
 {% from '_icons.html' import icon %}
 {% block title %}{{ flight.farm.name }} · Flight {{ flight.flight_number }}{% endblock %}
-{% block heading %}{{ flight.farm.name }} · Flight {{ flight.flight_number }}<span class="text-dove font-semibold">/{{
-  flight.flights_planned }}</span>{% endblock %}
-{% block subheading %}<p class="text-[12.5px] text-dove">{{ flight.season }} · {{ flight.crop or flight.farm.crop or
-  'crop not set' }}{% if flight.flight_date %} · {{ flight.flight_date.strftime('%d %b %Y') }}{% endif %}</p>{% endblock
-%}
+{% block heading %}{{ flight.farm.name }} · Flight {{ flight.flight_number }}<span class="text-dove font-semibold">/{{ flight.flights_planned }}</span>{% endblock %}
+{% block subheading %}<p class="text-[12.5px] text-dove">{{ flight.season }} · {{ flight.crop or flight.farm.crop or 'crop not set' }}{% if flight.flight_date %} · {{ flight.flight_date.strftime('%d %b %Y') }}{% endif %}</p>{% endblock %}
 {% block topbar_actions %}
 <div class="flex items-center gap-2">
   {% if flight.report_generated %}
-  <a href="{{ url_for('flight_report', flight_id=flight.id) }}"
-    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition">{{
-    icon('report','w-4 h-4') }} <span class="hidden sm:inline">View report</span></a>
+  <a href="{{ url_for('flight_report', flight_id=flight.id) }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition">{{ icon('report','w-4 h-4') }} <span class="hidden sm:inline">View report</span></a>
   {% endif %}
-  <button id="genBtn" onclick="document.getElementById('genForm').submit()" {% if not flight.can_generate %}disabled{%
-    endif %}
-    class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold transition
+  <button id="genBtn" onclick="document.getElementById('genForm').submit()" {% if not flight.can_generate %}disabled{% endif %}
+      class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold transition
              {{ 'bg-sage text-ink hover:bg-sage/80' if flight.can_generate else 'bg-canvas text-dove cursor-not-allowed' }}">
     {{ icon('check','w-4 h-4') }} <span class="hidden sm:inline">Generate report</span>
   </button>
@@ -24,29 +18,21 @@
 {% endblock %}
 
 {% block content %}
-<a href="{{ url_for('farm_detail', farm_id=flight.farm.id) }}"
-  class="inline-flex items-center gap-1.5 text-[12.5px] text-dove hover:text-ink mb-5 transition">← {{ flight.farm.name
-  }}</a>
+<a href="{{ url_for('farm_detail', farm_id=flight.farm.id) }}" class="inline-flex items-center gap-1.5 text-[12.5px] text-dove hover:text-ink mb-5 transition">← {{ flight.farm.name }}</a>
 
 <div class="grid lg:grid-cols-3 gap-5 mb-5">
   <!-- ingestion -->
   <div class="glass-solid rounded-xl2 p-5">
     <h3 class="text-[14px] font-bold flex items-center gap-2">{{ icon('upload','w-4 h-4') }} DroneDeploy import</h3>
-    <p class="text-[12px] text-dove mt-1.5">Upload the annotation CSV export. Re-uploading replaces the findings below.
-    </p>
-    <form method="post" action="{{ url_for('flight_upload_csv', flight_id=flight.id) }}" enctype="multipart/form-data"
-      class="mt-3">
+    <p class="text-[12px] text-dove mt-1.5">Upload the annotation CSV export. Re-uploading replaces the findings below.</p>
+    <form method="post" action="{{ url_for('flight_upload_csv', flight_id=flight.id) }}" enctype="multipart/form-data" class="mt-3">
       <label class="block">
         <input type="file" name="csv" accept=".csv" required onchange="this.form.submit()"
-          class="block w-full text-[12px] text-dove file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12px] file:cursor-pointer cursor-pointer">
+               class="block w-full text-[12px] text-dove file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12px] file:cursor-pointer cursor-pointer">
       </label>
     </form>
-    {% if flight.csv_filename %}<p class="mt-2.5 text-[11.5px] text-dove flex items-center gap-1.5"><span
-        class="text-sagedeep">{{ icon('check','w-3.5 h-3.5') }}</span> {{ flight.csv_filename }} · {{
-      flight.findings|length }} pin(s)</p>{% endif %}
-    {% if flight.dronedeploy_project_url %}<a href="{{ flight.dronedeploy_project_url }}" target="_blank"
-      class="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-sagedeep hover:underline">{{
-      icon('external','w-4 h-4') }} Open project in DroneDeploy</a>{% endif %}
+    {% if flight.csv_filename %}<p class="mt-2.5 text-[11.5px] text-dove flex items-center gap-1.5"><span class="text-sagedeep">{{ icon('check','w-3.5 h-3.5') }}</span> {{ flight.csv_filename }} · {{ flight.findings|length }} pin(s)</p>{% endif %}
+    {% if flight.dronedeploy_project_url %}<a href="{{ flight.dronedeploy_project_url }}" target="_blank" class="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-sagedeep hover:underline">{{ icon('external','w-4 h-4') }} Open project in DroneDeploy</a>{% endif %}
   </div>
 
   <!-- map -->
@@ -58,11 +44,10 @@
       <img src="{{ url_for('uploaded', name=flight.map_image) }}" alt="Annotated map" class="w-full h-32 object-cover">
     </div>
     {% endif %}
-    <form method="post" action="{{ url_for('flight_upload_map', flight_id=flight.id) }}" enctype="multipart/form-data"
-      class="mt-3">
+    <form method="post" action="{{ url_for('flight_upload_map', flight_id=flight.id) }}" enctype="multipart/form-data" class="mt-3">
       <label class="block">
         <input type="file" name="map" accept="image/*" required onchange="this.form.submit()"
-          class="block w-full text-[12px] text-dove file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12px] file:cursor-pointer cursor-pointer">
+               class="block w-full text-[12px] text-dove file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12px] file:cursor-pointer cursor-pointer">
       </label>
     </form>
   </div>
@@ -71,29 +56,22 @@
   <div class="glass-solid rounded-xl2 p-5">
     <h3 class="text-[14px] font-bold flex items-center gap-2">{{ icon('clock','w-4 h-4') }} Status</h3>
     <form method="post" action="{{ url_for('flight_status', flight_id=flight.id) }}" class="mt-3">
-      <select name="status" onchange="this.form.submit()"
-        class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold">
+      <select name="status" onchange="this.form.submit()" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold">
         {% for s in ['Draft','Ready for Review','Approved','Sent'] %}
         <option value="{{ s }}" {{ 'selected' if flight.status==s }}>{{ s }}</option>
         {% endfor %}
       </select>
     </form>
     <div class="mt-3 space-y-2 text-[12px]">
-      <div
-        class="flex items-center gap-2 {{ 'text-sagedeep font-semibold' if flight.report_generated else 'text-dove' }}">
-        {{ icon('check','w-4 h-4') }} Report {{ 'generated' if flight.report_generated else 'not yet generated' }}</div>
-      {% if flight.sent_email or flight.sent_whatsapp %}<div
-        class="flex items-center gap-2 text-sagedeep font-semibold">{{ icon('send','w-4 h-4') }} Sent {{
-        flight.sent_at.strftime('%d %b') if flight.sent_at }}</div>{% endif %}
-      {% if flight.acknowledged %}<div class="flex items-center gap-2 text-sagedeep font-semibold">{{
-        icon('check-circle','w-4 h-4') }} Acknowledged {{ flight.acknowledged_at.strftime('%d %b, %H:%M') if
-        flight.acknowledged_at }}</div>{% endif %}
+      <div class="flex items-center gap-2 {{ 'text-sagedeep font-semibold' if flight.report_generated else 'text-dove' }}">{{ icon('check','w-4 h-4') }} Report {{ 'generated' if flight.report_generated else 'not yet generated' }}</div>
+      {% if flight.sent_email or flight.sent_whatsapp %}<div class="flex items-center gap-2 text-sagedeep font-semibold">{{ icon('send','w-4 h-4') }} Sent {{ flight.sent_at.strftime('%d %b') if flight.sent_at }}</div>{% endif %}
+      {% if flight.acknowledged %}<div class="flex items-center gap-2 text-sagedeep font-semibold">{{ icon('check-circle','w-4 h-4') }} Acknowledged {{ flight.acknowledged_at.strftime('%d %b, %H:%M') if flight.acknowledged_at }}</div>{% endif %}
     </div>
   </div>
 </div>
 
 {# Season to date — the same trend the report carries, so the agronomist sees
-where this flight sits before generating anything. #}
+   where this flight sits before generating anything. #}
 {% if ctx.season and ctx.season.spark %}
 {% set s = ctx.season %}
 {% set sp = s.spark %}
@@ -101,13 +79,12 @@ where this flight sits before generating anything. #}
   <div class="flex items-start justify-between gap-4 flex-wrap">
     <div>
       <h3 class="text-[14px] font-bold flex items-center gap-2">{{ icon('chart','w-4 h-4') }} Season to date</h3>
-      <p class="text-[12px] text-dove mt-1.5">{{ s.flights_scored }} flight{{ '' if s.flights_scored == 1 else 's' }} of
-        {{ flight.season }} with findings · field health is {{ s.verdict }}.</p>
+      <p class="text-[12px] text-dove mt-1.5">{{ s.flights_scored }} flight{{ '' if s.flights_scored == 1 else 's' }} of {{ flight.season }} with findings · field health is {{ s.verdict }}.</p>
     </div>
     <div class="flex items-center gap-5 shrink-0">
       <div>
         <p class="text-[20px] font-extrabold tnum leading-none {{ 'text-sagedeep' if s.swing > 0 else ('text-dove' if s.swing == 0 else '') }}"
-          style="{{ 'color:#D64550' if s.swing < 0 }}">{{ '+' if s.swing > 0 }}{{ s.swing }}</p>
+           style="{{ 'color:#D64550' if s.swing < 0 }}">{{ '+' if s.swing > 0 }}{{ s.swing }}</p>
         <p class="text-[10.5px] text-dove font-semibold mt-1">since flight {{ s.first.number }}</p>
       </div>
       <div>
@@ -122,21 +99,18 @@ where this flight sits before generating anything. #}
   </div>
 
   <svg viewBox="0 0 {{ sp.w }} {{ sp.h }}" preserveAspectRatio="none" class="w-full mt-4" style="height:58px">
-    <path d="{{ sp.area }}" fill="#7FB65E" fill-opacity="0.12" />
-    <path d="{{ sp.line }}" fill="none" stroke="#7FB65E" stroke-width="2.2" stroke-linecap="round"
-      stroke-linejoin="round" />
+    <path d="{{ sp.area }}" fill="#7FB65E" fill-opacity="0.12"/>
+    <path d="{{ sp.line }}" fill="none" stroke="#7FB65E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
     {% for p in sp.points %}
-    <circle cx="{{ p.x }}" cy="{{ p.y }}" r="{{ 4.2 if p.is_current else 3 }}" fill="#fff" stroke="#7FB65E"
-      stroke-width="{{ 2.4 if p.is_current else 1.8 }}" />
+    <circle cx="{{ p.x }}" cy="{{ p.y }}" r="{{ 4.2 if p.is_current else 3 }}"
+            fill="#fff" stroke="#7FB65E" stroke-width="{{ 2.4 if p.is_current else 1.8 }}"/>
     {% endfor %}
   </svg>
   <div class="flex mt-1">
     {% for p in sp.points %}
     <div class="flex-1 text-center">
-      <span class="block text-[11px] font-bold tnum {{ 'text-ink' if p.is_current else 'text-dove' }}">{{ p.score
-        }}</span>
-      <span class="block text-[10px] tnum {{ 'text-ink font-bold' if p.is_current else 'text-dove' }}">F{{ p.number
-        }}</span>
+      <span class="block text-[11px] font-bold tnum {{ 'text-ink' if p.is_current else 'text-dove' }}">{{ p.score }}</span>
+      <span class="block text-[10px] tnum {{ 'text-ink font-bold' if p.is_current else 'text-dove' }}">F{{ p.number }}</span>
     </div>
     {% endfor %}
   </div>
@@ -151,13 +125,9 @@ where this flight sits before generating anything. #}
   </span>
   <p id="bannerText" class="text-[13px] font-semibold">
     {% if not flight.findings %}Import a DroneDeploy CSV to load the annotations, or add findings by hand.
-    {% elif flight.can_generate %}All {{ flight.findings|length }} findings are complete and the map is uploaded. You
-    can generate the report.
-    {% elif flight.incomplete_count %}<span id="incCount">{{ flight.incomplete_count }}</span> of {{
-    flight.findings|length }} findings still need an observation, likely cause and recommendation.{% if not
-    flight.map_image %} The map snapshot is missing too.{% endif %}
-    {% else %}All {{ flight.findings|length }} findings are complete. Upload the annotated map snapshot to generate the
-    report.{% endif %}
+    {% elif flight.can_generate %}All {{ flight.findings|length }} findings are complete and the map is uploaded. You can generate the report.
+    {% elif flight.incomplete_count %}<span id="incCount">{{ flight.incomplete_count }}</span> of {{ flight.findings|length }} findings still need an observation, likely cause and recommendation.{% if not flight.map_image %} The map snapshot is missing too.{% endif %}
+    {% else %}All {{ flight.findings|length }} findings are complete. Upload the annotated map snapshot to generate the report.{% endif %}
   </p>
 </div>
 
@@ -166,100 +136,81 @@ where this flight sits before generating anything. #}
   <div class="px-5 py-4 border-b border-silver flex items-center justify-between gap-3">
     <div>
       <h3 class="text-[15px] font-bold">Findings &amp; recommendations</h3>
-      <p class="text-[11.5px] text-dove mt-0.5">Edit inline — changes save automatically. Categories are suggested from
-        the pin colour; correct any that are off.</p>
+      <p class="text-[11.5px] text-dove mt-0.5">Edit inline — changes save automatically. Categories are suggested from the pin colour; correct any that are off.</p>
     </div>
     <form method="post" action="{{ url_for('finding_add', flight_id=flight.id) }}">
-      <button
-        class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl glass-solid text-[12.5px] font-bold hover:border-sage transition whitespace-nowrap">{{
-        icon('plus','w-4 h-4') }} Add finding</button>
+      <button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl glass-solid text-[12.5px] font-bold hover:border-sage transition whitespace-nowrap">{{ icon('plus','w-4 h-4') }} Add finding</button>
     </form>
   </div>
 
   {% if flight.findings %}
   <!-- desktop column header -->
-  <div
-    class="hidden lg:grid lg:grid-cols-[44px_118px_64px_150px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px] gap-3 px-5 py-3 border-b border-silver text-[10.5px] font-bold uppercase tracking-wider text-dove">
-    <div>Pin</div>
-    <div>Colour</div>
-    <div>Area</div>
-    <div>Observation</div>
-    <div>Likely cause</div>
-    <div>Recommendation</div>
-    <div></div>
+  <div class="hidden lg:grid lg:grid-cols-[44px_118px_64px_150px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px] gap-3 px-5 py-3 border-b border-silver text-[10.5px] font-bold uppercase tracking-wider text-dove">
+    <div>Pin</div><div>Colour</div><div>Area</div><div>Category</div><div>Observation</div><div>Likely cause</div><div>Recommendation</div><div></div>
   </div>
 
   <div class="divide-y divide-silver">
     {% for f in flight.findings %}
     <div id="f{{ f.id }}" data-fid="{{ f.id }}"
-      class="finding-row {{ '' if f.is_complete else 'incomplete' }} p-4 lg:p-0 lg:px-5 lg:py-3
+         class="finding-row {{ '' if f.is_complete else 'incomplete' }} p-4 lg:p-0 lg:px-5 lg:py-3
                 border-l-4 lg:border-l-0 lg:grid lg:grid-cols-[44px_118px_64px_150px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px] lg:gap-x-3 lg:gap-y-0 lg:items-start transition"
-      style="border-left-color: {{ '#B0D48C' if f.is_complete else '#D64550' }}">
+         style="border-left-color: {{ '#B0D48C' if f.is_complete else '#D64550' }}">
 
       <!-- MOBILE meta row (pin · colour · area · actions) -->
       <div class="flex items-center gap-2.5 lg:hidden mb-3">
-        <span class="w-7 h-7 rounded-lg grid place-items-center font-extrabold text-white text-[13px] tnum shrink-0"
-          style="background: {{ f.colour_swatch }}">{{ loop.index }}</span>
+        <span class="w-7 h-7 rounded-lg grid place-items-center font-extrabold text-white text-[13px] tnum shrink-0" style="background: {{ f.colour_swatch }}">{{ loop.index }}</span>
         <span class="text-[12px] font-semibold text-dove">{{ f.colour_meaning }}</span>
         {% if f.area_text %}<span class="text-[11.5px] font-bold text-dove tnum">· {{ f.area_text }}</span>{% endif %}
         <span class="flex-1"></span>
-        {% if f.annotation_link %}<a href="{{ f.annotation_link }}" target="_blank" title="View pin in DroneDeploy"
-          class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition">{{
-          icon('external','w-4 h-4') }}</a>{% endif %}
-        <form method="post" action="{{ url_for('finding_delete', finding_id=f.id) }}"
-          onsubmit="return confirm('Delete this finding?')">
-          <button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition"
-            title="Delete">{{ icon('trash','w-4 h-4') }}</button>
+        {% if f.annotation_link %}<a href="{{ f.annotation_link }}" target="_blank" title="View pin in DroneDeploy" class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition">{{ icon('external','w-4 h-4') }}</a>{% endif %}
+        <form method="post" action="{{ url_for('finding_delete', finding_id=f.id) }}" onsubmit="return confirm('Delete this finding?')">
+          <button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Delete">{{ icon('trash','w-4 h-4') }}</button>
         </form>
       </div>
 
       <!-- DESKTOP pin -->
       <div class="hidden lg:flex items-center gap-2">
-        <span class="w-1.5 h-8 rounded-full status-bar {{ 'bg-sage' if f.is_complete else '' }}"
-          style="{{ '' if f.is_complete else 'background:#D64550' }}"></span>
+        <span class="w-1.5 h-8 rounded-full status-bar {{ 'bg-sage' if f.is_complete else '' }}" style="{{ '' if f.is_complete else 'background:#D64550' }}"></span>
         <span class="font-bold text-[13px] tnum">{{ loop.index }}</span>
       </div>
       <!-- DESKTOP colour -->
       <div class="hidden lg:block">
         <div class="flex items-center gap-2 whitespace-nowrap">
-          <span class="w-3.5 h-3.5 rounded-full border border-ink/10 shrink-0"
-            style="background: {{ f.colour_swatch }}"></span>
+          <span class="w-3.5 h-3.5 rounded-full border border-ink/10 shrink-0" style="background: {{ f.colour_swatch }}"></span>
           <span class="text-[11px] font-semibold text-dove">{{ f.colour_meaning }}</span>
         </div>
         {% if f.label_hex %}<span class="text-[10px] text-dove/70 tnum">{{ f.label_hex }}</span>{% endif %}
       </div>
       <!-- DESKTOP area -->
-      <div class="hidden lg:block text-[12.5px] font-semibold tnum whitespace-nowrap pt-0.5">{{ f.area_text or '—' }}
+      <div class="hidden lg:block text-[12.5px] font-semibold tnum whitespace-nowrap pt-0.5">{{ f.area_text or '—' }}</div>
+
+      <!-- Category -->
+      <div>
+        <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">Category</label>
+        <select data-field="category" class="cell w-full text-[12.5px] font-semibold px-2 py-1.5 bg-transparent">
+          {% for c in CATEGORIES %}<option value="{{ c }}" {{ 'selected' if f.category==c }}>{{ c }}</option>{% endfor %}
+        </select>
       </div>
       <!-- Observation -->
       <div class="mt-2.5 lg:mt-0">
         <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">What we saw</label>
-        <textarea data-field="observation" rows="2" placeholder="What did you see?"
-          class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.observation }}</textarea>
+        <textarea data-field="observation" rows="2" placeholder="What did you see?" class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.observation }}</textarea>
       </div>
       <!-- Likely cause -->
       <div class="mt-2.5 lg:mt-0">
-        <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">Likely
-          cause</label>
-        <textarea data-field="likely_cause" rows="2" placeholder="Working diagnosis"
-          class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.likely_cause }}</textarea>
+        <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">Likely cause</label>
+        <textarea data-field="likely_cause" rows="2" placeholder="Working diagnosis" class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.likely_cause }}</textarea>
       </div>
       <!-- Recommendation -->
       <div class="mt-2.5 lg:mt-0">
-        <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">What to do
-          next</label>
-        <textarea data-field="recommendation" rows="2" placeholder="Next step"
-          class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.recommendation }}</textarea>
+        <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">What to do next</label>
+        <textarea data-field="recommendation" rows="2" placeholder="Next step" class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.recommendation }}</textarea>
       </div>
       <!-- DESKTOP actions -->
       <div class="hidden lg:flex items-center gap-1">
-        {% if f.annotation_link %}<a href="{{ f.annotation_link }}" target="_blank" title="View pin in DroneDeploy"
-          class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition">{{
-          icon('external','w-4 h-4') }}</a>{% endif %}
-        <form method="post" action="{{ url_for('finding_delete', finding_id=f.id) }}"
-          onsubmit="return confirm('Delete this finding?')">
-          <button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition"
-            title="Delete">{{ icon('trash','w-4 h-4') }}</button>
+        {% if f.annotation_link %}<a href="{{ f.annotation_link }}" target="_blank" title="View pin in DroneDeploy" class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition">{{ icon('external','w-4 h-4') }}</a>{% endif %}
+        <form method="post" action="{{ url_for('finding_delete', finding_id=f.id) }}" onsubmit="return confirm('Delete this finding?')">
+          <button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Delete">{{ icon('trash','w-4 h-4') }}</button>
         </form>
       </div>
 
@@ -270,14 +221,14 @@ where this flight sits before generating anything. #}
           <span class="text-[10px] font-bold uppercase tracking-wider text-dove">Farmer comment</span>
           <span class="fc-meta text-[10.5px] text-dove ml-auto">
             {%- if f.has_farmer_comment and f.farmer_comment_at %}
-            Recorded by {{ f.farmer_comment_by.name if f.farmer_comment_by else 'a colleague' }}
-            on {{ f.farmer_comment_at.strftime('%d %b %Y') }}
+              Recorded by {{ f.farmer_comment_by.name if f.farmer_comment_by else 'a colleague' }}
+              on {{ f.farmer_comment_at.strftime('%d %b %Y') }}
             {%- endif %}
           </span>
         </div>
         <textarea data-comment="{{ f.id }}" rows="2"
-          placeholder="What did the farmer say back? Record it here if their knowledge of the field differs from this finding."
-          class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.farmer_comment }}</textarea>
+                  placeholder="What did the farmer say back? Record it here if their knowledge of the field differs from this finding."
+                  class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ f.farmer_comment }}</textarea>
       </div>
       {% elif f.has_farmer_comment %}
       <div class="mt-2.5 lg:mt-0 lg:col-span-8 lg:pt-2.5 lg:border-t lg:border-silver/70">
@@ -290,8 +241,7 @@ where this flight sits before generating anything. #}
   </div>
   {% else %}
   <div class="py-14 text-center">
-    <span class="inline-grid place-items-center w-12 h-12 rounded-xl bg-canvas text-dove mb-3">{{ icon('pin','w-6 h-6')
-      }}</span>
+    <span class="inline-grid place-items-center w-12 h-12 rounded-xl bg-canvas text-dove mb-3">{{ icon('pin','w-6 h-6') }}</span>
     <h3 class="text-[15px] font-bold">No findings yet</h3>
     <p class="text-[12.5px] text-dove mt-1">Import a DroneDeploy CSV above, or add a finding by hand.</p>
   </div>
@@ -300,24 +250,16 @@ where this flight sits before generating anything. #}
 
 <!-- agronomist note + danger -->
 <div class="grid lg:grid-cols-3 gap-5 mt-5">
-  <form method="post" action="{{ url_for('flight_note', flight_id=flight.id) }}"
-    class="lg:col-span-2 glass-solid rounded-xl2 p-5">
-    <label class="block text-[14px] font-bold mb-2">Note to the farmer <span
-        class="text-dove font-medium text-[12px]">(optional — appears on the report)</span></label>
-    <textarea name="note" rows="3" placeholder="A short, plain-language summary in Acre's voice…"
-      class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[13.5px] leading-relaxed resize-none">{{ flight.agronomist_note }}</textarea>
-    <div class="mt-3 flex justify-end"><button
-        class="px-4 py-2 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition flex items-center gap-2">{{
-        icon('check','w-4 h-4') }} Save note</button></div>
+  <form method="post" action="{{ url_for('flight_note', flight_id=flight.id) }}" class="lg:col-span-2 glass-solid rounded-xl2 p-5">
+    <label class="block text-[14px] font-bold mb-2">Note to the farmer <span class="text-dove font-medium text-[12px]">(optional — appears on the report)</span></label>
+    <textarea name="note" rows="3" placeholder="A short, plain-language summary in Acre's voice…" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[13.5px] leading-relaxed resize-none">{{ flight.agronomist_note }}</textarea>
+    <div class="mt-3 flex justify-end"><button class="px-4 py-2 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition flex items-center gap-2">{{ icon('check','w-4 h-4') }} Save note</button></div>
   </form>
   <div class="glass-solid rounded-xl2 p-5 flex flex-col">
     <h3 class="text-[14px] font-bold">Remove flight</h3>
-    <p class="text-[12.5px] text-dove mt-1.5 leading-relaxed">Deletes this flight and its findings. This cannot be
-      undone.</p>
-    <form method="post" action="{{ url_for('flight_delete', flight_id=flight.id) }}"
-      onsubmit="return confirm('Delete this flight and all its findings?')" class="mt-auto pt-4">
-      <button class="text-[12.5px] text-dove hover:text-ink font-semibold flex items-center gap-2 transition">{{
-        icon('trash','w-4 h-4') }} Delete flight</button>
+    <p class="text-[12.5px] text-dove mt-1.5 leading-relaxed">Deletes this flight and its findings. This cannot be undone.</p>
+    <form method="post" action="{{ url_for('flight_delete', flight_id=flight.id) }}" onsubmit="return confirm('Delete this flight and all its findings?')" class="mt-auto pt-4">
+      <button class="text-[12.5px] text-dove hover:text-ink font-semibold flex items-center gap-2 transition">{{ icon('trash','w-4 h-4') }} Delete flight</button>
     </form>
   </div>
 </div>
@@ -330,16 +272,16 @@ where this flight sits before generating anything. #}
     return el ? el.value.trim() : '';
   };
   const rowComplete = row =>
-    !!(val(row, 'observation') && val(row, 'likely_cause') && val(row, 'recommendation'));
+    !!(val(row,'category') && val(row,'observation') && val(row,'likely_cause') && val(row,'recommendation'));
 
   const CHECK = '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9.2"/><path d="M8 12.3 11 15.3 16.3 9.2"/></svg>';
   const ALERT = '<svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v5M12 16h.01"/></svg>';
 
-  function markRow(row, complete) {
+  function markRow(row, complete){
     // desktop status bar
-    row.querySelectorAll('.status-bar').forEach(function (bar) {
-      if (complete) { bar.style.background = ''; bar.classList.add('bg-sage'); }
-      else { bar.style.background = '#D64550'; bar.classList.remove('bg-sage'); }
+    row.querySelectorAll('.status-bar').forEach(function(bar){
+      if (complete){ bar.style.background=''; bar.classList.add('bg-sage'); }
+      else { bar.style.background='#D64550'; bar.classList.remove('bg-sage'); }
     });
     // mobile card left accent
     row.style.borderLeftColor = complete ? '#B0D48C' : '#D64550';
@@ -348,7 +290,7 @@ where this flight sits before generating anything. #}
 
   const HAS_MAP = {{ 'true' if flight.map_image else 'false' }};
 
-  function setBanner(incomplete, total) {
+  function setBanner(incomplete, total){
     const banner = document.getElementById('banner');
     const bt = document.getElementById('bannerText');
     const bi = document.getElementById('bannerIcon');
@@ -358,24 +300,24 @@ where this flight sits before generating anything. #}
     const hasMap = HAS_MAP;
     const canGenerate = total > 0 && incomplete === 0 && hasMap;
     if (!banner) return;
-    if (total === 0) {
+    if (total === 0){
       banner.className = 'rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3 glass-solid';
       bi.className = 'text-dove'; bi.innerHTML = ALERT;
       bt.innerHTML = 'Import a DroneDeploy CSV to load the annotations, or add findings by hand.';
-    } else if (incomplete === 0 && !hasMap) {
+    } else if (incomplete === 0 && !hasMap){
       banner.className = 'rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3 glass-solid';
       bi.className = 'text-dove'; bi.innerHTML = ALERT;
       bt.innerHTML = `All ${total} findings are complete. Upload the annotated map snapshot to generate the report.`;
-    } else if (canGenerate) {
+    } else if (canGenerate){
       banner.className = 'rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3 bg-sagesoft border border-sage/50';
       bi.className = 'text-sagedeep'; bi.innerHTML = CHECK;
       bt.innerHTML = `All ${total} findings are complete and the map is uploaded. You can generate the report.`;
     } else {
       banner.className = 'rounded-xl2 px-5 py-4 mb-4 flex items-center gap-3 glass-solid';
       bi.className = 'text-dove'; bi.innerHTML = ALERT;
-      bt.innerHTML = `<span class="tnum">${incomplete}</span> of ${total} finding${total === 1 ? '' : 's'} still need an observation, likely cause and recommendation.`;
+      bt.innerHTML = `<span class="tnum">${incomplete}</span> of ${total} finding${total===1?'':'s'} still need an observation, likely cause and recommendation.`;
     }
-    if (genBtn) {
+    if (genBtn){
       genBtn.disabled = !canGenerate;
       genBtn.className = 'inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold transition '
         + (canGenerate ? 'bg-sage text-ink hover:bg-sage/80' : 'bg-canvas text-dove cursor-not-allowed');
@@ -384,7 +326,7 @@ where this flight sits before generating anything. #}
 
   // Instant, client-side recount — runs on EVERY keystroke so the banner and the
   // row markers react the moment a field is filled or emptied.
-  function recount() {
+  function recount(){
     const all = rows();
     let incomplete = 0;
     all.forEach(row => {
@@ -397,14 +339,14 @@ where this flight sits before generating anything. #}
 
   // Debounced persistence to the server (separate from the instant UI update).
   const timers = {};
-  function persist(el) {
+  function persist(el){
     const row = el.closest('.finding-row');
     const fid = row.dataset.fid;
     const field = el.dataset.field;
-    clearTimeout(timers[fid + field]);
-    timers[fid + field] = setTimeout(() => {
+    clearTimeout(timers[fid+field]);
+    timers[fid+field] = setTimeout(() => {
       fetch(UPDATE_URL(fid), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ [field]: el.value })
       }).catch(e => console.error('save failed', e));
     }, 500);
@@ -414,22 +356,22 @@ where this flight sits before generating anything. #}
   // permission and, unlike the finding fields, must not invalidate a report
   // that has already been generated and sent.
   const COMMENT_URL = fid => `/findings/${fid}/comment`;
-  function persistComment(el) {
+  function persistComment(el){
     const fid = el.dataset.comment;
-    clearTimeout(timers['c' + fid]);
-    timers['c' + fid] = setTimeout(() => {
+    clearTimeout(timers['c'+fid]);
+    timers['c'+fid] = setTimeout(() => {
       fetch(COMMENT_URL(fid), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ farmer_comment: el.value })
       })
-        .then(r => r.ok ? r.json() : null)
-        .then(d => {
-          if (!d) return;
-          const meta = el.closest('div').querySelector('.fc-meta');
-          if (meta) meta.textContent = d.has_comment && d.recorded_by
-            ? `Recorded by ${d.recorded_by} on ${d.recorded_at}` : '';
-        })
-        .catch(e => console.error('comment save failed', e));
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        const meta = el.closest('div').querySelector('.fc-meta');
+        if (meta) meta.textContent = d.has_comment && d.recorded_by
+          ? `Recorded by ${d.recorded_by} on ${d.recorded_at}` : '';
+      })
+      .catch(e => console.error('comment save failed', e));
     }, 600);
   }
 
@@ -437,13 +379,13 @@ where this flight sits before generating anything. #}
     const ev = el.tagName === 'SELECT' ? 'change' : 'input';
     // A comment is not one of the three fields completeness is measured on, so
     // it neither recounts nor goes to the finding endpoint.
-    if (el.dataset.comment) {
+    if (el.dataset.comment){
       el.addEventListener('input', () => persistComment(el));
     } else {
       el.addEventListener(ev, () => { recount(); persist(el); });
     }
-    if (el.tagName === 'TEXTAREA') {
-      const grow = () => { el.style.height = 'auto'; el.style.height = (el.scrollHeight) + 'px'; };
+    if (el.tagName === 'TEXTAREA'){
+      const grow = () => { el.style.height='auto'; el.style.height=(el.scrollHeight)+'px'; };
       el.addEventListener('input', grow); grow();
     }
   });

@@ -17,7 +17,7 @@ Limits worth knowing:
   * SQLite cannot add a column that is both NOT NULL and without a default, so
     every column added here carries a default.
 """
-from sqlalchemy import inspect, text
+from sqlalchemy import bindparam, inspect, text
 
 # table -> column -> DDL fragment used when the column is missing.
 # Types are written in a dialect-neutral way that both SQLite and PostgreSQL
@@ -106,36 +106,66 @@ def ensure_schema(db):
                 print(f"[schema] backfill skipped: {exc}")
         print(f"[schema] added columns: {', '.join(added)}")
 
-    if "flights" in existing_tables:
-        backfill_share_tokens(db)
     if "findings" in existing_tables:
         migrate_categories(db)
+    if "flights" in existing_tables:
+        backfill_share_tokens(db)
     return added
 
 
 def migrate_categories(db):
     """
-    Move findings off the category names used before the review page and the
-    report legend were merged onto one list.
+    Carry findings written under the V1 category list onto the V2 patterns.
 
-    Without this, a flight recorded earlier still reads "Nutrient / Vigor" on the
-    review page while its report groups it under "Soil Fertility / Nutrition" —
-    the same mismatch the merge was meant to remove. Idempotent: a database
-    already using the current names has nothing to update.
+    V1 offered six labels that did not line up with what the report needed to
+    group by, and its colour-based suggestion pushed almost everything into
+    "Nutrient / Vigor". So the fixed labels are renamed straight across, and
+    the "Nutrient / Vigor" pile is re-read from the agronomist's own text —
+    which is the whole point of the upgrade, and is exactly what the classifier
+    would have done had it existed at import time.
+
+    Runs on every boot, touches only rows still holding a retired label, and is
+    a no-op once they are gone. Nothing the agronomist has already corrected to
+    a V2 label is ever rewritten.
     """
-    from parsing import LEGACY_CATEGORIES
+    import patterns
+
+    renames = {
+        "Irrigation": "Irrigation / Moisture",
+        "Drainage / Soil": "Soil Fertility / Nutrition",
+        "Planting Gap": "Crop Establishment",
+        # "Pest / Disease" and "Needs Investigation" keep their names.
+    }
+    reclassify = {"Nutrient / Vigor"}
     moved = 0
     try:
         with db.engine.begin() as conn:
-            for old_name, new_name in LEGACY_CATEGORIES.items():
+            for old, new in renames.items():
                 result = conn.execute(
                     text("UPDATE findings SET category=:new WHERE category=:old"),
-                    {"new": new_name, "old": old_name})
+                    {"new": new, "old": old})
                 moved += result.rowcount or 0
-        if moved:
-            print(f"[schema] moved {moved} finding(s) onto the current category names")
-    except Exception as exc:
+
+            rows = conn.execute(text(
+                "SELECT id, observation, likely_cause, recommendation FROM findings "
+                "WHERE category IN :old"
+            ).bindparams(bindparam("old", expanding=True)), {"old": list(reclassify)}).fetchall()
+
+            for row in rows:
+                conn.execute(
+                    text("UPDATE findings SET category=:c WHERE id=:i"),
+                    {"c": patterns.classify(observation=row[1] or "",
+                                            likely_cause=row[2] or "",
+                                            recommendation=row[3] or ""),
+                     "i": row[0]})
+            moved += len(rows)
+    except Exception as exc:                       # a fresh database has no table yet
         print(f"[schema] category migration skipped: {exc}")
+        return 0
+
+    if moved:
+        print(f"[schema] moved {moved} finding(s) onto the V2 categories")
+    return moved
 
 
 def backfill_share_tokens(db):

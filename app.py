@@ -24,13 +24,14 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError, OperationalError
 from models import (db, User, Farm, Flight, Finding, SiteContent, ROLES, ROLE_LABELS,
                     ROLE_BLURB, ROLE_DASHBOARD, STATUS_LABELS, slugify)
 import parsing
+import patterns
 import integrations
 import pdf_gen
 import report_data
 import schema
+import security
 import bulk_import
 import homepage
-import aggregation
 import storage as storage_backend
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
@@ -43,6 +44,19 @@ STORE = storage_backend.build_storage(UPLOAD_DIR)
 
 ALLOWED_CSV = {".csv"}
 ALLOWED_IMG = {".png", ".jpg", ".jpeg", ".webp"}
+
+# The report is three pages: summary, map, detailed findings. The season page
+# is a fourth, and is off unless asked for — a farmer opening the report wants
+# this flight, and the brief for V2 was explicit that three pages is the shape.
+# Set REPORT_SEASON_PAGE=1 to append it once a season has two scored flights.
+SEASON_PAGE = os.environ.get("REPORT_SEASON_PAGE", "0").strip().lower() not in (
+    "0", "false", "no", "off", "")
+
+# Serve the built Tailwind stylesheet instead of compiling it in the browser.
+# Off by default so this release changes nothing about how the app is styled;
+# see tailwind.config.js for what turning it on buys and how to rebuild it.
+TAILWIND_LOCAL = os.environ.get("TAILWIND_LOCAL", "0").strip().lower() not in (
+    "0", "false", "no", "off", "")
 
 # Who may do what. Everything not listed here is open to any signed-in user.
 PERMISSIONS = {
@@ -80,6 +94,10 @@ def create_app():
     app.config["MAX_CONTENT_LENGTH"] = 25 * 1024 * 1024   # 25 MB uploads
     app.config["UPLOAD_DIR"] = UPLOAD_DIR
 
+    # Security headers and cookie flags on every response, set once here so a
+    # route added later cannot ship without them.
+    security.init_app(app)
+
     db.init_app(app)
 
     login = LoginManager(app)
@@ -96,7 +114,8 @@ def create_app():
         return {
             "COLOUR_CODE": parsing.COLOUR_CODE,
             "CATEGORIES": parsing.CATEGORIES,
-            "CATEGORY_COLOURS": aggregation.CATEGORY_COLOURS,
+            "PATTERNS": patterns.PATTERNS,
+            "TAILWIND_LOCAL": TAILWIND_LOCAL,
             "ROLE_LABELS": ROLE_LABELS,
             "ROLE_BLURB": ROLE_BLURB,
             "STATUS_LABELS": STATUS_LABELS,
@@ -118,75 +137,12 @@ def create_app():
               "browser's print dialog instead. Build with the included Dockerfile "
               "to get server-generated PDFs.")
 
-    register_security_headers(app)
     register_routes(app)
 
     with app.app_context():
         init_db()
 
     return app
-
-
-# ------------------------------------------------------------------ security
-# Content-Security-Policy sources. Tailwind is loaded from its CDN and compiles
-# in the browser, and Google Fonts serves the application's typeface, so both
-# origins have to be allowed.
-CSP_DIRECTIVES = (
-    "default-src 'self'",
-    # 'unsafe-inline' and 'unsafe-eval' are needed by the Tailwind browser build,
-    # which generates styles at runtime. Removing them means moving to a compiled
-    # stylesheet, which is a build-step change rather than a header change.
-    "script-src 'self' https://cdn.tailwindcss.com 'unsafe-inline' 'unsafe-eval'",
-    "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'",
-    "font-src 'self' https://fonts.gstatic.com data:",
-    # data: covers the base64 images inlined into a rendered report.
-    "img-src 'self' data: blob:",
-    "connect-src 'self'",
-    "form-action 'self'",
-    "base-uri 'self'",
-    "frame-ancestors 'none'",
-    "object-src 'none'",
-    "upgrade-insecure-requests",
-)
-
-SECURITY_HEADERS = {
-    # Tells the browser to reach this site over HTTPS only. Two years, covering
-    # subdomains, and preload-eligible.
-    "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
-    "Content-Security-Policy": "; ".join(CSP_DIRECTIVES),
-    # frame-ancestors above covers modern browsers; this covers the rest.
-    "X-Frame-Options": "DENY",
-    "X-Content-Type-Options": "nosniff",
-    # A report link is a capability. Sending the full URL in a Referer header
-    # to another origin would leak a farmer's share token.
-    "Referrer-Policy": "strict-origin-when-cross-origin",
-    "Permissions-Policy": ("accelerometer=(), camera=(), geolocation=(), gyroscope=(), "
-                           "magnetometer=(), microphone=(), payment=(), usb=(), "
-                           "interest-cohort=()"),
-    "Cross-Origin-Opener-Policy": "same-origin",
-    "Cross-Origin-Resource-Policy": "same-origin",
-}
-
-
-def register_security_headers(app):
-    """
-    Set the response headers a browser uses to defend the application.
-
-    Every one of these was missing, which is what a security scan grades on.
-    They are applied here rather than at the proxy so they travel with the
-    application to whatever host it is deployed on.
-    """
-    @app.after_request
-    def _security_headers(response):
-        for header, value in SECURITY_HEADERS.items():
-            # HSTS over plain HTTP is meaningless and browsers ignore it, but
-            # sending it locally would pin developers to https://localhost.
-            if header == "Strict-Transport-Security" and not request.is_secure:
-                forwarded = request.headers.get("X-Forwarded-Proto", "")
-                if forwarded.split(",")[0].strip() != "https":
-                    continue
-            response.headers.setdefault(header, value)
-        return response
 
 
 def _pending_count():
@@ -341,18 +297,23 @@ def report_context(flight):
         still_open = len(flight.findings) - resolved
 
     analysis = report_data.analyse(flight, prev)
-
-    # V2 groups the flight's findings into the few patterns actually present in
-    # them, rather than listing every zone. The map numbers are passed in so the
-    # summary, the map and the detail tables all refer to a zone by one number.
-    agg = aggregation.aggregate(flight.findings, analysis.get("numbers"))
     points = report_data.season_trend(flight, season_flights)
     season = report_data.season_summary(points, analysis["score"]) if points else None
+
+    # ---- the V2 report -------------------------------------------------
+    # Grouped by the category the agronomist assigned, so the review screen and
+    # page 1 can never disagree about what a zone is. Every sentence page 1
+    # prints is assembled from their own text; see patterns.py.
+    findings = list(flight.findings)
+    numbers = analysis["numbers"]
+    groups = patterns.group_findings(findings, numbers)
+    field_acres = analysis["total_acres"]
+    flagged_acres = sum(g["acres"] for g in groups)
 
     return {
         "flight": flight,
         "farm": flight.farm,
-        "findings": flight.findings,
+        "findings": findings,
         "category_counts": flight.category_counts(),
         "meaning_counts": flight.meaning_counts(),
         "prev": prev,
@@ -360,11 +321,16 @@ def report_context(flight):
         "resolved": resolved,
         "still_open": still_open,
         "a": analysis,
-        "agg": agg,
-        "summary_line": aggregation.summary_sentence(agg, flight, flight.farm),
         "season": season,
         "season_flights": season_flights,
         "next_flight_no": flight.flight_number + 1,
+        # V2
+        "groups": groups,
+        "numbers": numbers,
+        "flagged_acres": flagged_acres,
+        "headline": patterns.headline(groups, len(findings), flagged_acres, field_acres),
+        "detail_sheets": patterns.paginate_groups(groups),
+        "season_page": season is not None and SEASON_PAGE,
     }
 
 
