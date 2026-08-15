@@ -3,7 +3,7 @@
   The PDF wrapper.
 
   It contributes no styling of its own on purpose: every rule the PDF uses
-  comes from report_doc.html, which is the same file the browser renders. If a
+  comes from report_v2.html, which is the same file the browser renders. If a
   style lived here, the PDF and the web report could drift, and the whole point
   of composing the report as fixed A4 sheets would be lost.
 #}
@@ -16,6 +16,6 @@
   <style>html,body{margin:0;padding:0;background:#fff;}</style>
 </head>
 <body>
-{% include 'report_doc.html' %}
+{% include 'report_v2.html' %}
 </body>
 </html>

@@ -1,42 +1,17 @@
 {#
-  The report document — V2.
+  The report document.
 
-  What changed from V1 is the structure and the voice, not the look. The
-  typography, the palette, the bordered cards, the dark masthead rule and the
-  running foot are V1's, unchanged: this is the same document Acre Insights was
-  already sending, reorganised the way Cathy asked for.
+  This one file is the report on screen, the report the browser prints, and the
+  report WeasyPrint turns into a PDF. There is no second stylesheet and no
+  second markup tree, so the three cannot drift apart.
 
-  What changed:
-    * Three pages instead of seven — summary, map, detailed findings.
-    * No 0-100 field health score. Plain counts: areas marked, acres, category.
-    * Fifteen near-identical zones are stated once as a pattern on page 1, and
-      still listed individually and in full on page 3.
-    * It informs rather than instructs. No ranked list of orders.
-
-  Everything page 1 says is assembled in patterns.py from the agronomist's own
-  observation, likely-cause and recommendation text. Nothing on it introduces a
-  cause, a diagnosis or a recommendation the annotations do not contain.
-
-  Screen, print and PDF
-  ---------------------
-  On a wide screen and on paper this is composed as real A4 sheets: each .sheet
-  is exactly 210 x 297 mm, the page box has no margin of its own, and what sits
-  on one sheet on screen sits on one page on paper.
-
-  Below 820px it reflows into a single readable column. The earlier build
-  scaled the whole sheet down instead, which fitted a phone at 44% and left the
-  body text at about four pixels — technically the same document, practically
-  unreadable, and the farmer reading this on a handset in a field is the
-  realistic case. The content and its order are identical; only the columns
-  reflow, and Download PDF is always the exact sheets.
+  It is composed as real A4 sheets: each .sheet is exactly 210 x 297 mm and
+  breaks to a new page after itself, and the page box has no margin of its own.
+  What sits on one sheet on screen sits on one page on paper.
 
   Context it expects:
-    flight, farm, findings, numbers
-    groups            -> patterns.group_findings()
-    headline          -> patterns.headline()
-    detail_sheets     -> patterns.paginate_groups()
+    flight, farm, findings, prev, prev_total, resolved, still_open
     a                 -> report_data.analyse() output
-    season, season_page
     pdf               -> True when rendering through WeasyPrint
     logo_uri/map_uri  -> data URIs, only when pdf is True
 #}
@@ -45,6 +20,8 @@
 {% set logo_src = logo_uri if (pdf and logo_uri) else url_for('static', filename='img/acre-logo.png') %}
 {% set map_src = (map_uri if pdf else url_for('uploaded', name=flight.map_image)) if flight.map_image else '' %}
 {% set crop_name = flight.crop or farm.crop or 'Crop not set' %}
+{% set sev = a.severity_of %}
+{% set S = a.SEVERITY %}
 
 <style>
 /* ---------------------------------------------------------------- fonts
@@ -52,10 +29,10 @@
    browser must use the identical face, or the same paragraph wraps at a
    different word and the page breaks stop matching.
 
-   The report is full of readings — acreages, counts, zone numbers — that have
-   to sit in tidy columns and stay comparable between flights. Montserrat
-   carries tabular figures, so .mono below switches them on rather than
-   reaching for a second family to do the job. */
+   The report is full of readings — acreages, scores, counts — that have to sit
+   in tidy columns and stay comparable between flights. Montserrat carries
+   tabular figures, so .num below switches them on rather than reaching for a
+   second family to do the job. */
 @font-face { font-family:'AcreSans'; src:url('{{ font_base }}montserrat-latin-400-normal.woff2') format('woff2'); font-weight:400; font-style:normal; font-display:swap; }
 @font-face { font-family:'AcreSans'; src:url('{{ font_base }}montserrat-latin-600-normal.woff2') format('woff2'); font-weight:600; font-style:normal; font-display:swap; }
 @font-face { font-family:'AcreSans'; src:url('{{ font_base }}montserrat-latin-700-normal.woff2') format('woff2'); font-weight:700; font-style:normal; font-display:swap; }
@@ -72,8 +49,8 @@
 .rd img { display:block; max-width:100%; }
 .rd a { color:inherit; text-decoration:none; }
 
-/* Every filled shape here carries meaning — a category colour, the map key —
-   so backgrounds must survive the browser's print path. */
+/* Every filled shape here carries meaning — a severity colour, the map key,
+   the score dial — so backgrounds must survive the browser's print path. */
 .rd, .rd * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
 /* ---------------------------------------------------------------- the sheet */
@@ -82,7 +59,7 @@
 .sheet:last-child { break-after:auto; page-break-after:auto; }
 
 @media screen {
-  .paper { background:#E8ECE4; padding:20px 0 40px; }
+  .paper { background:#E8ECE4; padding:20px 0 40px; overflow-x:auto; }
   .sheet { margin:0 auto 18px; box-shadow:0 18px 40px -22px rgba(3,9,32,.55), 0 0 0 1px rgba(3,9,32,.07); border-radius:2px; }
   .sheet { zoom:var(--sheet-zoom,1); }
 }
@@ -93,8 +70,8 @@
 }
 
 /* ---------------------------------------------------------------- type */
-/* Micro-labels: uppercase and widely tracked, which is what makes them read as
-   instrument labelling. */
+/* Micro-labels: uppercase and widely tracked, which is what made them read as
+   instrument labelling — the monospacing was never doing that work. */
 .eyebrow { font-size:7.5px; font-weight:700; letter-spacing:.16em;
            text-transform:uppercase; color:#6C6C6C; }
 /* Readings: tabular figures so digits line up down a column and 1 occupies the
@@ -122,56 +99,65 @@
 .facts .v { font-size:12px; font-weight:800; margin-top:2px; line-height:1.2; }
 .facts .v.mono { font-size:12.5px; font-weight:600; }
 
-/* ---------------------------------------------------------------- the lead
-   What replaced the score dial. A sentence of counts and acres, in the same
-   bordered box the instrument block used, so the page still opens on one
-   framed statement rather than on running text. */
-.lead { margin-top:11px; border:1px solid #D6DBD5; border-radius:10px; overflow:hidden; }
-.lead .cap { background:#030920; padding:6px 12px; }
-.lead .cap .eyebrow { color:rgba(255,255,255,.55); }
-.lead .cap .rt { float:right; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8px;
-                 font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.5); }
-.lead .body { padding:12px; }
-.lead .say { font-size:13px; font-weight:600; line-height:1.45; letter-spacing:-0.2px; }
-.lead .say b { font-weight:800; }
+/* ---------------------------------------------------------------- the signature block:
+   the field read as one instrument — a score dial and the field's own acres,
+   coloured exactly as the agronomist coloured them on the map. */
+.instr { margin-top:11px; border:1px solid #D6DBD5; border-radius:10px; overflow:hidden; }
+.instr .cap { background:#030920; padding:6px 12px; }
+.instr .cap .eyebrow { color:rgba(255,255,255,.55); }
+.instr .cap .rt { float:right; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8px; font-weight:600;
+                  letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.5); }
+.instr .body td { vertical-align:middle; padding:12px; }
+.instr .dial { width:104px; padding-right:4px !important; text-align:center; }
+.dial svg { width:88px; height:88px; }
+.dial .num { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-weight:700; }
+.dial .den { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-weight:700; fill:#6C6C6C; }
+.dial .word { font-size:9.5px; font-weight:800; margin-top:-6px; }
 
-/* ---------------------------------------------------------------- category cards
-   One card per pattern found, in the category's own colour. That colour then
-   carries the observation, the suggestion, the map key and the detail table
-   header, so one thread runs from the count on page 1 to the row on page 3. */
-.cats { margin-top:9px; table-layout:fixed; }
-.cats td { padding-right:7px; vertical-align:top; }
-.cats td:last-child { padding-right:0; }
-.card { border:1px solid #D6DBD5; border-radius:8px; padding:8px 9px 9px; }
-.card .top { font-size:9px; font-weight:700; line-height:1.3; }
-.card .sw { display:inline-block; width:8px; height:8px; border-radius:2px;
-            margin-right:5px; vertical-align:baseline; }
-.card .n { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
-           font-size:17px; font-weight:800; letter-spacing:-0.5px; line-height:1.2; margin-top:5px; }
-.card .ac { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
-            font-size:8.5px; font-weight:600; color:#6C6C6C; margin-top:1px; }
+.verdict { font-size:14px; font-weight:700; line-height:1.32; letter-spacing:-0.25px; }
+.verdict b { font-weight:800; }
+.trend { display:inline-block; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8.5px; font-weight:700;
+         letter-spacing:.06em; border-radius:99px; padding:2px 7px; margin-top:6px; }
 
-/* ---------------------------------------------------------------- observations */
-.obs { margin-bottom:6px; }
-.obs td { vertical-align:top; padding:0; }
-.obs .mk { width:20px; padding-top:3px !important; }
-.obs .mk span { display:block; width:10px; height:10px; border-radius:3px; }
-.obs .tx { font-size:10.5px; line-height:1.5; }
+/* the stacked acreage band */
+.band { margin-top:9px; height:15px; border-radius:4px; overflow:hidden; background:#F2F5EF; font-size:0; }
+.band span { display:inline-block; height:15px; vertical-align:top; }
+.legend { margin-top:7px; }
+.legend td { padding:0 10px 0 0; vertical-align:top; white-space:nowrap; }
+.legend .dot { display:inline-block; width:7px; height:7px; border-radius:2px; margin-right:5px; vertical-align:baseline; }
+.legend .lb { font-size:8.5px; font-weight:700; }
+.legend .ac { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:12px; font-weight:800; margin-top:1px; letter-spacing:-0.2px; }
+.legend .sb { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8px; font-weight:600; color:#6C6C6C; }
 
-/* ---------------------------------------------------------------- suggestions
-   The soft sage panel V1 used for what to do next, carrying what was actually
-   recorded rather than a ranked set of orders. */
-.sugg { border:1px solid #CBE3B4; border-radius:9px; background:#F7F9F4; padding:10px 11px 3px; }
-.sugg .row { margin-bottom:7px; }
-.sugg .row td { vertical-align:top; padding:0; }
-.sugg .mk { width:20px; padding-top:3px !important; }
-.sugg .mk span { display:block; width:10px; height:10px; border-radius:3px; }
-.sugg .hd { font-size:10px; font-weight:800; }
-.sugg .hd .cnt { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
-                 font-weight:600; color:#6C6C6C; }
-.sugg .tx { font-size:9.5px; line-height:1.45; margin-top:1px; }
-.sourced { font-size:8.5px; line-height:1.45; color:#6C6C6C; border-top:1px solid #E2EBD6;
-           padding-top:6px; margin-top:1px !important; }
+/* ---------------------------------------------------------------- priority actions */
+.act { border:1px solid #D6DBD5; border-radius:8px; margin-bottom:6px; overflow:hidden; }
+.act td { padding:8px 10px; vertical-align:top; }
+.act .no { width:30px; padding-right:0 !important; }
+.act .chip { width:24px; height:24px; border-radius:6px; color:#fff; text-align:center;
+             line-height:24px; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:12px; font-weight:800; }
+.act .cat { font-size:11.5px; font-weight:800; letter-spacing:-0.1px; }
+.act .do { font-size:10px; line-height:1.45; color:#030920; margin-top:2px; }
+.act .when { width:96px; text-align:right; }
+.act .whenl { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:7.5px; font-weight:700; letter-spacing:.1em;
+              text-transform:uppercase; color:#6C6C6C; }
+.act .whenv { font-size:9.5px; font-weight:800; margin-top:1px; }
+.act .area { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:9px; font-weight:700; color:#6C6C6C; margin-top:3px; }
+
+/* what came back clear — stated plainly, in the map's own green */
+.good td { padding:8px 10px; border:1px solid #CBE3B4; background:#F4F9EC;
+           border-radius:8px; vertical-align:top; }
+.good .hd { font-size:10px; font-weight:800; }
+.good .dot { display:inline-block; width:7px; height:7px; border-radius:2px; margin-right:5px; }
+.good .ar { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:10px; font-weight:800; color:#3E7A24; margin-top:2px; }
+.good .tx { font-size:8.5px; line-height:1.45; color:#6C6C6C; margin-top:3px; }
+
+/* ---------------------------------------------------------------- next steps */
+.next { margin-top:auto; border-top:1px solid #D6DBD5; padding-top:9px; }
+.next td { width:33.33%; padding-right:12px; vertical-align:top; }
+.next td:last-child { padding-right:0; }
+.next .n { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8.5px; font-weight:800; color:#7FB65E; letter-spacing:.1em; }
+.next .t { font-size:9.5px; font-weight:800; margin-top:2px; }
+.next .d { font-size:8.5px; color:#6C6C6C; line-height:1.4; margin-top:1px; }
 
 /* ---------------------------------------------------------------- running head */
 .rhead { border-bottom:1px solid #D6DBD5; padding-bottom:6px; margin-bottom:10px; }
@@ -181,25 +167,100 @@
                 font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:#6C6C6C; }
 
 /* ---------------------------------------------------------------- map sheet */
-.mapcap { font-size:9px; color:#6C6C6C; line-height:1.5; margin-bottom:7px !important; }
 .mapbox { border:1px solid #D6DBD5; border-radius:9px; overflow:hidden; background:#F2F5EF; }
 .mapbox img { width:100%; }
+.mapcap { font-size:9px; color:#6C6C6C; margin-top:6px; }
+.zt { margin-top:10px; border:1px solid #D6DBD5; border-radius:8px; overflow:hidden; }
+.zt th { background:#F2F5EF; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:7.5px; font-weight:700;
+         letter-spacing:.12em; text-transform:uppercase; color:#6C6C6C; text-align:left;
+         padding:6px 9px; border-bottom:1px solid #D6DBD5; }
+.zt td { padding:6px 9px; border-bottom:1px solid #E9ECE6; font-size:10px; vertical-align:middle; }
+.zt tr:last-child td { border-bottom:0; }
+.zt .n { width:26px; }
+.zt .nchip { width:19px; height:19px; border-radius:5px; color:#fff; text-align:center; line-height:19px;
+             font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:10px; font-weight:800; }
+.zt .cat { font-weight:700; }
+.zt .ac { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-weight:700; width:62px; }
+.zt .st { width:112px; }
 
-/* the standing colour key — the same six the report groups by, so a farmer can
-   read the next map before the next report arrives */
-.key { margin-top:10px; border:1px solid #D6DBD5; border-radius:9px; overflow:hidden; }
-.key td { padding:6px 10px; border-bottom:1px solid #E9ECE6; vertical-align:middle; }
-.key tr:last-child td { border-bottom:0; }
-.key .sw { width:24px; }
-.key .sw span { display:block; width:13px; height:13px; border-radius:4px; }
-.key .mn { width:150px; font-size:10px; font-weight:800; }
-.key .nt { font-size:9.5px; color:#6C6C6C; }
-.key tr.off .mn, .key tr.off .nt { color:#9A9A9A; }
-.key tr.off .sw span { opacity:.4; }
-.keynote { font-size:8.5px; color:#6C6C6C; line-height:1.45; margin-top:6px !important; }
+/* ---------------------------------------------------------------- finding cards */
+.find { border:1px solid #D6DBD5; border-radius:9px; overflow:hidden; margin-bottom:9px;
+        break-inside:avoid; page-break-inside:avoid; }
+.find .top td { padding:8px 11px; vertical-align:middle; }
+.find .top .no { width:34px; padding-right:0 !important; }
+.find .chip { width:26px; height:26px; border-radius:7px; color:#fff; text-align:center; line-height:26px;
+              font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:12.5px; font-weight:800; }
+.find .cat { font-size:12px; font-weight:800; letter-spacing:-0.15px; }
+.find .tag { display:inline-block; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:7.5px; font-weight:700;
+             letter-spacing:.1em; text-transform:uppercase; border-radius:99px; padding:2px 7px; margin-left:6px;
+             vertical-align:middle; }
+.find .rt { text-align:right; width:74px; }
+.find .ac { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:11.5px; font-weight:800; }
+.find .acl { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:7px; font-weight:700; letter-spacing:.1em;
+             text-transform:uppercase; color:#6C6C6C; }
+.find .body { padding:0 11px 10px; }
+.find .blk { padding-top:6px; }
+.find .lb { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:7.5px; font-weight:700; letter-spacing:.12em;
+            text-transform:uppercase; color:#6C6C6C; }
+.find .tx { font-size:10.5px; line-height:1.5; margin-top:1px; }
+.find .todo { background:#F7F9F4; border-left:2px solid #7FB65E; padding:6px 9px; border-radius:0 5px 5px 0; margin-top:6px; }
+.find .todo .lb { color:#5C8A3C; }
+.find .todo .tx { font-weight:600; }
+.find .link { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8.5px; font-weight:700; color:#5C8A3C; margin-top:6px; }
+
+/* ---------------------------------------------------------------- season trend
+   The season read as one arc rather than as a pair of flights. Same vocabulary
+   as the rest of the document — bordered box, dark cap, tabular readings — so
+   it sits with the closing sheet rather than looking bolted on. */
+.trendbox { border:1px solid #D6DBD5; border-radius:10px; overflow:hidden; }
+.trendbox .cap { background:#030920; padding:6px 12px; }
+.trendbox .cap .eyebrow { color:rgba(255,255,255,.55); }
+.trendbox .cap .rt { float:right; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
+                     font-size:8px; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+                     color:rgba(255,255,255,.5); }
+.trendbox .body { padding:12px; }
+.spark { width:100%; height:auto; }
+.spark .gl { stroke:#E9ECE6; stroke-width:1; }
+.axis { margin-top:4px; }
+.axis td { text-align:center; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
+           font-size:7.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#6C6C6C; }
+.axis td.on { color:#030920; }
+
+.skpi { margin-top:11px; padding-top:10px; border-top:1px solid #E9ECE6; }
+.skpi td { width:25%; padding-right:10px; vertical-align:top; }
+.skpi td:last-child { padding-right:0; }
+.skpi .n { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:23px;
+           font-weight:800; letter-spacing:-1px; line-height:1; }
+.skpi .l { font-size:8.5px; font-weight:700; color:#6C6C6C; margin-top:3px; line-height:1.3; }
+
+/* per-flight zone mix, so a falling count of problem zones is visible as a shape */
+.sbars { margin-top:10px; }
+.sbars td { vertical-align:bottom; text-align:center; padding:0 3px; }
+.sbars .col { height:52px; position:relative; }
+.sbars .stack { position:absolute; left:0; right:0; bottom:0; border-radius:3px 3px 0 0; overflow:hidden; font-size:0; }
+.sbars .seg { display:block; width:100%; }
+.sbars .tot { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8.5px;
+              font-weight:800; margin-bottom:2px; }
+.sbars .fl { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:7.5px;
+             font-weight:700; color:#6C6C6C; margin-top:3px; }
+.sbars .fl.on { color:#030920; }
+.slegend { margin-top:8px; }
+.slegend td { padding:0 12px 0 0; white-space:nowrap; width:1%; }
+.slegend .dot { display:inline-block; width:7px; height:7px; border-radius:2px; margin-right:5px; }
+.slegend .lb { font-size:8.5px; font-weight:700; }
+
+/* ---------------------------------------------------------------- closing sheet */
+.prog { border:1px solid #D6DBD5; border-radius:10px; overflow:hidden; }
+.prog .cap { background:#F2F5EF; padding:7px 12px; border-bottom:1px solid #D6DBD5; }
+.prog .body { padding:12px; }
+.prog .kpi td { width:33.33%; padding:0 10px 0 0; vertical-align:top; }
+.prog .kpi .n { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:27px; font-weight:800; letter-spacing:-1.2px; line-height:1; }
+.prog .kpi .l { font-size:8.5px; font-weight:700; color:#6C6C6C; margin-top:3px; }
+.prog .say { font-size:11px; line-height:1.5; margin-top:11px; padding-top:10px; border-top:1px solid #E9ECE6; }
 
 /* The link through to the live DroneDeploy project. It stays in the PDF as a
-   real annotation, so a farmer opening the file on a phone can tap through. */
+   real annotation, the way the per-finding zone links do — a farmer opening the
+   file on a phone can tap straight through to the map. */
 .ddlink { display:block; margin-top:10px; border:1px solid #CBE3B4; background:#F4F9EC;
           border-radius:9px; padding:9px 11px; text-decoration:none; color:inherit;
           break-inside:avoid; page-break-inside:avoid; }
@@ -209,196 +270,34 @@
 .ddlink .t { font-size:11px; font-weight:800; color:#3E7A24; }
 .ddlink .d { font-size:9px; color:#6C6C6C; margin-top:1px; }
 
-/* ---------------------------------------------------------------- detail tables */
-.dintro { font-size:9px; color:#6C6C6C; line-height:1.5; margin-bottom:9px !important; }
-.gwrap { margin-bottom:10px; }
-.ghead { font-size:11px; font-weight:800; letter-spacing:-0.1px; padding-bottom:5px; }
-.ghead .sw { display:inline-block; width:9px; height:9px; border-radius:2px;
-             margin-right:6px; vertical-align:baseline; }
-.ghead .cnt { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
-              font-weight:600; color:#6C6C6C; }
-.dt { border:1px solid #D6DBD5; border-radius:8px; overflow:hidden; }
-.dt table { table-layout:fixed; }
-.dt th { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
-         font-size:7.5px; font-weight:700; letter-spacing:.11em; text-transform:uppercase;
-         color:#fff; text-align:left; padding:5px 8px; }
-.dt td { padding:5px 8px; border-bottom:1px solid #E9ECE6; font-size:8.5px;
-         line-height:1.45; vertical-align:top; word-wrap:break-word; }
-.dt tr:last-child td { border-bottom:0; }
-.dt .z { width:11mm; font-weight:800;
-         font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; }
-.dt .ac { width:14mm; font-weight:700;
-          font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; }
-.dt .ob { width:40mm; }
-.dt .lc { width:51mm; }
+/* the standing colour key — the same code the agronomist draws with, so the
+   farmer can read the next map before the next report arrives */
+.key { border:1px solid #D6DBD5; border-radius:9px; overflow:hidden; }
+.key td { padding:6px 10px; border-bottom:1px solid #E9ECE6; vertical-align:middle; }
+.key tr:last-child td { border-bottom:0; }
+.key .sw { width:24px; }
+.key .sw span { display:block; width:13px; height:13px; border-radius:4px; }
+.key .mn { width:104px; font-size:10px; font-weight:800; }
+.key .nt { font-size:9.5px; color:#6C6C6C; }
 
-/* ---------------------------------------------------------------- season sheet
-   Off by default. V1's bordered box and dark cap, in plain counts rather than a
-   score: what a farmer can check is how many areas were marked, and over how
-   many acres. */
-.trendbox { border:1px solid #D6DBD5; border-radius:10px; overflow:hidden; }
-.trendbox .cap { background:#030920; padding:6px 12px; }
-.trendbox .cap .eyebrow { color:rgba(255,255,255,.55); }
-.trendbox .cap .rt { float:right; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8px;
-                     font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:rgba(255,255,255,.5); }
-.trendbox .body { padding:12px; }
-.sbars td { vertical-align:bottom; text-align:center; padding:0 3px; }
-.sbars .col { height:52px; position:relative; }
-.sbars .stack { position:absolute; left:0; right:0; bottom:0; border-radius:3px 3px 0 0; background:#7FB65E; }
-.sbars .tot { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
-              font-size:8.5px; font-weight:800; margin-bottom:2px; }
-.sbars .fl { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
-             font-size:7.5px; font-weight:700; color:#6C6C6C; margin-top:3px; }
-.sbars .fl.on { color:#030920; }
-.zt { margin-top:10px; border:1px solid #D6DBD5; border-radius:8px; overflow:hidden; }
-.zt th { background:#F2F5EF; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1;
-         font-size:7.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#6C6C6C;
-         text-align:left; padding:6px 9px; border-bottom:1px solid #D6DBD5; }
-.zt td { padding:6px 9px; border-bottom:1px solid #E9ECE6; font-size:10px; vertical-align:middle;
-         font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; }
-.zt tr:last-child td { border-bottom:0; }
-
-/* ---------------------------------------------------------------- closing block */
-.note { margin-top:11px; background:#030920; color:#fff; border-radius:10px; padding:14px 15px; }
-.note .eyebrow { color:rgba(255,255,255,.5); }
+.note { margin-top:11px; background:#030920; color:#fff; border-radius:10px; padding:14px 15px; }.note .eyebrow { color:rgba(255,255,255,.5); }
 .note p { font-size:11px; line-height:1.55; color:rgba(255,255,255,.9); margin-top:5px !important; }
 .note .who { margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,.14);
-             font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8px; font-weight:700;
-             letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.55); }
+             font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8px; font-weight:700; letter-spacing:.08em;
+             text-transform:uppercase; color:rgba(255,255,255,.55); }
 
-.contact { border:1px solid #D6DBD5; border-radius:10px; padding:12px; }
+.contact { margin-top:11px; border:1px solid #D6DBD5; border-radius:10px; padding:12px; }
 .contact td { width:50%; vertical-align:top; padding-right:12px; }
 .contact td:last-child { padding-right:0; }
-.contact .l { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:7.5px; font-weight:700;
-              letter-spacing:.12em; text-transform:uppercase; color:#6C6C6C; }
+.contact .l { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:7.5px; font-weight:700; letter-spacing:.12em;
+              text-transform:uppercase; color:#6C6C6C; }
 .contact .v { font-size:10.5px; font-weight:700; margin-top:2px; }
-.contact .lnk { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8.5px;
-                font-weight:600; color:#6C6C6C; word-break:break-word; margin-top:2px; }
+.contact .lnk { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:8.5px; font-weight:600; color:#5C8A3C; word-break:break-all; margin-top:2px; }
 
 .foot { position:absolute; left:14mm; right:14mm; bottom:7mm; border-top:1px solid #E9ECE6;
-        padding-top:5px; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:7.5px;
-        font-weight:600; letter-spacing:.09em; text-transform:uppercase; color:#9A9A9A; }
+        padding-top:5px; font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; font-size:7.5px; font-weight:600; letter-spacing:.09em;
+        text-transform:uppercase; color:#9A9A9A; }
 .foot .r { float:right; }
-
-.pin1 { position:absolute; left:14mm; right:14mm; bottom:19mm; }
-
-/* ================================================================ SMALL SCREENS
-   Below 820px the sheet stops being a sheet and becomes a single readable
-   column. Print and the PDF are untouched by any of this: @media print is a
-   separate context and always renders the fixed 210 x 297 mm sheets.
-
-   The content and its order do not change here. Rows become labelled cards,
-   five-across becomes two-across, and the type comes up to a size a person can
-   actually read on a handset — which is the whole point, since a farmer
-   opening a WhatsApp link on a phone is the normal case, not the edge one. */
-@media screen and (max-width: 820px) {
-  .paper { background:#E8ECE4; padding:10px 10px 24px; }
-  .sheet { width:auto; max-width:100%; height:auto; min-height:0; zoom:1 !important;
-           padding:16px 14px 18px; margin:0 0 12px; border-radius:10px;
-           overflow:visible; box-shadow:0 6px 18px -12px rgba(3,9,32,.4), 0 0 0 1px rgba(3,9,32,.06); }
-  .rd { font-size:13.5px; line-height:1.6; }
-
-  .h-farm { font-size:22px; letter-spacing:-0.6px; }
-  .eyebrow { font-size:9.5px; letter-spacing:.13em; }
-  .sec h2 { font-size:15px; }
-  .mast .logo { height:22px; }
-  .rhead .logo { height:14px; }
-  .rhead .right { font-size:9px; }
-
-  /* Five facts across a phone is five unreadable columns; two is legible.
-     Flex rather than inline-block, because the whitespace between two 50%
-     inline-block cells is enough to wrap the second one onto its own line. */
-  .facts, .facts tbody { display:block; }
-  .facts tr { display:flex; flex-wrap:wrap; }
-  .facts td { display:block; width:50%; border-right:1px solid #D6DBD5;
-              border-bottom:1px solid #D6DBD5; padding:8px 10px; }
-  .facts td:nth-child(even) { border-right:0; }
-  .facts td:last-child { width:100%; border-right:0; border-bottom:0; }
-  .facts .k { font-size:9.5px; }
-  .facts .v, .facts .v.mono { font-size:15px; }
-
-  .lead .say { font-size:15px; line-height:1.5; }
-  .lead .cap .rt { float:none; display:block; margin-top:2px; font-size:9px; }
-
-  /* the category cards stack, and keep their colour */
-  .cats, .cats tbody, .cats tr { display:block; }
-  .cats td { display:block; width:100% !important; padding:0 0 8px; }
-  .card { padding:10px 12px 11px; }
-  .card .top { font-size:12.5px; }
-  .card .sw { width:10px; height:10px; }
-  .card .n { font-size:21px; }
-  .card .ac { font-size:11.5px; }
-
-  .obs .tx { font-size:14px; line-height:1.55; }
-  .obs .mk { width:22px; }
-  .obs .mk span { width:11px; height:11px; }
-  .obs { margin-bottom:10px; }
-
-  .sugg { padding:12px 13px 5px; }
-  .sugg .hd { font-size:13.5px; }
-  .sugg .tx { font-size:13px; line-height:1.5; margin-top:3px; }
-  .sugg .row { margin-bottom:12px; }
-  .sugg .mk { width:22px; }
-  .sugg .mk span { width:11px; height:11px; }
-  .sourced { font-size:11.5px; line-height:1.5; padding-top:9px; }
-
-  .mapcap, .dintro { font-size:12px; line-height:1.55; }
-  .keynote { font-size:11.5px; }
-  .key .mn { width:auto; font-size:13px; }
-  .key .nt { font-size:11.5px; }
-  .key td { padding:9px 10px; }
-  /* the note reads better under the label than squeezed beside it */
-  .key tr, .key .sw, .key .mn, .key .nt { display:block; }
-  .key .sw { width:auto; padding:9px 10px 0 !important; }
-  .key .mn { padding:4px 10px 0 !important; }
-  .key .nt { padding:0 10px 9px !important; }
-  .key tr { border-bottom:1px solid #E9ECE6; }
-  .key tr:last-child { border-bottom:0; }
-  .key td { border-bottom:0; }
-
-  .ddlink .t { font-size:14px; }
-  .ddlink .d { font-size:12px; }
-
-  /* A five-column table on a 375px screen is unreadable at any size, so each
-     row becomes a labelled card. The labels come from data-label, which is on
-     the cells for exactly this. */
-  .ghead { font-size:14px; padding-bottom:7px; }
-  .ghead .sw { width:11px; height:11px; }
-  .dt table, .dt tbody, .dt tr, .dt td { display:block; width:auto !important; }
-  .dt thead { display:none; }
-  .dt tr { padding:10px 12px; border-bottom:1px solid #E9ECE6; }
-  .dt tr:last-child { border-bottom:0; }
-  .dt td { padding:0 0 6px; border-bottom:0; font-size:13.5px; line-height:1.5; }
-  .dt td:last-child { padding-bottom:0; }
-  .dt td::before { content:attr(data-label); display:block; font-size:9.5px; font-weight:700;
-                   letter-spacing:.12em; text-transform:uppercase; color:#6C6C6C; margin-bottom:1px; }
-  /* zone and acres read as one line, not two stacked labels */
-  .dt td.z, .dt td.ac { display:inline-block; width:auto !important; padding-right:22px; }
-  .dt td.z { font-size:15px; }
-  .dt td.ac { font-size:15px; }
-
-  .zt, .zt tbody, .zt tr, .zt td { display:block; width:auto !important; }
-  .zt thead { display:none; }
-  .zt tr { padding:8px 10px; border-bottom:1px solid #E9ECE6; }
-  .zt td { padding:0 0 3px; border-bottom:0; font-size:13px; }
-  .zt td::before { content:attr(data-label) ": "; font-weight:700; color:#6C6C6C; }
-
-  .sbars .col { height:44px; }
-  .trendbox .cap .rt { float:none; display:block; margin-top:2px; }
-
-  .note p { font-size:13.5px; }
-  .contact, .contact tbody, .contact tr, .contact td { display:block; width:auto !important; }
-  .contact td { padding:0 0 12px !important; }
-  .contact td:last-child { padding-bottom:0 !important; }
-  .contact .l { font-size:9.5px; }
-  .contact .v { font-size:13.5px; }
-  .contact .lnk { font-size:12px; }
-
-  /* nothing is pinned to the bottom of a page that no longer has one */
-  .pin1 { position:static; margin-top:14px; }
-  .foot { position:static; margin-top:14px; font-size:9.5px; }
-  .foot .r { float:none; display:block; margin-top:2px; }
-}
 </style>
 
 {#
@@ -414,6 +313,20 @@
 <svg viewBox="0 0 12 12" width="{{ size }}" height="{{ size }}" fill="none" stroke="{{ colour }}"
      stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
      style="vertical-align:-1px"><path d="M2.5 6.3 4.9 8.7 9.5 3.5"/></svg>
+{%- endmacro %}
+
+{% macro trend_mark(direction, colour) -%}
+{%- if direction == 'up' -%}
+<svg viewBox="0 0 10 10" width="7" height="7" style="vertical-align:0"><polygon points="5,1.6 9,8 1,8" fill="{{ colour }}"/></svg>
+{%- elif direction == 'down' -%}
+<svg viewBox="0 0 10 10" width="7" height="7" style="vertical-align:0"><polygon points="5,8.4 1,2 9,2" fill="{{ colour }}"/></svg>
+{%- else -%}
+<svg viewBox="0 0 10 10" width="7" height="7" style="vertical-align:0"><rect x="1" y="4.1" width="8" height="1.8" rx="0.9" fill="{{ colour }}"/></svg>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro chip(n, colour, cls='chip') -%}
+<div class="{{ cls }}" style="background:{{ colour }}">{{ n }}</div>
 {%- endmacro %}
 
 {% macro ddlink() -%}
@@ -442,134 +355,161 @@
 </div>
 {%- endmacro %}
 
-{% set detail = detail_sheets if groups else [] %}
 {% set map_pages = 1 if map_src else 0 %}
-{% set season_pages = 1 if (season_page and season and season.bars) else 0 %}
-{% set total_pages = 1 + map_pages + detail|length + season_pages %}
-{% set detail_page_no = 1 + map_pages + 1 %}
+{% set season_pages = 1 if (season and season.spark) else 0 %}
+{% set total_pages = 1 + map_pages + a.pages|length + season_pages + 1 %}
 
 <div class="paper rd">
 
 {# ================================================================ SHEET 1
-   The summary. If the farmer reads nothing else — and on a phone, over
-   WhatsApp, that is the realistic case — this page carries the flight: how
-   much was scouted, what was marked, what kinds of thing they were, and what
-   the agronomist recommended. Counts and acres, not a score: one number out of
-   100 claims a precision the data has not got, and invites an argument with
-   the number instead of a walk of the field. #}
+   At a glance. If the farmer reads nothing else — and on a phone, over
+   WhatsApp, that is the realistic case — this page has to carry the whole
+   argument: how the field is doing, what is at stake, and what to do first. #}
 <section class="sheet">
 
   <div class="mastwrap"><table class="mast"><tr>
     <td><img class="logo" src="{{ logo_src }}" alt="Acre Insights"></td>
     <td class="right">
-      <div class="eyebrow">Field scouting summary</div>
+      <div class="eyebrow">Field scouting report</div>
       <h1 class="h-farm">{{ farm.name }}</h1>
+      <div class="mono" style="font-size:9px;font-weight:700;color:#6C6C6C;margin-top:3px;letter-spacing:.09em">
+        SEASON {{ flight.season }} &nbsp;/&nbsp; FLIGHT {{ flight.flight_number }} OF {{ flight.flights_planned }}{% if not prev %} &nbsp;/&nbsp; BASELINE{% endif %}
+      </div>
     </td>
   </tr></table></div>
 
   <table class="facts"><tr>
     <td><div class="k">Crop</div><div class="v">{{ crop_name }}</div></td>
-    <td><div class="k">Area scouted</div><div class="v mono">{% if a.total_acres %}{{ a.ac(a.total_acres) }} acres{% else %}&mdash;{% endif %}</div></td>
+    <td><div class="k">Field size</div><div class="v mono">{{ (a.ac(a.total_acres) ~ ' ac') if a.total_acres else '—' }}</div></td>
     <td><div class="k">Flown</div><div class="v mono">{{ flight.flight_date.strftime('%d %b %Y') if flight.flight_date else '—' }}</div></td>
-    <td><div class="k">Flight</div><div class="v mono">{{ flight.flight_number }} of {{ flight.flights_planned }}</div></td>
+    <td><div class="k">Zones marked</div><div class="v mono">{{ findings|length }}</div></td>
     <td><div class="k">Issued</div><div class="v mono">{{ now.strftime('%d %b %Y') }}</div></td>
   </tr></table>
 
-  <div class="lead">
+  {# ---- the signature: the field as one instrument reading ---- #}
+  <div class="instr">
     <div class="cap">
-      <span class="eyebrow">This flight</span>
+      <span class="eyebrow">Field health</span>
       <span class="rt">{{ crop_name }} &middot; {{ flight.season }}</span>
     </div>
-    <div class="body"><p class="say">{{ headline }}</p></div>
+    <table class="body"><tr>
+      <td class="dial">
+        <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+          <path d="{{ a.gauge.track }}" fill="none" stroke="#E9ECE6" stroke-width="9" stroke-linecap="round"/>
+          {% if a.gauge.value %}<path d="{{ a.gauge.value }}" fill="none" stroke="{{ a.score_colour }}" stroke-width="9" stroke-linecap="round"/>{% endif %}
+          <text class="num" x="40" y="43" font-size="22" letter-spacing="-0.9" text-anchor="middle" fill="#030920">{{ a.score if a.score is not none else '—' }}</text>
+          <text class="den" x="40" y="53" font-size="5" letter-spacing="0.7" text-anchor="middle">OUT OF 100</text>
+        </svg>
+        <div class="word" style="color:{{ a.score_colour }}">{{ a.score_label }}</div>
+      </td>
+      <td>
+        <p class="verdict">
+          {%- if a.urgent_count -%}
+            <b>{{ a.urgent_count }} zone{{ '' if a.urgent_count == 1 else 's' }} need{{ 's' if a.urgent_count == 1 else '' }} you this week.</b>
+            {% if a.acres_at_risk %}{{ a.ac(a.acres_at_risk) }} of your {{ a.ac(a.total_acres or a.marked_acres) }} acres are under pressure — small now, expensive later.{% else %}Catching them now keeps them small.{% endif %}
+          {%- elif a.watch_count -%}
+            <b>Nothing urgent this flight.</b> {{ a.watch_count }} zone{{ '' if a.watch_count == 1 else 's' }} worth watching{% if a.acres_at_risk %}, covering {{ a.ac(a.acres_at_risk) }} acres{% endif %} — check them on your next walk through the field.
+          {%- else -%}
+            <b>The field is holding well.</b> Nothing on this flight needs action{% if a.total_acres %} across all {{ a.ac(a.total_acres) }} acres{% endif %}. Keep doing what you are doing.
+          {%- endif -%}
+        </p>
+
+        {% if a.delta is not none %}
+          {% set up = a.delta > 0 %}
+          {% set flat = a.delta == 0 %}
+          {% set tone = '#3E7A24' if up else ('#6C6C6C' if flat else '#B3323C') %}
+          <div class="trend" style="background:{{ '#E7F1DB' if up else ('#F2F5EF' if flat else '#FBEAEB') }};color:{{ tone }}">
+            {{ trend_mark('up' if up else ('flat' if flat else 'down'), tone) }}
+            {{ a.delta|abs }} {{ 'POINTS ' ~ ('UP' if up else 'DOWN') if not flat else 'NO CHANGE' }} VS FLIGHT {{ prev.flight_number }}
+          </div>
+        {% endif %}
+
+        {# the field's own acres, coloured as they are on the map #}
+        <div class="band">{% for b in a.bands %}<span style="width:{{ b.pct }}%;background:{{ b.colour }}"></span>{% endfor %}</div>
+        <table class="legend"><tr>
+          {% for b in a.bands %}
+          <td>
+            <div class="lb"><span class="dot" style="background:{{ b.colour }}"></span>{{ b.short }}</div>
+            <div class="ac">{{ a.ac(b.acres) }} ac</div>
+            <div class="sb">{{ b.pct|round(0)|int }}%{% if b.count %} &middot; {{ b.count }} zone{{ '' if b.count == 1 else 's' }}{% endif %}</div>
+          </td>
+          {% endfor %}
+        </tr></table>
+      </td>
+    </tr></table>
   </div>
 
-  {% if groups %}
-  {# ---- what kinds of thing, and how much of the field ---- #}
-  <table class="sec" style="margin-top:12px"><tr>
-    <td><h2>Issue categories</h2></td><td><div class="rule"></div></td>
+  {# ---- ranked, with a deadline against each one ---- #}
+  <table class="sec" style="margin-top:13px"><tr>
+    <td><h2>{% if a.top_actions %}Work through these, in this order{% else %}This flight{% endif %}</h2></td>
+    <td><div class="rule"></div></td>
   </tr></table>
 
-  <table class="cats"><tr>
-    {% for g in groups %}
-    <td style="width:{{ (100 / groups|length)|round(2) }}%">
-      <div class="card" style="border-color:{{ g.line }}">
-        <div class="top"><span class="sw" style="background:{{ g.colour }}"></span>{{ g.label }}</div>
-        <div class="n" style="color:{{ g.colour }}">{{ g.count }} area{{ '' if g.count == 1 else 's' }}</div>
-        <div class="ac">{{ g.acres_text }} acres</div>
-      </div>
+  {% if a.top_actions %}
+    {% for f in a.top_actions %}
+    {% set s = S[sev(f)] %}
+    <table class="act" style="border-color:{{ s.line }};background:{{ s.soft }}"><tr>
+      <td class="no">{{ chip(a.numbers[f.id], s.colour) }}</td>
+      <td>
+        <div class="cat">{{ f.category }}</div>
+        <div class="do">{{ f.recommendation }}</div>
+        {% if f.area_text %}<div class="area">{{ f.area_text }} affected</div>{% endif %}
+      </td>
+      <td class="when">
+        <div class="whenl">{{ a.URGENCY_COPY[s.key][0] }}</div>
+        <div class="whenv" style="color:{{ s.colour }}">{{ a.URGENCY_COPY[s.key][1] }}</div>
+      </td>
+    </tr></table>
+    {% endfor %}
+    {% if findings|length > a.top_actions|length %}
+    <p class="mono" style="font-size:8px;font-weight:700;color:#6C6C6C;letter-spacing:.08em;text-transform:uppercase">
+      + {{ findings|length - a.top_actions|length }} more zone{{ '' if findings|length - a.top_actions|length == 1 else 's' }} detailed inside
+    </p>
+    {% endif %}
+  {% else %}
+    <table class="act" style="border-color:#CBE3B4;background:#E7F1DB"><tr>
+      <td class="no"><div class="chip" style="background:#3FA34D">{{ tick('#ffffff', 13) }}</div></td>
+      <td><div class="cat">No action needed</div>
+        <div class="do">Every zone the flight checked came back clear. The next flight will confirm the field is holding.</div></td>
+    </tr></table>
+  {% endif %}
+
+  {# What is working is worth saying out loud: it is the half of the field the
+     farmer paid for and would otherwise never hear about. #}
+  {% if a.buckets.good %}
+  <table class="sec" style="margin-top:11px"><tr>
+    <td><h2>Confirmed healthy</h2></td><td><div class="rule"></div></td>
+  </tr></table>
+  {% set healthy = a.buckets.good[:3] %}
+  <table class="good"><tr>
+    {% for f in healthy %}
+    <td style="width:{{ (100 / healthy|length)|round(2) }}%">
+      <div class="hd"><span class="dot" style="background:{{ f.colour_swatch or '#3FA34D' }}"></span>{{ f.category }}</div>
+      <div class="ar">{{ f.area_text or 'Confirmed' }}</div>
+      <div class="tx">{{ f.observation }}</div>
     </td>
     {% endfor %}
   </tr></table>
-
-  {# ---- the patterns, one sentence each, in the agronomist's own words ---- #}
-  <table class="sec" style="margin-top:12px"><tr>
-    <td><h2>Key observations</h2></td><td><div class="rule"></div></td>
-  </tr></table>
-
-  {% for g in groups %}
-  <table class="obs"><tr>
-    <td class="mk"><span style="background:{{ g.colour }}"></span></td>
-    <td class="tx">{{ g.observation_line }}</td>
-  </tr></table>
-  {% endfor %}
-
-  {# ---- what was recommended, stated as what is on record ---- #}
-  <table class="sec" style="margin-top:11px"><tr>
-    <td><h2>Suggested areas to investigate</h2></td><td><div class="rule"></div></td>
-  </tr></table>
-
-  <div class="sugg">
-    {% for g in groups %}
-    <table class="row"><tr>
-      <td class="mk"><span style="background:{{ g.colour }}"></span></td>
-      <td>
-        <div class="hd">{{ g.label }}
-          <span class="cnt">&middot; {{ g.count }} area{{ '' if g.count == 1 else 's' }}{% if g.acres %}, {{ g.acres_text }} ac{% endif %}</span>
-        </div>
-        <div class="tx">{{ g.action_line }}</div>
-      </td>
-    </tr></table>
-    {% endfor %}
-    <p class="sourced">
-      These are the agronomist&rsquo;s own recorded observations and recommendations, grouped by
-      pattern and summarised. Nothing has been added to them. Page {{ detail_page_no }} lists every
-      area individually, exactly as it was written.
-    </p>
-  </div>
-  {% else %}
-  <div class="sugg" style="margin-top:12px">
-    <table class="row"><tr>
-      <td class="mk"><span style="background:#7FB65E"></span></td>
-      <td>
-        <div class="hd">No areas marked</div>
-        <div class="tx">This flight recorded no annotations. The next flight scouts the same field again.</div>
-      </td>
-    </tr></table>
-  </div>
   {% endif %}
 
-  {% if flight.agronomist_note %}
-  <div class="note">
-    <div class="eyebrow">A note from your agronomist</div>
-    <p>{{ flight.agronomist_note }}</p>
-    <div class="who">Acre Insights &middot; Nature meets intelligence</div>
-  </div>
-  {% endif %}
-
-  <div class="pin1">
-    <table class="contact"><tr>
-      <td>
-        <div class="l">Prepared for</div>
-        <div class="v">{{ farm.farmer_name or farm.name }}</div>
-        {% if farm.location %}<div class="lnk">{{ farm.location }}</div>{% endif %}
-      </td>
-      <td>
-        <div class="l">Questions</div>
-        <div class="v">Reply to the message this came with</div>
-        <div class="lnk">Or call Acre Insights any time</div>
-      </td>
-    </tr></table>
-  </div>
+  <div style="position:absolute;left:14mm;bottom:19mm;width:182mm">
+  <table class="next"><tr>
+    <td>
+      <div class="n mono">01</div>
+      <div class="t">{% if a.urgent_count %}Act on the red zones{% else %}Walk the marked zones{% endif %}</div>
+      <div class="d">{% if a.urgent_count %}Start with the zones above. Each one names what to do and by when.{% else %}Use the map inside to find each marked zone on the ground.{% endif %}</div>
+    </td>
+    <td>
+      <div class="n mono">02</div>
+      <div class="t">We fly again</div>
+      <div class="d">Flight {{ next_flight_no }} of {{ flight.flights_planned }} this season{% if flight.flight_number >= flight.flights_planned %} closes the season{% endif %}.</div>
+    </td>
+    <td>
+      <div class="n mono">03</div>
+      <div class="t">We compare</div>
+      <div class="d">The next report scores the same field again, so you can see what your work changed.</div>
+    </td>
+  </tr></table></div>
 
   {{ pagefoot(1, total_pages) }}
 </section>
@@ -580,88 +520,53 @@
   {{ runhead('The field') }}
 
   <table class="sec"><tr><td><h2>Your field from the air</h2></td><td><div class="rule"></div></td></tr></table>
-
+  <div class="mapbox"><img src="{{ map_src }}" alt="Annotated field map for {{ farm.name }}"></div>
   <p class="mapcap">
     Flown {{ flight.flight_date.strftime('%d %B %Y') if flight.flight_date else 'this season' }}.
-    {{ findings|length }} area{{ '' if findings|length == 1 else 's' }} marked by your agronomist.
-    Zone numbers follow the order the areas were annotated in, and match the detailed findings on
-    page {{ detail_page_no }}.
+    {{ findings|length }} zone{{ '' if findings|length == 1 else 's' }} marked by your agronomist.
+    Each row below carries the same colour the zone is drawn in on the map; the numbers are the order to work through them.
   </p>
-
-  <div class="mapbox"><img src="{{ map_src }}" alt="Annotated field map for {{ farm.name }}"></div>
-
-  <table class="sec" style="margin-top:12px"><tr>
-    <td><h2>How to read the colours</h2></td><td><div class="rule"></div></td>
-  </tr></table>
-
-  {# The full key, not only the categories on this flight, so the same six
-     colours mean the same six things on every report a farm receives. No
-     colour here means "healthy": every one marks something that was flagged. #}
-  {% set present = groups|map(attribute='key')|list %}
-  <table class="key">
-    {% for p in PATTERNS %}
-    <tr class="{{ 'off' if p.key not in present }}">
-      <td class="sw"><span style="background:{{ p.colour }}"></span></td>
-      <td class="mn">{{ p.label }}</td>
-      <td class="nt">{{ p.note }}{% if p.key not in present %} &mdash; not flagged this flight{% endif %}</td>
-    </tr>
-    {% endfor %}
-  </table>
-
-  <p class="keynote">
-    Colour marks what kind of observation a zone carries, not how urgent it is.
-  </p>
-
-  {% if flight.dronedeploy_project_url %}{{ ddlink() }}{% endif %}
+<br>
+  {% if flight.dronedeploy_project_url %}
+  {{ ddlink() }}
+  {% endif %}
 
   {{ pagefoot(2, total_pages) }}
 </section>
 {% endif %}
 
-{# ================================================================ DETAIL SHEETS
-   Every annotation, exactly as the agronomist wrote it, under the pattern it
-   belongs to. Paginated in Python so a row is never split across a page
-   boundary and the screen's breaks are the paper's breaks. #}
-{% for sheet in detail %}
+{# ================================================================ FINDINGS SHEETS
+   Paginated in Python so a card is never split across a page boundary and the
+   screen's page breaks are the paper's page breaks. #}
+{% for page in a.pages %}
 {% set pageno = 1 + map_pages + loop.index %}
 <section class="sheet">
-  {{ runhead('Detailed findings' ~ (' (' ~ loop.index ~ '/' ~ detail|length ~ ')' if detail|length > 1 else '')) }}
+  {{ runhead('What we found' ~ (' (' ~ loop.index ~ '/' ~ a.pages|length ~ ')' if a.pages|length > 1 else '')) }}
 
   {% if loop.first %}
-  <table class="sec"><tr><td><h2>Every area we marked</h2></td><td><div class="rule"></div></td></tr></table>
-  <p class="dintro">
-    As recorded by the agronomist, grouped under the pattern it belongs to. Zone numbers match the
-    map{% if map_pages %} on page 2{% endif %}.
-  </p>
+  <table class="sec"><tr><td><h2>What we found, most urgent first</h2></td><td><div class="rule"></div></td></tr></table>
   {% endif %}
 
-  {% for block in sheet %}
-  {% set g = block.group %}
-  <div class="gwrap">
-    <div class="ghead" style="color:{{ g.colour }}">
-      <span class="sw" style="background:{{ g.colour }}"></span>{{ g.label }}{% if block.continued %} (continued){% endif %}
-      <span class="cnt">&mdash; {{ g.count }} area{{ '' if g.count == 1 else 's' }}{% if g.acres %}, {{ g.acres_text }} ac{% endif %}</span>
-    </div>
-    <div class="dt" style="border-color:{{ g.line }}">
-      <table>
-        <thead>
-          <tr style="background:{{ g.colour }}">
-            <th class="z">Zone</th><th class="ac">Acres</th><th class="ob">Observation</th>
-            <th class="lc">Likely cause</th><th>Recommendation</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for f in block.rows %}
-        <tr{% if loop.index0 is odd %} style="background:#FAFBF7"{% endif %}>
-          <td class="z" data-label="Zone">{{ numbers[f.id] }}</td>
-          <td class="ac" data-label="Acres">{{ '%.2f'|format(f.area_acres) if f.area_acres else '—' }}</td>
-          <td class="ob" data-label="What we saw">{{ f.observation }}</td>
-          <td class="lc" data-label="Likely cause">{{ f.likely_cause }}</td>
-          <td data-label="Recommendation">{{ f.recommendation }}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+  {% for f in page %}
+  {% set s = S[sev(f)] %}
+  <div class="find" style="border-color:{{ s.line }}">
+    <table class="top" style="background:{{ s.soft }}"><tr>
+      <td class="no">{{ chip(a.numbers[f.id], f.colour_swatch or s.colour) }}</td>
+      <td>
+        <span class="cat">{{ f.category }}</span>
+        <span class="tag" style="background:{{ s.colour }};color:#fff">{{ s.short }}</span>
+      </td>
+      <td class="rt">
+        {% if f.area_text %}<div class="acl">Area</div><div class="ac">{{ f.area_text }}</div>{% endif %}
+      </td>
+    </tr></table>
+    <div class="body">
+      <div class="blk"><div class="lb">What we saw</div><div class="tx">{{ f.observation }}</div></div>
+      <div class="blk"><div class="lb">Why it is happening</div><div class="tx">{{ f.likely_cause }}</div></div>
+      <div class="todo">
+<div class="lb">{% if s.key == 'good' %}Nothing to do{% else %}What to do — {{ a.URGENCY_COPY[s.key][1]|lower }}{% endif %}</div>
+        <div class="tx">{{ f.recommendation }}</div>
+      </div>
     </div>
   </div>
   {% endfor %}
@@ -671,8 +576,11 @@
 {% endfor %}
 
 {# ================================================================ SEASON SHEET
-   Off unless REPORT_SEASON_PAGE is set. Plain counts, no score. #}
-{% if season_pages %}
+   The season so far, flight by flight. Only drawn when at least two flights of
+   this season carry findings — with one flight there is no trend to show, and
+   the closing sheet's baseline wording already covers that case. #}
+{% if season and season.spark %}
+{% set sp = season.spark %}
 <section class="sheet">
   {{ runhead('Your season so far') }}
 
@@ -680,23 +588,94 @@
 
   <div class="trendbox">
     <div class="cap">
-      <span class="eyebrow">Areas marked, flight by flight</span>
+      <span class="eyebrow">Field health across the season</span>
       <span class="rt">{{ season.flights_scored }} flight{{ '' if season.flights_scored == 1 else 's' }} flown &middot; {{ flight.season }}</span>
     </div>
+    <div class="body">
+      <svg class="spark" viewBox="0 0 {{ sp.w }} {{ sp.h }}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+        <line class="gl" x1="0" y1="{{ sp.h - 6 }}" x2="{{ sp.w }}" y2="{{ sp.h - 6 }}"/>
+        <line class="gl" x1="0" y1="{{ (sp.h / 2)|round(1) }}" x2="{{ sp.w }}" y2="{{ (sp.h / 2)|round(1) }}"/>
+        <path d="{{ sp.area }}" fill="{{ a.score_colour }}" fill-opacity="0.10"/>
+        <path d="{{ sp.line }}" fill="none" stroke="{{ a.score_colour }}" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        {% for p in sp.points %}
+        <circle cx="{{ p.x }}" cy="{{ p.y }}" r="{{ 4.2 if p.is_current else 3 }}"
+                fill="#fff" stroke="{{ a.score_colour }}" stroke-width="{{ 2.4 if p.is_current else 1.8 }}"/>
+        {% endfor %}
+      </svg>
+      <table class="axis"><tr>
+        {% for p in sp.points %}
+        <td class="{{ 'on' if p.is_current }}">{{ p.score }}<br>F{{ p.number }}</td>
+        {% endfor %}
+      </tr></table>
+
+      <table class="skpi"><tr>
+        <td>
+          <div class="n" style="color:{{ a.score_colour }}">{{ '+' if season.swing > 0 }}{{ season.swing }}</div>
+          <div class="l">Points {{ 'gained' if season.swing > 0 else ('lost' if season.swing < 0 else 'change') }} since flight {{ season.first.number }}</div>
+        </td>
+        <td>
+          <div class="n">{{ season.average }}</div>
+          <div class="l">Season average score</div>
+        </td>
+        <td>
+          <div class="n" style="color:#3FA34D">{{ season.best.score }}</div>
+          <div class="l">Best flight so far (flight {{ season.best.number }})</div>
+        </td>
+        <td>
+          <div class="n" style="color:{{ '#3FA34D' if season.closed else '#6C6C6C' }}">{{ season.closed }}</div>
+          <div class="l">Problem zones closed since flight {{ season.first.number }}</div>
+        </td>
+      </tr></table>
+    </div>
+  </div>
+
+  <table class="sec" style="margin-top:12px"><tr>
+    <td><h2>Marked zones, flight by flight</h2></td><td><div class="rule"></div></td>
+  </tr></table>
+
+  <div class="trendbox">
     <div class="body">
       <table class="sbars"><tr>
         {% for b in season.bars %}
         <td>
           <div class="tot">{{ b.total }}</div>
-          <div class="col"><div class="stack" style="height:{{ b.pct }}%{{ ';opacity:.5' if not b.is_current }}"></div></div>
-          <div class="fl{{ ' on' if b.is_current }}">F{{ b.number }}</div>
+          <div class="col">
+            <div class="stack" style="height:{{ b.pct }}%">
+              {% if b.urgent_pct %}<span class="seg" style="height:{{ b.urgent_pct }}%;background:#D64550"></span>{% endif %}
+              {% if b.watch_pct %}<span class="seg" style="height:{{ b.watch_pct }}%;background:#E7B416"></span>{% endif %}
+              {% if b.good_pct %}<span class="seg" style="height:{{ b.good_pct }}%;background:#3FA34D"></span>{% endif %}
+            </div>
+          </div>
+          <div class="fl {{ 'on' if b.is_current }}">F{{ b.number }}</div>
         </td>
         {% endfor %}
       </tr></table>
-      <p style="font-size:11px;line-height:1.5;margin-top:11px !important;padding-top:10px;border-top:1px solid #E9ECE6">
-        Across {{ season.flights_scored }} flights this season, the number of areas marked has gone
-        from <b>{{ season.first.zones }}</b> to <b>{{ season.last.zones }}</b>. This counts what was
-        flagged, not how serious it was.
+      <table class="slegend"><tr>
+        <td><span class="lb"><span class="dot" style="background:#D64550"></span>Needs action</span></td>
+        <td><span class="lb"><span class="dot" style="background:#E7B416"></span>Worth watching</span></td>
+        <td><span class="lb"><span class="dot" style="background:#3FA34D"></span>Doing well</span></td>
+        <td></td>
+      </tr></table>
+      <p class="say" style="font-size:11px;line-height:1.5;margin-top:11px !important;padding-top:10px;border-top:1px solid #E9ECE6">
+        {% if season.direction == 'up' %}
+          Across {{ season.flights_scored }} flights this season your field has gone from
+          <b>{{ season.first.score }}</b> to <b>{{ season.last.score }}</b>{% if season.closed %}, and
+          {{ season.closed }} zone{{ '' if season.closed == 1 else 's' }} that needed attention at the start
+          {{ 'is' if season.closed == 1 else 'are' }} no longer flagged{% endif %}. That is a season trending
+          the right way — the next flight will show whether it holds.
+        {% elif season.direction == 'down' %}
+          Across {{ season.flights_scored }} flights this season your field has moved from
+          <b>{{ season.first.score }}</b> to <b>{{ season.last.score }}</b>{% if season.opened %}, with
+          {{ season.opened }} more zone{{ '' if season.opened == 1 else 's' }} flagged than at the start{% endif %}.
+          One flight can be weather; a run of them is a pattern, which is why this page exists — the actions
+          on the first page are where to start.
+        {% else %}
+          Across {{ season.flights_scored }} flights this season your field has held between
+          <b>{{ season.worst.score }}</b> and <b>{{ season.best.score }}</b>, averaging {{ season.average }}.
+          Steady across a whole season is a result in itself — it means nothing has got away from you
+          between flights.
+        {% endif %}
       </p>
     </div>
   </div>
@@ -707,47 +686,144 @@
 
   <div class="zt">
     <table>
-      <thead><tr><th>Flight</th><th>Flown</th><th>Areas marked</th><th>Acres marked</th></tr></thead>
-      <tbody>
+      <tr>
+        <th class="n">Fl</th><th>Flown</th><th>Zones</th>
+        <th>Needs action</th><th>Watching</th><th>Doing well</th><th>Score</th>
+      </tr>
       {% for p in season.points %}
       <tr{% if p.is_current %} style="background:#F7F9F4"{% endif %}>
-        <td data-label="Flight" style="font-weight:700">{{ p.number }}{% if p.is_current %} <span class="eyebrow" style="color:#5C8A3C">this one</span>{% endif %}</td>
-        <td data-label="Flown">{{ p.date.strftime('%d %b %Y') if p.date else '—' }}</td>
-        <td data-label="Areas marked">{{ p.zones }}</td>
-        <td data-label="Acres marked">{{ '%.1f'|format(p.acres_at_risk) if p.acres_at_risk else '—' }}</td>
+        <td class="cat">{{ p.number }}{% if p.is_current %} <span class="mono" style="font-size:7px;font-weight:700;letter-spacing:.1em;color:#5C8A3C">THIS ONE</span>{% endif %}</td>
+        <td class="mono">{{ p.date.strftime('%d %b %Y') if p.date else '—' }}</td>
+        <td class="ac">{{ p.zones }}</td>
+        <td class="ac" style="color:{{ '#B3323C' if p.urgent else '#6C6C6C' }}">{{ p.urgent }}</td>
+        <td class="ac" style="color:{{ '#9A7A0F' if p.watch else '#6C6C6C' }}">{{ p.watch }}</td>
+        <td class="ac" style="color:{{ '#3E7A24' if p.good else '#6C6C6C' }}">{{ p.good }}</td>
+        <td class="ac">{{ p.score if p.score is not none else '—' }}</td>
       </tr>
       {% endfor %}
-      </tbody>
     </table>
   </div>
 
-  {{ pagefoot(total_pages, total_pages) }}
+  {{ pagefoot(1 + map_pages + a.pages|length + 1, total_pages) }}
 </section>
 {% endif %}
 
-</div>
+{# ================================================================ CLOSING SHEET #}
+<section class="sheet">
+  {{ runhead('Where this leaves you') }}
 
-{% if public and not pdf %}
-<div class="no-print" style="max-width:900px;margin:0 auto;padding:4px 16px 12px;text-align:center" id="ackArea">
-  {% if flight.acknowledged %}
-  <div style="display:inline-block;background:#E7F1DB;color:#3E7A24;border-radius:9px;padding:11px 18px;font-size:12.5px;font-weight:800">
-    {{ tick('#3E7A24', 12) }} You confirmed you received this on {{ flight.acknowledged_at.strftime('%d %b %Y') if flight.acknowledged_at else 'file' }}
+  <table class="sec"><tr><td><h2>{% if prev %}Since your last flight{% else %}Your starting point{% endif %}</h2></td><td><div class="rule"></div></td></tr></table>
+
+  <div class="prog">
+    <div class="cap">
+      <span class="eyebrow">{% if prev %}Flight {{ prev.flight_number }} to flight {{ flight.flight_number }}{% else %}Baseline — flight {{ flight.flight_number }} of {{ flight.flights_planned }}{% endif %}</span>
+    </div>
+    <div class="body">
+      {% if prev %}
+      <table class="kpi"><tr>
+        <td><div class="n" style="color:#3FA34D">{{ resolved }}</div><div class="l">Marked resolved this flight</div></td>
+        <td><div class="n" style="color:{{ '#E7B416' if still_open else '#3FA34D' }}">{{ still_open }}</div><div class="l">Still open</div></td>
+        <td><div class="n" style="color:{{ a.score_colour }}">{% if a.delta is not none %}{{ '+' if a.delta > 0 }}{{ a.delta }}{% else %}{{ a.score }}{% endif %}</div>
+            <div class="l">{% if a.delta is not none %}Change in field health{% else %}Field health score{% endif %}</div></td>
+      </tr></table>
+      <p class="say">
+        {% if a.delta is not none and a.delta > 0 %}
+          Your field scored <b>{{ a.score }}</b> this flight, up from {{ a.prev_score }}. The work you did after flight {{ prev.flight_number }} shows in the numbers — that is the trend worth protecting.
+        {% elif a.delta is not none and a.delta < 0 %}
+          Your field scored <b>{{ a.score }}</b> this flight, down from {{ a.prev_score }}. That is what this report is for: it caught the slide early, while the zones above are still small enough to turn around.
+        {% else %}
+          Your field is holding at <b>{{ a.score }}</b>. Steady is a result — it means nothing got away from you between flights.
+        {% endif %}
+      </p>
+      {% else %}
+      <table class="kpi"><tr>
+        <td><div class="n" style="color:{{ a.score_colour }}">{{ a.score if a.score is not none else '—' }}</div><div class="l">Field health, this flight</div></td>
+        <td><div class="n" style="color:#D64550">{{ a.urgent_count }}</div><div class="l">Need action now</div></td>
+        <td><div class="n" style="color:#E7B416">{{ a.watch_count }}</div><div class="l">Worth watching</div></td>
+      </tr></table>
+      <p class="say">
+        This is the baseline every later flight this season is measured against. From flight {{ next_flight_no }}, this page will show what your work changed — which zones closed, which are still open, and whether the score moved.
+      </p>
+      {% endif %}
+
+      {% if season and season.spark %}
+      <p class="say" style="font-size:10px;margin-top:9px !important;padding-top:9px">
+        Across the season so far this field has scored between <b>{{ season.worst.score }}</b> and
+        <b>{{ season.best.score }}</b> over {{ season.flights_scored }} flights, and is
+        <b>{{ season.verdict }}</b>. The previous page tracks that flight by flight.
+      </p>
+      {% endif %}
+
+      {% if a.total_acres %}
+      <p class="mono" style="font-size:8px;font-weight:600;color:#9A9A9A;margin-top:9px;line-height:1.5">
+        HOW THE SCORE IS WORKED OUT: the share of your {{ a.ac(a.total_acres) }} acres in good shape, counting watch zones at 55% and zones needing action at 0%.
+      </p>
+      {% endif %}
+    </div>
   </div>
-  {% else %}
-  <button type="button" onclick="acknowledge()"
-          style="background:#B0D48C;color:#030920;border:0;border-radius:9px;padding:14px 22px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;width:100%;max-width:340px">
-    {{ tick('#030920', 14) }} Confirm you received this report
-  </button>
-  <p style="font-size:11.5px;color:#6C6C6C;margin-top:8px">One tap. It tells your agronomist the report reached you.</p>
+
+  <table class="sec" style="margin-top:12px"><tr><td><h2>How to read the colours on your map</h2></td><td><div class="rule"></div></td></tr></table>
+  <table class="key">
+    {% for meaning, spec in COLOUR_CODE.items() %}
+    <tr>
+      <td class="sw"><span style="background:{{ spec.swatch }}"></span></td>
+      <td class="mn">{{ meaning }}</td>
+      <td class="nt">{{ spec.note }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+
+  <div class="note">
+    <div class="eyebrow">A note from your agronomist</div>
+    <p>{{ flight.agronomist_note or "None of this needs panic. Catching these now is what keeps them small — call us and we will walk the field with you." }}</p>
+    <div class="who">Acre Insights &middot; Nature meets intelligence</div>
+  </div>
+
+  {% if flight.dronedeploy_project_url and not map_src %}
+  {{ ddlink() }}
   {% endif %}
+
+  <table class="contact"><tr>
+    <td>
+      <div class="l">Prepared for</div>
+      <div class="v">{{ farm.farmer_name or farm.name }}</div>
+      {% if farm.location %}<div class="lnk" style="color:#6C6C6C">{{ farm.location }}</div>{% endif %}
+    </td>
+    <td>
+      <div class="l">Questions</div>
+      <div class="v">Reply to the message this came with</div>
+      <div class="lnk" style="color:#6C6C6C">Or call Acre Insights any time</div>
+    </td>
+  </tr></table>
+
+  {% if public and not pdf %}
+  <div class="no-print" style="margin-top:12px;text-align:center" id="ackArea">
+    {% if flight.acknowledged %}
+    <div style="display:inline-block;background:#E7F1DB;color:#3E7A24;border-radius:9px;padding:11px 18px;font-size:11.5px;font-weight:800">
+      {{ tick('#3E7A24', 12) }} You confirmed you received this on {{ flight.acknowledged_at.strftime('%d %b %Y') if flight.acknowledged_at else 'file' }}
+    </div>
+    {% else %}
+    <button type="button" onclick="acknowledge()"
+            style="background:#B0D48C;color:#030920;border:0;border-radius:9px;padding:12px 22px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit">
+      {{ tick('#030920', 13) }} Confirm you received this report
+    </button>
+    <p style="font-size:9px;color:#6C6C6C;margin-top:6px !important">One tap. It tells your agronomist the report reached you.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {{ pagefoot(total_pages, total_pages) }}
+</section>
+
 </div>
-{% endif %}
 
 {% if not pdf %}
 <script>
   // Browsers take the suggested filename for "Save as PDF" from document.title,
-  // so printing is renamed to match the download exactly. The tab keeps its
-  // readable title the rest of the time, and gets it back when the dialog closes.
+  // so printing is renamed to match the download exactly:
+  //   Farm Name_Crop Name_Season Year
+  // The tab keeps its readable title the rest of the time, and gets it back as
+  // soon as the dialog closes.
   (function () {
     var REPORT_NAME = {{ flight.report_basename|tojson }};
     var pageTitle = document.title;
@@ -755,6 +831,7 @@
     function useReportName() { document.title = REPORT_NAME; }
     function restoreTitle()  { document.title = pageTitle; }
 
+    // Covers Ctrl+P and the browser's own menu, where there is no click to hook.
     window.addEventListener('beforeprint', useReportName);
     window.addEventListener('afterprint', restoreTitle);
 
@@ -767,34 +844,35 @@
     }
 
     // Chrome reads the title while building the preview, and can start that
-    // before beforeprint handlers have settled, so anything of ours that
-    // triggers printing sets the name synchronously first and goes through here.
-    window.printReport = function () { useReportName(); window.print(); };
+    // before beforeprint handlers have settled. Anything of ours that triggers
+    // printing therefore sets the name synchronously first and goes through here.
+    window.printReport = function () {
+      useReportName();
+      window.print();
+    };
   })();
 
-  // Between 820px and a full sheet there is no room for the A4 width but the
-  // columns still work, so the sheet is scaled to fit. Below 820px the CSS has
-  // already reflowed it into one column and the scale is left at 1 — shrinking
-  // a reflowed page would only make it small again. Print always renders at 1.
+  // The sheets are a fixed 210mm wide so that the screen and the page agree.
+  // On a narrow phone that would overflow, so scale the sheet down to fit —
+  // scaling, not reflowing, because reflowing is exactly what would break the
+  // promise that what you see is what prints. Print always renders at 1.
   (function () {
     var paper = document.querySelector('.paper');
     if (!paper) return;
-    var root = document.documentElement;
-    var MOBILE = 820;
     function fit() {
       var sheet = paper.querySelector('.sheet');
       if (!sheet) return;
-      if (window.innerWidth <= MOBILE) { root.style.setProperty('--sheet-zoom', 1); return; }
-      root.style.setProperty('--sheet-zoom', 1);
+      document.documentElement.style.setProperty('--sheet-zoom', 1);
       var natural = sheet.offsetWidth || 794;
       var room = paper.clientWidth - 24;
       var z = Math.min(1, room / natural);
-      root.style.setProperty('--sheet-zoom', z > 0.2 ? z.toFixed(4) : 1);
+      document.documentElement.style.setProperty('--sheet-zoom', z > 0.2 ? z : 1);
     }
     fit();
     window.addEventListener('resize', fit);
-    window.addEventListener('orientationchange', function () { setTimeout(fit, 150); });
-    window.addEventListener('beforeprint', function () { root.style.setProperty('--sheet-zoom', 1); });
+    window.addEventListener('beforeprint', function () {
+      document.documentElement.style.setProperty('--sheet-zoom', 1);
+    });
     window.addEventListener('afterprint', fit);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
   })();

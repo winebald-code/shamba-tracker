@@ -58,14 +58,11 @@
       {% for cat, n in cat_counts.items()|sort(attribute='1', reverse=true) %}
       <div>
         <div class="flex items-center justify-between text-[12.5px] mb-1">
-          <span class="font-semibold flex items-center gap-2"><span class="w-2.5 h-2.5 rounded-[3px] shrink-0" style="background: {{ CATEGORY_COLOURS.get(cat, '#B0D48C') }}"></span>{{ cat }}</span>
+          <span class="font-semibold">{{ cat }}</span>
           <span class="text-dove inst font-semibold">{{ n }}</span>
         </div>
-        {# Each bar carries its own category colour, the same one the report and
-           the map use, so this chart reads as the same vocabulary rather than
-           as six identical green bars. #}
         <div class="h-2.5 rounded-full bg-canvas overflow-hidden">
-          <div class="h-full rounded-full" style="width: {{ (n / maxc * 100)|round(0, 'floor') }}%; background: {{ CATEGORY_COLOURS.get(cat, '#B0D48C') }}"></div>
+          <div class="h-full rounded-full bg-sage" style="width: {{ (n / maxc * 100)|round(0, 'floor') }}%"></div>
         </div>
       </div>
       {% endfor %}

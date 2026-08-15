@@ -15,17 +15,13 @@ Built with Flask · SQLite · Tailwind CSS · vanilla JS · WeasyPrint. Ready fo
 1. **Farms & flights** — keep a record of each farm, its farmer contact, and every scouting flight (unique by *farm + season + flight number*).
 2. **Import** — upload the DroneDeploy annotation **CSV**; SHAMBA Tracker parses each pin, classifies its colour into the Acre colour code, normalises the area, and splits the comment into *observation / likely cause / recommendation*.
 3. **Review portal** — complete and correct every finding inline. The report can only be generated once all findings are complete.
-4. **Generate** — one click produces the branded three-page report (web + **PDF**), named `Farm Name_Crop Name_Season Year_Flight No.pdf`. A report needs both complete findings and the annotated map snapshot: the findings are numbered against the map, so without it they point at nothing.
+4. **Generate** — one click produces the branded report (web + **PDF**), named `Farm Name_Crop Name_Season Year_Flight No.pdf`. A report needs both complete findings and the annotated map snapshot: the findings are numbered against the map, so without it they point at nothing.
 5. **Deliver** — send by email (report attached) and WhatsApp (link), with a message in Acre's voice.
 6. **Acknowledge** — the farmer opens a tokenised public link, reads the report, and taps to confirm receipt — logged back to the dashboard.
 7. **Bulk import** — add or update farms and flights in batches from a CSV or Excel sheet, with a row-by-row preview before anything is written.
 8. **Record the reply** — when a farmer disputes a finding, customer success logs what they said against that finding. Internal only; it never reaches the report.
 
-### Two colour systems, doing two different jobs
-
-**The annotation colour code** is what the agronomist draws with in DroneDeploy.
-It says how urgent a zone looked, and it is for internal triage.
-
+### The annotation colour code
 | Colour | Meaning |
 |---|---|
 | Blue | New growth (positive development) |
@@ -34,24 +30,35 @@ It says how urgent a zone looked, and it is for internal triage.
 | Red | Needs testing (suspicious gap / suspected diagnosis) |
 | Grey | Pending review (logged, awaiting agronomist) |
 
-Any hex a pin uses is bucketed to the nearest meaning by hue, and the true pin
-colour is kept on the finding.
+Any hex a pin uses in DroneDeploy is bucketed to the nearest meaning by hue.
 
-**The report category colours** are a separate system, and they are what the
-farmer reads. They say *what kind* of observation a zone carries, not how
-urgent it is, because that is what is useful to read spatially off a map.
+### Categories
 
-| Category | Colour | What it covers |
-|---|---|---|
-| Irrigation / Moisture | Blue | Water availability or distribution |
-| Soil Fertility / Nutrition | Amber | Soil condition or nutrient availability |
-| Crop Establishment | Terracotta | Germination, emergence, spacing or mounding |
-| Pest / Disease | Deep red | Suspected pest pressure or disease |
-| Weeds | Slate green | Weed pressure |
-| Needs Investigation | Purple | Flagged, cause not yet established |
+Separate from the colour code above, and shared by the review page and the
+report:
 
-No colour in that table means "healthy" or "fine". Every colour on the report
-map marks something the agronomist actually flagged.
+| Category | Colour on the report map |
+|---|---|
+| Irrigation / Moisture | Blue |
+| Soil Fertility / Nutrition | Amber |
+| Crop Establishment | Terracotta |
+| Pest / Disease | Deep red |
+| Weeds | Slate green |
+| Needs Investigation | Purple |
+
+The colour code says *how urgent*; the category says *what kind*. Both matter,
+but only the category reaches the farmer's map, because that is the question a
+map answers well.
+
+These are defined once, in `aggregation.py`, and the review page reads the same
+list. They used to be two lists, so a finding filed as "Nutrient / Vigor" while
+reviewing appeared to the farmer as "Soil Fertility / Nutrition" — the words the
+agronomist chose were never the words the farmer read. Each category shows its
+map colour beside the dropdown on the review page, so the two are visibly the
+same thing.
+
+Findings recorded under the older names are moved on start-up by
+`schema.migrate_categories`, so an existing flight needs no re-filing.
 
 ---
 
@@ -98,15 +105,10 @@ python tests/test_import.py     # CSV/Excel import of farms and flights
 python tests/test_homepage.py   # admin-managed homepage content
 python tests/test_farmer_comment.py   # the farmer's reply, and its isolation
 python tests/test_generate_gate.py    # what a report needs before it generates
-python tests/test_patterns.py   # the V2 grouping, the guardrail, and page fit
-python tests/test_security.py   # the response headers and cookie flags
+python tests/test_report_v2.py       # pattern grouping, report voice, security headers
+python tests/test_responsive.py      # every page on a phone-sized viewport
+python tests/test_categories.py      # one category list across review and report
 ```
-
-356 checks at the time of writing. `test_patterns.py` is the one worth reading
-first: section C feeds the report annotations built from a closed vocabulary of
-nonsense words and fails if a single word outside that vocabulary — plus the
-report's own fixed frame — reaches page 1. That is the guardrail below, tested
-rather than asserted.
 
 ---
 
@@ -234,212 +236,129 @@ app still runs and CSV import still works; the upload page says so.
 
 ## The report
 
-Three pages, in this order.
+### What the farmer receives
 
-The **look** is V1's, unchanged — the same typography, the navy masthead rule,
-the bordered facts box, the sage panel, the running foot. Only the structure,
-the grouping and the voice changed, which is what the V2 brief asked for. The
-six category colours are the one thing added, and they are data colours: a
-swatch on a card, a pin colour on the key, a table header.
+The report is **three pages**, and it does not list every annotation on the
+summary page:
 
-**Page 1 — Field scouting summary.** What was scouted, how much of it was
-marked, which categories it falls into, and what was recommended. It states
-counts and acres, not a score: a single number out of 100 claims a precision
-the underlying data has not got, and it invites the farmer to argue with the
-number instead of walking the field.
+1. **Field scouting summary** — what was scouted, the categories found with
+   counts and acreage, the patterns behind them, and areas worth investigating.
+2. **Farm map** — the annotated image, with a legend keyed by category.
+3. **Detailed findings** — every annotation the agronomist wrote, unchanged,
+   grouped under the pattern it belongs to.
 
-**Page 2 — Farm map.** The annotated image, and the full six-colour key, so the
-same colour means the same thing on every report a farm ever receives.
+V1 listed all fifteen zones one after another, nine of them near-identical
+entries under a single category. That is an annotation dump rather than a
+report. `aggregation.py` groups a flight's findings into the few patterns
+actually present in them, so the summary says *"reduced crop vigour across nine
+areas (~13.4 acres), associated with soil condition or nutrient availability"*
+once, instead of nine times.
 
-**Page 3 — Detailed findings.** Every annotation, exactly as the agronomist
-wrote it, in a compact table under the pattern it belongs to. A flight with
-more rows than one page holds spills to a fourth sheet, and a group that
-continues repeats its heading rather than orphaning rows under someone else's.
+Two rules govern what the summary is allowed to say:
 
-### Grouping, and the guardrail
+* **It only summarises and combines what the agronomist actually wrote.** No
+  cause, diagnosis or recommendation appears that is not already in the source
+  annotations. Sentences are assembled from the agronomist's own counts,
+  acreages and words — there is no model in the loop and nothing is invented.
+* **It does not sound more certain than its source.** "Associated with", not
+  "caused by". "We suggest considering", not "work through these, in this
+  order". An annotation records what was seen and what the agronomist suspects,
+  not a result.
 
-The categories the agronomist picks from on the review page **are** the patterns
-the report groups by. That is the whole design: the review screen and page 1
-read the same field, so they cannot disagree, and a misfiled zone is fixed in
-one click by the person best placed to know.
+Clustering reads the **likely cause** rather than the category label, which is
+what separates irrigation from soil fertility when both were filed under one
+broad heading. Patterns are ordered by acreage so the largest finding leads, and
+genuinely different causes stay apart rather than being merged for tidiness — on
+the sample flight that is what keeps a 4.1-acre mounding problem from
+disappearing into a nine-zone soil group.
 
-`patterns.py` suggests a category from the agronomist's own observation, cause
-and recommendation text when a flight is imported. It is a weighted keyword
-classifier, not a model — deliberately, because the guardrail then holds by
-construction rather than by instruction:
+The report-facing colours are **by category, not by urgency**, and separate from
+the severity colours the agronomists use while annotating. Nothing is coloured to
+mean "healthy": every colour on the map marks something that was flagged.
 
-> Everything on page 1 is assembled from the agronomist's own words. It counts,
-> sums, de-duplicates and joins them. It cannot introduce a cause, a diagnosis
-> or a recommendation the annotations do not contain, because there is nowhere
-> for a new word to come from.
+### How it is built
 
-Section C of `tests/test_patterns.py` enforces that with a closed vocabulary.
+The report is one document, `templates/report_v2.html`, composed as real A4
+sheets: each sheet is exactly 210 x 297 mm and the page box has no margin of its
+own. The browser shows those sheets, the browser prints those sheets, and
+WeasyPrint turns those sheets into pages — so the screen, the print dialog and
+the downloaded PDF cannot drift apart. `report.html` wraps the document in the
+app's chrome (all of it marked `.no-print`), and `report_print.html` is a bare
+shell with no styling of its own.
 
-The classifier is a suggestion and will not be right every time. It is right on
-all fifteen of the IPM Farm annotations that V1 filed under one label, which is
-the case it was built against, and anything it cannot read from the text lands
-in **Needs Investigation** rather than being guessed at.
-
-### Zone numbers
-
-Numbered in the agronomist's own annotation order, because those are the
-numbers already drawn on the map image the farmer is holding. An earlier version
-numbered by urgency, which lined up with the map only while every zone happened
-to be flagged in descending order of size — a single out-of-order pin would have
-had the report pointing at the wrong part of the field.
-
-### Screen, print and PDF are one document
-
-The report is one file, `templates/report_doc.html`, composed as real A4 sheets:
-each sheet is exactly 210 x 297 mm and the page box has no margin of its own.
-The browser shows those sheets, the browser prints those sheets, and WeasyPrint
-turns those sheets into pages. `report.html` wraps it in the app's chrome (all
-of it marked `.no-print`), and `report_print.html` is a bare shell with no
-styling of its own.
-
-Three things hold that guarantee up:
+Two things hold that guarantee up:
 
 * **Montserrat is bundled**, not fetched from a CDN. If WeasyPrint fell back to
   a system face while the browser used Montserrat, the same paragraph would wrap
   at a different word and the page breaks would stop matching. It is the only
-  typeface in the report — readings are set apart by tabular figures and
-  tracking rather than by a second family.
-* **Detail tables are paginated in Python** (`patterns.paginate_groups`), not
-  left to the renderer, so a row is never split and both engines break in the
-  same places. The height constants were measured against a real render, not
-  estimated, and they deliberately err towards breaking a page early.
-* **Overflow is tested, not assumed.** A sheet is a fixed height and clips what
-  does not fit, so a page count on its own cannot see a row that fell off the
-  bottom. `test_patterns.py` renders the document twice — once as fixed sheets,
-  once with the sheets free to grow — and fails if the second is longer.
+  typeface in the report — readings are set apart by tabular figures
+  (`font-variant-numeric` / `font-feature-settings: 'tnum'`, which Montserrat
+  carries) and by tracking, rather than by a second family.
+* **Findings are paginated in Python** (`report_data.paginate`), not left to the
+  renderer, so a card is never split and both engines break in the same places.
 
-### On a phone
+Below 820px the sheets stop pretending to be paper: fixed millimetre heights
+would either clip the content or leave a long blank gap, so the sheet reflows and
+the detail tables become cards. The rest of the application is responsive
+throughout.
 
-Below 820 px the document **reflows into a single readable column**: the facts
-go two-up, the category cards stack, and each row of the detail table becomes a
-labelled card. Body text lands at 13.5 px and the table cells at 13.5–15 px.
+**Download** produces a real file named `Farm Name_Crop Name_Season Year_Flight No.pdf` —
+`Content-Disposition: attachment` plus a matching `download` attribute on the
+link, so it saves straight to disk with no viewer tab and no Save-as dialog.
+Renders take about a second, so each one is cached against a key derived from
+the report's own content; edit any finding and the cache invalidates itself.
+The boot log states whether server-side PDF is available, and if it is not, the
+report page says so rather than letting a print dialog appear unexplained.
 
-An earlier build scaled the whole A4 sheet down instead. It fitted a 375 px
-phone at 44%, which put the body text at about four pixels — the same document,
-and unreadable. A farmer opening a WhatsApp link on a handset in a field is the
-normal case here, not the edge one, so readable-and-reflowed beats
-identical-and-illegible.
+Every flight of a season shares a farm, a crop and a season, so the **flight
+number is part of the name**: without it each new report would land on top of the
+last one in the farmer's downloads folder.
 
-The content and its order do not change, and none of this touches print:
-`@media print` is a separate context and always renders the fixed
-210 × 297 mm sheets, so Download PDF is always the exact document.
+The report also carries a **season page** once two or more flights of a season
+have findings: the field health score plotted flight by flight, the mix of marked
+zones per flight, and a record of every flight in the season. A single flight
+still reads as a baseline, and a flight whose CSV has not been imported yet is
+left out of the trend rather than plotted as a zero, which would read as a
+collapse in field health rather than as missing data.
 
-### Download
-
-**Download** produces a real file named
-`Farm Name_Crop Name_Season Year_Flight No.pdf` — `Content-Disposition:
-attachment` plus a matching `download` attribute on the link, so it saves
-straight to disk with no viewer tab and no Save-as dialog. Renders take about a
-second, so each one is cached against a key derived from the report's own
-content; edit any finding and the cache invalidates itself. Every flight of a
-season shares a farm, a crop and a season, so the **flight number is part of the
-name**: without it each new report would land on top of the last one in the
-farmer's downloads folder.
-
-### The season page
-
-Off by default, because the brief for this report was three pages. Set
-`REPORT_SEASON_PAGE=1` to append a fourth once a season has two flights with
-findings. It reports plain counts — areas marked and acres marked per flight —
-for the same reason page 1 does.
-
-### What this version does not do
-
-Worth saying plainly, because none of it is hidden by the layout:
-
-* **The map pins are not recoloured by category.** The map is the image the
-  agronomist exported, and its pins carry DroneDeploy's own colour. The key on
-  page 2 explains the category system, but making the pins match it needs either
-  a DroneDeploy export coloured by category or the map drawn from geometry
-  rather than uploaded as a picture. That is the next real piece of work here.
-* **The classifier is keyword-based.** It reads the words the agronomist typed.
-  It has no understanding of them, and an annotation phrased unusually will need
-  correcting on the review page.
-* **A summary that says nothing is a summary of an empty annotation.** If a
-  finding has an observation but no cause, page 1 says so rather than filling
-  the gap.
-
----
+The **field health score** on the cover is the share of the field in good shape,
+counting watch zones at 55% and zones needing action at 0%. The report prints
+that definition on its closing page, so a farmer can check the number rather
+than trust it.
 
 ## Security headers
 
-A scan in August 2026 came back with none of the six headers a browser uses to
-constrain a page. `security.py` sets them on every response, in one place, so a
-route added later cannot ship without them.
+Every response carries the headers a browser uses to defend the page. They are
+set in `app.py` rather than at the proxy, so they travel with the application to
+whatever host it is deployed on.
 
-| Header | Value | What it is doing here |
-|---|---|---|
-| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Stops the first request of a later visit going out over plain HTTP, where the farmer's share link — token and all — would travel in clear. Sent only on a request that already arrived over HTTPS. |
-| `Content-Security-Policy` | see below | Confines scripts, styles, fonts and images to this origin plus the two CDNs the app really loads. |
-| `X-Frame-Options` | `SAMEORIGIN` | With `frame-ancestors`, keeps the app out of a third party's iframe. |
-| `X-Content-Type-Options` | `nosniff` | An uploaded map is served as an image and must never be sniffed into a document. |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` | The farmer's report URL contains its own access token. This sends the origin and never the path to another site. |
-| `Permissions-Policy` | 22 features denied | Turns off the device APIs the app never uses, so injected script cannot reach for them either. |
+| Header | Value |
+| --- | --- |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` |
+| `Content-Security-Policy` | `default-src 'self'`, with the Tailwind and Google Fonts origins allowed |
+| `X-Frame-Options` | `DENY` |
+| `X-Content-Type-Options` | `nosniff` |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` |
+| `Permissions-Policy` | camera, microphone, geolocation and the rest denied |
+| `Cross-Origin-Opener-Policy` | `same-origin` |
+| `Cross-Origin-Resource-Policy` | `same-origin` |
 
-Also set: `Cross-Origin-Opener-Policy`, `Cross-Origin-Resource-Policy`, and
-`X-Robots-Tag: noindex` — a tokenised report link in a search result is a token
-in the wrong hands. The session cookie is `HttpOnly`, `SameSite=Lax`, expires
-after twelve hours, and is `Secure` wherever `PORT` is set — which is Railway
-and every other PaaS, and is not a local HTTP machine, where a `Secure` cookie
-is silently dropped and the login just stops working with nothing to explain it.
+Two of those are worth explaining.
 
-### The CSP is a real constraint, not a complete one
+**HSTS is withheld over plain HTTP** and sent only when the request arrived over
+HTTPS, directly or through a proxy's `X-Forwarded-Proto`. A browser ignores it on
+an insecure connection anyway, and sending it in development would pin a machine
+to `https://localhost`.
 
-Two allowances are worth naming rather than burying:
+**`Referrer-Policy` is not cosmetic here.** A farmer's report link contains a
+share token, and that token *is* the credential. Without this header, following
+any outbound link from a report page would put the full URL — token included — in
+a `Referer` header sent to somebody else's server.
 
-* **`'unsafe-inline'`** — the interface is server-rendered Jinja with inline
-  `<style>` and `<script>` blocks and inline event handlers. Removing it means a
-  per-response nonce on every one of them.
-* **`'unsafe-eval'`** — Tailwind's Play CDN compiles utility classes in the
-  browser.
-
-Both are on by default and both come off with an environment variable, so the
-policy can be tightened without another release. The second one is already
-solved and waiting: `static/css/tailwind.css` is the same stylesheet built
-ahead of time (27 KB, against a ~110 KB script that then compiles on every page
-load). Turn it on with:
-
-```bash
-TAILWIND_LOCAL=1  CSP_ALLOW_EVAL=0
-```
-
-It is off by default only because this release could not diff it against the
-CDN's output pixel for pixel. Look at the app once with it on, and if nothing
-has moved, leave it on: it is faster on the connections agronomists actually
-have, it survives a CDN outage, and it removes a third-party script origin from
-the policy. `tailwind.config.js` documents how to rebuild it.
-
-Use `CSP_REPORT_ONLY=1` to see what a policy change would break before it
-breaks it.
-
----
-
-## Small screens
-
-Every page is checked at 375, 412, 768 and 1366 px — a real headless browser,
-walking every route, failing on any horizontal scroll. The app chrome stacks,
-the review table becomes labelled fields, and the report sheet scales rather
-than reflowing.
-
-Category colours run through the interface too, not only the report: the review
-page shows the category's own swatch beside the dropdown and repaints it as the
-selection changes, and the admin dashboard's issues-by-category chart draws each
-bar in its category colour. One table in `patterns.py` feeds all three, so a
-category cannot be one colour on the review screen and another on the farmer's
-map.
-
-`base.html` also carries four rules that do not depend on Tailwind having
-loaded at all. Without them, a blocked or slow CDN leaves every image at its
-natural size and a 611 px logo pushes the whole layout off a phone screen —
-which is exactly what happens today if the CDN is unreachable. They cost nothing
-when Tailwind does load.
-
----
+The CSP still permits `'unsafe-inline'` and `'unsafe-eval'` for scripts, because
+Tailwind is loaded from its CDN and compiles styles in the browser. Tightening
+that means moving to a compiled stylesheet, which is a build-step change rather
+than a header change.
 
 ## Project layout
 ```
@@ -449,22 +368,20 @@ shamba-tracker/
 ├── parsing.py         # CSV parsing + colour classification
 ├── integrations.py    # email + WhatsApp (env-key based, simulate if absent)
 ├── pdf_gen.py         # WeasyPrint PDF (graceful fallback)
-├── report_data.py     # zone numbers, banding, season trend, internal score
-├── patterns.py        # the report categories, the grouping, and the guardrail
-├── security.py        # response security headers + cookie hardening
+├── report_data.py     # field health score, banding, season trend, pagination
 ├── bulk_import.py     # CSV/Excel import of farms and flights
 ├── homepage.py        # editable homepage fields, defaults and helpers
+├── aggregation.py     # groups findings into the patterns the report is built from
 ├── schema.py          # additive migrations + share-token backfill
 ├── templates/         # Tailwind UI + report templates
-│   ├── report_doc.html    # THE report — three pages, screen/print/PDF, one file
+│   ├── report_doc.html    # THE report — screen, print and PDF, one file
+│   ├── report_v2.html     # THE report — three pages, screen, print and PDF
 │   ├── report.html        # app chrome around the document
 │   ├── report_print.html  # bare wrapper WeasyPrint renders
 │   ├── import.html        # bulk import upload + preview
 │   └── homepage_edit.html # admin editor for the public homepage
 ├── static/img/        # Acre logo (transparent + white)
 ├── static/fonts/      # Montserrat, bundled (see below)
-├── static/css/        # the built Tailwind stylesheet (opt-in, see above)
-├── tailwind.config.js # how to rebuild it
 ├── samples/           # sample DroneDeploy CSV + annotated map
 ├── tests/             # run each with `python tests/<name>.py`
 ├── Dockerfile         # Railway build (installs WeasyPrint libs)
