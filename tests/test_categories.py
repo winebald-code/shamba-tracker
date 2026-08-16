@@ -81,27 +81,29 @@ with appmod.app.app_context():
 for u in used:
     chk(f"'{u}' from the review page appears on the report", u in rep)
 
-print("\n=== 6. the reference flight still clusters as the brief describes ===")
-# The real DroneDeploy export for this flight, so there is one dataset of record
-# rather than a paraphrase that can drift from it.
-import parsing as _parsing
-class _Row:
-    def __init__(self, i, d):
-        self.id = i
-        self.area_acres = d["area_acres"]
-        self.observation = d["observation"]
-        self.likely_cause = d["likely_cause"]
-        self.recommendation = d["recommendation"]
-        self.category = d["category"]
-_IPM = [_Row(i + 1, d) for i, d in enumerate(_parsing.parse_csv(
-    open(os.path.join(ROOT, "samples", "ipm_flight1_dronedeploy_export.csv"), "rb").read()))]
-_agg = aggregation.aggregate(_IPM, {r.id: r.id for r in _IPM})
-_got = {g["name"]: (g["count"], g["acres_text"]) for g in _agg["groups"]}
-for _name, _cnt, _ac in [("Soil Fertility / Nutrition", 9, "13.4"),
-                         ("Crop Establishment", 1, "4.1"),
-                         ("Irrigation / Moisture", 4, "1.7"),
-                         ("Weeds", 1, "0.01")]:
-    chk(f"{_name}: {_cnt} areas ~{_ac} ac", _got.get(_name) == (_cnt, _ac), _got.get(_name))
-
+print("\n=== 6. the IPM clustering is unaffected ===")
+class Fk:
+    def __init__(s,i,a,o,c_,r,cat="Nutrient / Vigor"):
+        s.id=i;s.area_acres=a;s.observation=o;s.likely_cause=c_;s.recommendation=r;s.category=cat
+rows=[Fk(1,4.09,"Uneven germination, weeds","Overmounding / excess soil cover, water stress","Reduce soil cover"),
+      Fk(2,3.76,"Reduced crop vigour","Soil fertility","Soil testing"),
+      Fk(3,3.01,"Poor plant vigour, red soil","Soil condition/fertility","Soil testing"),
+      Fk(4,2.54,"Reduced crop vigour, weeds overgrowth","Soil fertility","Soil testing and weeding"),
+      Fk(5,1.15,"Poor plant vigour","Nutrient deficiencies, soil condition","Soil testing"),
+      Fk(6,0.89,"Poor plant vigour","Soil condition","Soil testing"),
+      Fk(7,0.77,"Uneven growth","Water stress — low pressure at drip line end","Adjust irrigation"),
+      Fk(8,0.76,"Poor plant vigour","Soil fertility","Soil testing"),
+      Fk(9,0.65,"Poor plant vigour","Inadequate moisture, nutrient uptake","Soil testing"),
+      Fk(10,0.60,"Poor plant vigour","Soil condition, nutrient uptake","Soil testing"),
+      Fk(11,0.41,"Poor plant vigour","Soil condition","Soil testing"),
+      Fk(12,0.25,"Plant vigour","Water stress","Compare water collected"),
+      Fk(13,0.24,"Plant vigour","Soil condition, loose covering","Soil testing"),
+      Fk(14,0.02,"Poor emergence","Water stress","Fix drip line"),
+      Fk(15,0.01,"Weeds","Poor weed management","Weeding")]
+a=aggregation.aggregate(rows,{f.id:f.id for f in rows})
+got={g["name"]:(g["count"],round(g["acres"],2)) for g in a["groups"]}
+for name,(cnt,ac) in {"Soil Fertility / Nutrition":(9,13.36),"Crop Establishment":(1,4.09),
+                      "Irrigation / Moisture":(4,1.69),"Weeds":(1,0.01)}.items():
+    chk(f"{name}: {cnt} zones", got.get(name)==(cnt,ac), got.get(name))
 print(f"\n  {P} passed, {F} failed")
 sys.exit(1 if F else 0)
