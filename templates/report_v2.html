@@ -165,64 +165,32 @@ h2.sec.tight { margin-top:13px !important; }
         color:#9A9A9A; }
 .foot .r { float:right; }
 
-@media screen and (max-width:820px) {
-  /* On a phone the sheet stops pretending to be paper: fixed millimetre
-     heights would either clip the content or leave a long blank gap. */
-  .sheet { width:100%; height:auto; min-height:0; padding:20px 16px 26px; }
-  .foot { position:static; margin-top:18px; }
-  .cats td, .legend td { display:block; width:100%; padding-right:0; padding-bottom:7px; }
-  .dt table, .dt tbody, .dt tr, .dt td { display:block; width:100%; }
-  .dt thead { display:none; }
-  .dt tr { border:1px solid #E2E2DC; border-radius:5px; padding:8px 10px;
-           margin-bottom:8px; }
-  .dt td { border:none; padding:2px 0; }
-  .dt td::before { content:attr(data-l); display:block; font-size:7.5px;
-                   font-weight:700; letter-spacing:.09em; text-transform:uppercase;
-                   color:#9A9A9A; }
-  .dt .z, .dt .ac { width:auto; }
+/* ---------------------------------------------------------------- small screens
+   The sheet is not reflowed. A phone gets the same A4 page the printer and the
+   PDF produce, fitted to the width of the screen the way a PDF viewer fits a
+   page when you open it, and pinch-zoom works on it for the same reason it
+   works on a PDF.
 
-  /* Reflowing the layout was only half of it. The type is set for A4, where a
-     sheet is read at arm's length; the same sizes on a handset put the detail
-     table at 8.8px, which is not a size anybody reads a field report at. These
-     bring it up to what the rest of the product uses on a phone. Print is a
-     separate media context and keeps the A4 scale. */
-  .rd { font-size:14px; line-height:1.6; }
+   Reflowing was the other option and it is the wrong one here. It hands a
+   farmer reading on a handset a different-looking document from the one their
+   agronomist has open on a laptop and the one attached to the message, so a
+   conversation about "the box at the top of page one" stops working. Design
+   fidelity is worth more than a larger default type size when zooming is one
+   gesture away.
 
-  /* The masthead stacks and drops its logo: the app bar directly above it is
-     already showing the same mark, and two of them is the first thing on the
-     first screen. The PDF keeps it — print never reads this block. */
-  .rhead, .rhead tbody, .rhead tr, .rhead td { display:block; width:auto; }
-  .rhead td:first-child { display:none; }
-  .rhead .right { text-align:left; }
-  .rhead .eyebrow { font-size:10px; display:block; }
-  .rhead .farm { font-size:22px; display:block; margin-top:2px; }
-
-  /* Four facts stacked is four rows of dark green before the reader reaches a
-     word of the report. Two across keeps the block to a glance. */
-  .facts, .facts tbody { display:block; }
-  .facts tr { display:flex; flex-wrap:wrap; }
-  .facts td { display:block; width:50%; padding:8px 12px; }
-  .facts .k { font-size:9.5px; }
-  .facts .v { font-size:14px; }
-  .lede { font-size:15px; line-height:1.6; }
-  h2.sec { font-size:16px; }
-  .cat-card .nm { font-size:13px; }
-  .cat-card .n { font-size:23px; }
-  .cat-card .ac { font-size:12px; }
-  .obs .txt { font-size:14px; line-height:1.6; }
-  .sug li { font-size:13.5px; line-height:1.6; padding-left:14px; }
-  .mapnote { font-size:12.5px; }
-  .legend .lb { font-size:13px; }
-  .ddlink .t { font-size:14px; }
-  .ddlink .d { font-size:12px; }
-  .grp h3 { font-size:15px; }
-  .dt table { font-size:13.5px; }
-  .dt tr { padding:11px 13px; margin-bottom:10px; }
-  .dt td { padding:3px 0; }
-  .dt td::before { font-size:10px; }
-  .dt .cmt { font-size:12px; }
-  .foot { font-size:9.5px; }
-  .foot .r { float:none; display:block; margin-top:3px; }
+   --sheet-fit is set by the script at the end of this file. zoom is used rather
+   than transform because it also shrinks the box the sheet occupies, so the
+   page does not end in a column of dead white space. */
+@media screen {
+  .sheet { zoom: var(--sheet-fit, 1); }
+}
+@supports not (zoom: 1) {
+  @media screen {
+    .sheet { transform: scale(var(--sheet-fit, 1)); transform-origin: top center; }
+  }
+}
+@media print {
+  .sheet { zoom: 1; transform: none; }
 }
 </style>
 
@@ -413,3 +381,34 @@ h2.sec.tight { margin-top:13px !important; }
 </section>
 
 </div>
+
+{% if not pdf %}
+<script>
+  // Fit the A4 sheet to the width available, the way a PDF viewer does on open.
+  // The document is never reflowed, so what a farmer reads on a phone is the
+  // page their agronomist is looking at and the page inside the download.
+  (function () {
+    var wrap = document.querySelector('.rdwrap') || document.body;
+    var root = document.documentElement;
+
+    function fit() {
+      var sheet = document.querySelector('.sheet');
+      if (!sheet) return;
+      root.style.setProperty('--sheet-fit', 1);          // measure unscaled
+      var natural = sheet.offsetWidth || 794;            // 210mm at 96dpi
+      var room = wrap.clientWidth - 4;
+      var scale = Math.min(1, room / natural);
+      root.style.setProperty('--sheet-fit', scale > 0.15 ? scale.toFixed(4) : 1);
+    }
+
+    fit();
+    window.addEventListener('resize', fit);
+    window.addEventListener('orientationchange', function () { setTimeout(fit, 150); });
+    // Print and the PDF are always full size; the dialog reads the page after
+    // beforeprint, so resetting here is enough.
+    window.addEventListener('beforeprint', function () { root.style.setProperty('--sheet-fit', 1); });
+    window.addEventListener('afterprint', fit);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+  })();
+</script>
+{% endif %}

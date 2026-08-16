@@ -38,10 +38,18 @@ c=appmod.app.test_client(); c.post("/login",data={"email":"a@a.com","password":"
 
 print("=== responsive rules ===")
 page=c.get(f"/flights/{FLID}/report").data.decode()
-chk("report has a mobile breakpoint","@media screen and (max-width:820px)" in page)
-chk("sheet width resets on small screens", re.search(r'max-width:820px\)\s*\{.*?\.sheet\s*\{[^}]*width:100%', page, re.S) is not None)
-chk("detail tables reflow to cards", "data-l=" in page and ".dt thead { display:none; }" in page)
+# The report is not reflowed on a phone. It is the same A4 page the printer and
+# the PDF produce, fitted to the screen the way a PDF viewer fits a page on
+# open, with pinch-zoom left available for reading it.
+chk("the sheet keeps its A4 width at every screen size",
+    "@media screen and (max-width:820px)" not in page)
+chk("it is fitted to the width instead of reflowed", "--sheet-fit" in page)
+chk("fitting is screen-only; print renders full size",
+    "@media print {\n  .sheet { zoom: 1; transform: none; }" in page)
+chk("a browser without zoom still gets a fitted page", "@supports not (zoom: 1)" in page)
 chk("viewport meta present", 'name="viewport"' in page)
+chk("pinch-zoom is not blocked",
+    "user-scalable=no" not in page and "maximum-scale" not in page)
 print("\n=== the report on a large screen ===")
 # The sheets are a fixed 210mm. In a wide container they would sit against the
 # left edge with the rest of the width empty, which is what a laptop shows.

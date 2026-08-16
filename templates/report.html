@@ -14,6 +14,9 @@
   /* Breathing room around the sheets on screen. The print path takes none of
      this, so the page box still supplies the only margin on paper. */
   @media screen { .rdwrap { padding: 20px 16px 40px; } }
+  /* On a phone the padding is what the sheet would otherwise be scaled down to
+     make room for, so it comes off and the page gets the width instead. */
+  @media screen and (max-width: 820px) { .rdwrap { padding: 10px 6px 28px; } }
   @media print  { .rdwrap { padding: 0; } }
 </style>
 <div class="min-h-screen bg-canvas">

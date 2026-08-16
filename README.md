@@ -130,7 +130,7 @@ python tests/test_responsive.py      # every page on a phone-sized viewport
 python tests/test_categories.py      # one category list across review and report
 ```
 
-356 checks at the time of writing.
+358 checks at the time of writing.
 
 ---
 
@@ -319,19 +319,28 @@ Two things hold that guarantee up:
 * **Findings are paginated in Python** (`report_data.paginate`), not left to the
   renderer, so a card is never split and both engines break in the same places.
 
-Below 820px the sheets stop pretending to be paper: fixed millimetre heights
-would either clip the content or leave a long blank gap, so the sheet reflows,
-the masthead stacks, the header facts go two across and each row of the detail
-table becomes a labelled card.
+### On a small screen
 
-The type comes up with it. Reflowing the layout while keeping the A4 type scale
-left the detail table at 8.8px on a handset — the same document, and not a size
-anyone reads a field report at. Body text now lands at 14px and the table at
-13.5px. None of it reaches print: `@media print` is a separate context and keeps
-the A4 scale, so the PDF is unchanged.
+The report is **not reflowed**. A phone gets the same A4 page the printer and the
+PDF produce, fitted to the width of the screen the way a PDF viewer fits a page
+when you open it, with pinch-zoom left available for reading it.
 
-Every route is walked in a real browser at 320, 375, 412, 768 and 1366px, and
-any horizontal scroll fails the check (`tests/test_responsive.py`).
+That is a deliberate trade. Reflowing gives a larger default type size, but it
+hands a farmer reading on a handset a different-looking document from the one
+their agronomist has open on a laptop and the one attached to the message — so a
+conversation about "the box at the top of page one" stops working. Design
+fidelity is worth more than default type size when zooming is one gesture away.
+
+A script sets `--sheet-fit` from the width available; `zoom` is used rather than
+`transform` because it also shrinks the box the sheet occupies, so the page does
+not end in a column of dead white space. A browser without `zoom` falls back to
+`transform`. Print resets the scale to 1, so nothing here reaches the PDF.
+
+Measured fit: 0.40 at 320px, 0.47 at 375px, 0.51 at 412px, 0.96 at 768px, and
+full size from about 820px up. Every route is walked in a real browser at those
+widths and any horizontal scroll fails the check
+(`tests/test_responsive.py`). The rest of the application — dashboards, the
+review table, the import page — is responsive in the ordinary way.
 
 **Download** produces a real file named `Farm Name_Crop Name_Season Year_Flight No.pdf` —
 `Content-Disposition: attachment` plus a matching `download` attribute on the
