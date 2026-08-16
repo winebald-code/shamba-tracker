@@ -342,9 +342,9 @@ def report_context(flight):
 
     analysis = report_data.analyse(flight, prev)
 
-    # V2 groups the flight's findings into the few patterns actually present in
-    # them, rather than listing every zone. The map numbers are passed in so the
-    # summary, the map and the detail tables all refer to a zone by one number.
+    # The findings are grouped into the few patterns actually present in them
+    # rather than listed one by one. The map numbers go in with them so the
+    # summary, the map key and the detail tables all call a zone by one number.
     agg = aggregation.aggregate(flight.findings, analysis.get("numbers"))
     points = report_data.season_trend(flight, season_flights)
     season = report_data.season_summary(points, analysis["score"]) if points else None

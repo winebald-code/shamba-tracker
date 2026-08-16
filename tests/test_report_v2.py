@@ -28,21 +28,12 @@ def chk(l,c,d=""):
     global P,F
     print(("  [PASS] " if c else "  [FAIL] ")+l+("" if c else "  -> "+str(d))); P,F=(P+1,F) if c else (P,F+1)
 
-IPM=[(4.09,"Uneven germination, weeds","Overmounding / excess soil cover, water stress","Reduce soil cover, maintain proper mound height"),
- (3.76,"Reduced crop vigour","Soil fertility","Soil testing"),
- (3.01,"Poor plant vigour, red soil","Soil condition/fertility","Soil testing"),
- (2.54,"Reduced crop vigour, weeds overgrowth","Soil fertility","Soil testing and weeding"),
- (1.15,"Poor plant vigour","Nutrient deficiencies, soil condition","Soil testing"),
- (0.89,"Poor plant vigour","Soil condition","Soil testing"),
- (0.77,"Uneven growth","Water stress — low pressure at drip line end","Compare water vs. healthy section, adjust irrigation"),
- (0.76,"Poor plant vigour","Soil fertility","Soil testing"),
- (0.65,"Poor plant vigour","Inadequate moisture, nutrient uptake","Soil testing; compare water vs. healthy section"),
- (0.60,"Poor plant vigour","Soil condition, nutrient uptake","Soil testing"),
- (0.41,"Poor plant vigour","Soil condition","Soil testing"),
- (0.25,"Plant vigour","Water stress","Compare water collected vs. other section"),
- (0.24,"Plant vigour","Soil condition, loose covering","Soil testing"),
- (0.02,"Poor emergence","Water stress","Fix drip line on the ridge"),
- (0.01,"Weeds","Poor weed management","Weeding")]
+# The real DroneDeploy export for this flight, so the fixture cannot drift from
+# the file the agronomist actually produced.
+import parsing as _parsing
+IPM = [(d["area_acres"], d["observation"], d["likely_cause"], d["recommendation"])
+       for d in _parsing.parse_csv(open(os.path.join(
+           ROOT, "samples", "ipm_flight1_dronedeploy_export.csv"), "rb").read())]
 
 with appmod.app.app_context():
     fm=Farm(name="IPM Farm",crop="Potatoes",acreage=38.0,farmer_name="J. Mwangi",location="Nakuru")
@@ -154,6 +145,34 @@ chk("the largest pattern leads", _a["groups"][0]["name"] == "Irrigation / Moistu
     _a["groups"][0]["name"])
 chk("suggestions separate distinct recommendations",
     "; " in _a["groups"][0]["suggestion"], _a["groups"][0]["suggestion"][:70])
+
+print("\n=== 6. a long flight is paged rather than clipped ===")
+# The detail sheet is a fixed height with the page box supplying no margin, so
+# anything past the bottom is cut off rather than flowed. Before this was paged
+# in Python, half of a forty-finding flight vanished from the PDF without a
+# word, which is the worst way for a report to be wrong.
+class _Long:
+    def __init__(self, i):
+        self.id = i
+        self.area_acres = round(0.5 + i * 0.13, 2)
+        self.observation = f"Zone {i}: patchy growth visible across the block on this pass"
+        self.likely_cause = "Soil fertility, nutrient uptake running short across this block"
+        self.recommendation = ("Soil testing to identify nutrient deficiencies and guide the "
+                               "correct fertilizer application")
+        self.category = "Needs Investigation"
+
+for _n in (1, 15, 40, 150):
+    _rows = [_Long(i + 1) for i in range(_n)]
+    _a = _agg.aggregate(_rows, {r.id: r.id for r in _rows})
+    _paged = sum(len(b["rows"]) for page in _a["detail_pages"] for b in page)
+    chk(f"{_n} findings: every one lands on a sheet", _paged == _n, _paged)
+    chk(f"{_n} findings: at least one sheet", len(_a["detail_pages"]) >= 1)
+_a = _agg.aggregate([_Long(i + 1) for i in range(150)],
+                    {i + 1: i + 1 for i in range(150)})
+chk("a split group repeats its heading",
+    any("(continued)" in b["heading"] for page in _a["detail_pages"] for b in page))
+chk("no sheet is left empty",
+    all(page for page in _a["detail_pages"]))
 
 print(f"\n  {P} passed, {F} failed")
 sys.exit(1 if F else 0)

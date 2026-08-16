@@ -1,9 +1,10 @@
 """
-Grouping a flight's findings into the patterns the V2 report is built from.
+Grouping a flight's findings into the patterns a report is built from.
 
-V1 listed all fifteen zones one after another, nine of them near-identical
-entries under a single category. That is an annotation dump, not a report. This
-turns the same rows into the small number of patterns actually present in them.
+A flight can produce a dozen or more annotations, many of them near-identical.
+Listing every one is an annotation dump rather than a report, so this turns the
+rows into the small number of patterns actually present in them: how many areas
+share a cause, how much ground they cover, and one sentence describing each.
 
 The rule this module exists to enforce:
 
@@ -11,19 +12,19 @@ The rule this module exists to enforce:
     introduce a cause, a diagnosis or a recommendation that does not already
     appear in the source annotations.
 
-So there is no model here and no generated prose in the sense of invention.
-Sentences are assembled from the agronomist's own counts, acreages and words.
-Where a phrase has to be chosen — the name of a pattern, say — it is chosen from
-a fixed vocabulary keyed off the words already in the likely-cause text, never
-written fresh.
+So there is no model here and no invented prose. Sentences are assembled from
+the agronomist's own counts, acreages and words. Where a phrase has to be
+chosen — the name of a pattern, say — it comes from a fixed vocabulary keyed off
+words already in their text, never written fresh.
 
-The report-facing categories are separate from the internal severity colours the
-agronomists use while annotating. That code stays as it is for triage; this maps
-into a farmer-facing set that answers "what kind, and where" rather than "how
-urgent".
+The categories here are the farmer-facing ones. They answer "what kind, and
+where", which is a different question from the urgency colours the agronomists
+use while annotating, and the two are deliberately kept apart.
 """
 import decimal
 import re
+
+from markupsafe import Markup, escape
 
 # ----------------------------------------------------------------- categories
 # The report-facing set, in the order they appear in the legend. Colour is by
@@ -61,17 +62,17 @@ DIRECT_MAP = {
 #
 # Ordered most specific first: a cause naming both mounding and water stress is
 # a crop establishment problem, because the mounding is the thing being blamed.
-# Ordered most specific first, and the first match wins.
+# Ordered most specific first; on a tie the earlier category wins.
 #
-# The order is a judgement rather than an accident. A cause naming mounding is a
-# crop establishment problem even when it also mentions water stress, because
-# the mounding is the thing being blamed. A cause naming an organism is a pest
-# problem even when it mentions the weedy edge that organism came in from — so
-# Weeds sits last and claims a finding only when nothing else explains it.
+# The order is a judgement. A cause naming mounding is a crop establishment
+# problem even when it also mentions water stress, because the mounding is the
+# thing being blamed. A cause naming an organism is a pest problem even when it
+# mentions the weedy edge that organism came in from, so Weeds sits last and
+# claims a finding only when nothing else explains it.
 #
-# Keywords are matched as substrings, so each has to be long enough not to fire
-# inside an unrelated word. "ph" used to sit in the fertility list and matched
-# the "ph" in "aphid"; it is now "soil ph".
+# Keywords match as substrings, so each is long enough not to fire inside an
+# unrelated word: "soil ph" rather than "ph", which would match "aphid", and
+# "root rot" rather than "rot", which would match "rotation".
 CAUSE_PATTERNS = [
     ("Crop Establishment", [
         "overmound", "over-mound", "mounding", "mound height", "mound",
@@ -97,6 +98,10 @@ CAUSE_PATTERNS = [
         "deficien", "uptake", "nitrogen", "phosph", "potass", "npk", "manure",
         "fertiliser", "fertilizer", "top-dress", "topdress", "soil ph",
         "acidity", "organic matter",
+        # The usual wording for a nutrition problem. Written in full rather
+        # than as "vigour", which would also match "vigorous" and pull a
+        # healthy patch in here.
+        "plant vigour", "crop vigour", "plant vigor", "crop vigor",
     ]),
     ("Weeds", [
         "weed",
@@ -108,31 +113,53 @@ def _norm(text):
     return " ".join(str(text or "").lower().split())
 
 
+# How much each field counts towards a category.
+#
+# The cause carries the most weight because it is where the agronomist wrote
+# down their reading of the problem. The recommendation and the observation
+# corroborate it, and together can outweigh it: an area whose cause reads "water
+# stress" but whose observation is "weeds" and recommendation is "weeding" is a
+# weed problem, and reading the cause alone would file it under irrigation.
+FIELD_WEIGHTS = (("likely_cause", 3), ("recommendation", 2), ("observation", 2))
+
+
+def classify_text(observation="", likely_cause="", recommendation=""):
+    """
+    The report category the agronomist's own words point to, or "" for none.
+
+    Scored rather than first-match, so a field mentioning two categories does
+    not decide the answer on its own. Ties go to whichever category is declared
+    first in CAUSE_PATTERNS, which keeps an aphid finding out of Weeds when its
+    cause names the weedy edge the aphids came in from.
+    """
+    fields = {"observation": _norm(observation),
+              "likely_cause": _norm(likely_cause),
+              "recommendation": _norm(recommendation)}
+    scores = {}
+    for name, words in CAUSE_PATTERNS:
+        total = sum(weight for field, weight in FIELD_WEIGHTS
+                    if any(w in fields[field] for w in words))
+        if total:
+            scores[name] = total
+    if not scores:
+        return ""
+    order = [name for name, _words in CAUSE_PATTERNS]
+    return max(scores, key=lambda name: (scores[name], -order.index(name)))
+
+
 def classify(finding):
     """
     The report category for one finding.
 
-    The likely cause is read first, because it is where the agronomist recorded
-    what they actually think is happening. The category they picked is the
-    fallback, since in V1 it was often the same broad label for everything.
+    The agronomist's own text decides it. The category stored against the
+    finding is a fallback, since on import it is suggested rather than chosen.
     """
-    cause = _norm(finding.likely_cause)
-    obs = _norm(finding.observation)
-    haystack = f"{cause} {obs}"
-
-    if cause:
-        for name, words in CAUSE_PATTERNS:
-            if any(w in cause for w in words):
-                return name
-
-    direct = DIRECT_MAP.get(_norm(finding.category))
-    if direct:
-        return direct
-
-    for name, words in CAUSE_PATTERNS:
-        if any(w in haystack for w in words):
-            return name
-    return "Needs Investigation"
+    name = classify_text(getattr(finding, "observation", ""),
+                         getattr(finding, "likely_cause", ""),
+                         getattr(finding, "recommendation", ""))
+    if name:
+        return name
+    return DIRECT_MAP.get(_norm(getattr(finding, "category", ""))) or "Needs Investigation"
 
 
 # ----------------------------------------------------------------- phrasing
@@ -168,7 +195,7 @@ def _phrases(findings, field, limit=3):
     """
     seen = {}
     for f in findings:
-        raw = (getattr(f, field, "") or "").strip().rstrip(".")
+        raw = (getattr(f, field, "") or "").strip().rstrip(".:;, ")
         if not raw:
             continue
         key = _norm(raw)
@@ -217,17 +244,19 @@ def _observation_sentence(group):
     causes = _phrases(group["findings"], "likely_cause", 2)
 
     if n == 1:
-        head = f"One area ({acres} acres)" if acres else "One area"
-        # fall through
+        head = f"One area (~{acres} acres)" if acres else "One area"
     else:
-        head = f"{_count_word(n).capitalize()} areas ({acres} acres in total)" if acres \
-               else f"{_count_word(n).capitalize()} areas"
+        head = (f"{_count_word(n).capitalize()} areas (~{acres} acres in total)" if acres
+                else f"{_count_word(n).capitalize()} areas")
+    head = Markup(f"<b>{escape(head)}</b>")
 
     obs_text = _join([o[0].lower() + o[1:] for o in obs]) if obs else "an observation worth noting"
-    sentence = f"{head} showed {obs_text}"
+    sentence = f"{head} showed {escape(obs_text)}"
     if causes:
-        sentence += f", associated with {_join([c[0].lower() + c[1:] for c in causes])}"
-    return sentence + "."
+        sentence += f", associated with {escape(_join([c[0].lower() + c[1:] for c in causes]))}"
+    # Markup because the lead carries a <b>; everything interpolated around it is
+    # escaped first, so the agronomist's own text can never inject markup.
+    return Markup(sentence + ".")
 
 
 def _suggestion(group):
@@ -239,19 +268,33 @@ def _suggestion(group):
     distinct ones are offered together. Nothing new is proposed.
     """
     recs = _phrases(group["findings"], "recommendation", 3)
+    biggest = group["findings"][0]
+    zone = group["zones"][0]
+    # Two forms: one that sits inside brackets already, and one that carries its
+    # own, so neither ends up with nested parentheses or a run of commas.
+    inline = f"zone {zone}"
+    standalone = f"zone {zone}"
+    if biggest.area_acres:
+        inline += f", ~{_acres(biggest.area_acres)} acres"
+        standalone += f" (~{_acres(biggest.area_acres)} acres)"
+
     if not recs:
-        return (f"No specific next step was recorded against the "
-                f"{group['name'].lower()} areas, so they may be worth a closer look.")
+        return (f"No next step was recorded against the {group['name'].lower()} "
+                "areas, so they may be worth a closer look.")
+
+    # Attributed rather than instructed: "the agronomist suggested" offers the
+    # farmer what was written, where the imperative the agronomist used for
+    # their own notes would read as an order.
     cleaned = [r[0].lower() + r[1:] for r in recs]
     if group["count"] == 1:
-        zone = group["zones"][0]
-        return f"For the one area here (zone {zone}), the agronomist recorded: {cleaned[0]}."
-    # Separate recommendations are joined with semicolons rather than "and".
-    # Several of them are themselves two clauses joined by "and", so chaining
+        return f"For the one area here ({inline}), the agronomist suggested: {cleaned[0]}."
+    # Distinct recommendations are separated by semicolons rather than "and",
+    # because several are themselves two clauses joined by "and" and chaining
     # them that way produced a sentence that ran on without a break in it.
-    return (f"Across the {_count_word(group['count'])} areas here, the agronomist "
-            f"recorded: {'; '.join(cleaned)}. The largest of them may be the most "
-            "useful place to start.")
+    acres = f" (~{group['acres_text']} acres)" if group["acres_text"] else ""
+    return (f"Across the {_count_word(group['count'])} areas in this pattern{acres}, "
+            f"the agronomist suggested: {'; '.join(cleaned)}. The largest, "
+            f"{standalone}, may be the most useful place to start.")
 
 
 # ----------------------------------------------------------------- aggregation
@@ -308,7 +351,76 @@ def aggregate(findings, numbers=None):
         "total_acres_text": _acres(total_acres) if total_acres else "",
         "category_count": len(groups),
         "legend": REPORT_CATEGORIES,
+        "detail_pages": paginate_groups(groups),
     }
+
+
+# ----------------------------------------------------------------- pagination
+# A detail sheet is a fixed 210 x 297 mm with the page box supplying no margin,
+# so anything past the bottom is clipped rather than flowed onto a new page. A
+# flight with enough findings would silently lose them, so the groups are packed
+# into as many sheets as they need before the template draws anything.
+#
+# Heights are estimated in pixels at the document's own type sizes rather than
+# measured, because the same numbers have to hold in a browser and in
+# WeasyPrint, and only an estimate can be shared by both.
+DETAIL_BUDGET_PX = 780          # usable height of one detail sheet, with
+                                # headroom: the row heights are estimated, and a
+                                # split run also carries a second caption line
+GROUP_OVERHEAD_PX = 52          # group heading, table header row and spacing
+ROW_BASE_PX = 12                # cell padding above and below
+LINE_PX = 13.2                  # one wrapped line in a detail cell
+# Characters per line in each text column. The table lays itself out on its
+# content, and the recommendation is reliably the longest of the three, so it
+# takes roughly twice the width of the observation.
+DETAIL_CHARS_PER_LINE = {"observation": 30, "likely_cause": 36, "recommendation": 64}
+
+
+def _row_height(finding):
+    lines = 1
+    for field, per_line in DETAIL_CHARS_PER_LINE.items():
+        text = getattr(finding, field, "") or ""
+        lines = max(lines, -(-len(text) // per_line))
+    return ROW_BASE_PX + lines * LINE_PX
+
+
+def paginate_groups(groups, budget=DETAIL_BUDGET_PX):
+    """
+    Pack the detail groups onto as many sheets as they need.
+
+    A group too long for one sheet is split, and the continuation carries its
+    heading again so a reader landing on the later page still knows what they
+    are looking at.
+    """
+    pages, page, used = [], [], 0.0
+    for g in groups:
+        rows = list(zip(g["findings"], g["zones"]))
+        first = True
+        while rows:
+            if page and used + GROUP_OVERHEAD_PX + _row_height(rows[0][0]) > budget:
+                pages.append(page)
+                page, used = [], 0.0
+            used += GROUP_OVERHEAD_PX
+            take = []
+            while rows:
+                height = _row_height(rows[0][0])
+                if take and used + height > budget:
+                    break
+                take.append(rows.pop(0))
+                used += height
+            page.append({
+                "name": g["name"],
+                "colour": g["colour"],
+                "heading": g["heading"] if first else f"{g['heading']} (continued)",
+                "rows": take,
+            })
+            first = False
+            if rows:                      # more of this group than the sheet holds
+                pages.append(page)
+                page, used = [], 0.0
+    if page:
+        pages.append(page)
+    return pages
 
 
 def summary_sentence(agg, flight, farm):

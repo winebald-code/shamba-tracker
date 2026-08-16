@@ -31,6 +31,11 @@ Built with Flask · SQLite · Tailwind CSS · vanilla JS · WeasyPrint. Ready fo
 | Grey | Pending review (logged, awaiting agronomist) |
 
 Any hex a pin uses in DroneDeploy is bucketed to the nearest meaning by hue.
+Colour is never used to choose a category: it records how urgent an area is,
+while a category records what kind of problem it is, and one cannot be derived
+from the other. On a flight where every pin was the same red, deriving one from
+the other filed all fifteen findings under a single heading whatever the notes
+said.
 
 ### Categories
 
@@ -46,9 +51,16 @@ report:
 | Weeds | Slate green |
 | Needs Investigation | Purple |
 
-The colour code says *how urgent*; the category says *what kind*. Both matter,
-but only the category reaches the farmer's map, because that is the question a
-map answers well.
+The colour code says *how urgent*; the category says *what kind*. They are two
+systems answering two questions, and neither is derived from the other.
+
+The pins on the aerial image carry whatever colour the agronomist chose in
+DroneDeploy, because that image is their annotation, not ours to repaint. So the
+report gives the map a **zone key** instead: each category present on the flight,
+in its own colour, listing the zone numbers that belong to it. A farmer reads a
+number off the image and finds it in the key. Only categories the flight actually
+produced appear there — a colour on the key always points at something on the
+map.
 
 These are defined once, in `aggregation.py`, and the review page reads the same
 list. They used to be two lists, so a finding filed as "Nutrient / Vigor" while
@@ -108,6 +120,7 @@ python tests/test_generate_gate.py    # what a report needs before it generates
 python tests/test_report_v2.py       # pattern grouping, report voice, security headers
 python tests/test_responsive.py      # every page on a phone-sized viewport
 python tests/test_categories.py      # one category list across review and report
+python tests/test_real_flight.py     # the reference flight, from its real export
 ```
 
 ---
@@ -265,7 +278,9 @@ Two rules govern what the summary is allowed to say:
   order". An annotation records what was seen and what the agronomist suspects,
   not a result.
 
-Clustering reads the **likely cause** rather than the category label, which is
+Clustering scores the agronomist's own words across all three fields — the
+likely cause counts most, with the recommendation and observation corroborating
+it — which is
 what separates irrigation from soil fertility when both were filed under one
 broad heading. Patterns are ordered by acreage so the largest finding leads, and
 genuinely different causes stay apart rather than being merged for tidiness — on
@@ -297,10 +312,14 @@ Two things hold that guarantee up:
 * **Findings are paginated in Python** (`report_data.paginate`), not left to the
   renderer, so a card is never split and both engines break in the same places.
 
-Below 820px the sheets stop pretending to be paper: fixed millimetre heights
-would either clip the content or leave a long blank gap, so the sheet reflows and
-the detail tables become cards. The rest of the application is responsive
-throughout.
+On a small screen the report is scaled to fit rather than rearranged, so a
+farmer opening it on a handset sees the same page their agronomist sees and the
+same one that comes out of a printer. The rest of the application reflows
+normally.
+
+A flight with more findings than one sheet holds is paged across as many as it
+needs, because the sheet is a fixed height and anything past the bottom would be
+clipped rather than carried over.
 
 **Download** produces a real file named `Farm Name_Crop Name_Season Year_Flight No.pdf` —
 `Content-Disposition: attachment` plus a matching `download` attribute on the
