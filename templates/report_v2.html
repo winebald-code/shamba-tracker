@@ -1,28 +1,25 @@
 {#
-  The report — three pages, in the house style.
+  The V2 report document — three pages.
 
-  Cathy's V2 brief changed the structure, not the look. What she praised in V1
-  ("the structure holds together, the map is clear") is the visual language, so
-  this keeps V1's typography, palette, rules and furniture exactly, and changes
-  only what is on the pages:
+  Page 1  Field scouting summary: what was scouted, the categories found, the
+          patterns behind them, and areas worth investigating. No per-zone list.
+  Page 2  The farm map, with zones coloured by category.
+  Page 3  Every annotation the agronomist wrote, grouped under its pattern.
 
-    Page 1  Field scouting summary — what was scouted, the categories found,
-            the patterns behind them, and areas worth investigating. No
-            per-zone entries at all.
-    Page 2  Farm map, coloured by category, with a full legend.
-    Page 3  Detailed findings — every annotation, unchanged, grouped under the
-            pattern it belongs to.
-
-  One file for screen, print and PDF, so the three cannot drift apart. Each
+  This one file is the report on screen, the report the browser prints, and the
+  report WeasyPrint turns into a PDF, so the three cannot drift apart. Each
   .sheet is exactly 210 x 297 mm with no page margin, so what sits on one sheet
   on screen sits on one page on paper.
 
-  Nothing on pages 1 or 3 is written here — every sentence comes from
-  aggregation.py, assembled from the agronomist's own words.
+  The voice throughout is the V2 brief's: objective, concise, and no more
+  certain than the annotations behind it. Nothing on page 1 or 3 is written
+  here — every sentence comes from aggregation.py, assembled out of the
+  agronomist's own words.
 
-  Context: flight, farm, findings, agg, summary_line, season
-           pdf              -> True when rendering through WeasyPrint
-           logo_uri/map_uri -> data URIs, only when pdf is True
+  Context it expects:
+    flight, farm, findings, agg (aggregation.aggregate output), summary_line
+    pdf               -> True when rendering through WeasyPrint
+    logo_uri/map_uri  -> data URIs, only when pdf is True
 #}
 {% set pdf = pdf|default(false) %}
 {% set font_base = 'static/fonts/' if pdf else url_for('static', filename='fonts/') %}
@@ -30,7 +27,6 @@
 {% set map_src = (map_uri if pdf else url_for('uploaded', name=flight.map_image)) if flight.map_image else '' %}
 {% set crop_name = flight.crop or farm.crop or 'Crop not set' %}
 {% set scouted = farm.acreage or flight.acreage %}
-{% set total_pages = 3 if map_src else 2 %}
 
 <style>
 @font-face { font-family:'AcreSans'; src:url('{{ font_base }}montserrat-latin-400-normal.woff2') format('woff2'); font-weight:400; font-style:normal; font-display:swap; }
@@ -40,7 +36,7 @@
 
 @page { size: A4; margin: 0; }
 
-.rd { font-family:'AcreSans','Helvetica Neue',Arial,sans-serif; color:#030920;
+.rd { font-family:'AcreSans','Helvetica Neue',Arial,sans-serif; color:#1A1A1A;
       font-size:10.5px; line-height:1.55; letter-spacing:-0.004em; }
 .rd *, .rd *::before, .rd *::after { box-sizing:border-box; }
 .rd p, .rd h1, .rd h2, .rd h3, .rd table, .rd figure, .rd ul, .rd li { margin:0; padding:0; }
@@ -49,277 +45,265 @@
 .rd a { color:inherit; text-decoration:none; }
 .rd ul { list-style:none; }
 
-/* Every filled shape here carries meaning — a category colour, the map key —
-   so backgrounds must survive the browser's own print path. */
+/* Every filled shape carries meaning — a category colour, the map key — so the
+   backgrounds have to survive the browser's own print path. */
 .rd, .rd * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
 
-/* ---------------------------------------------------------------- the sheet */
 .sheet { position:relative; width:210mm; height:297mm; padding:13mm 14mm 11mm;
-         background:#fff; overflow:hidden; break-after:page; page-break-after:always; }
+         background:#fff; overflow:hidden; break-after:page; page-break-after:always;
+         margin-left:auto; margin-right:auto; }
 .sheet:last-child { break-after:auto; page-break-after:auto; }
 
+/* On screen the sheets are centred in whatever width they are given, with a
+   little separation so a reader can tell one page from the next. On paper the
+   page box supplies all of that, so none of it applies when printing. */
 @media screen {
-  .paper { background:#E8ECE4; padding:20px 0 40px; overflow-x:auto; }
-  .sheet { margin:0 auto 18px; box-shadow:0 18px 40px -22px rgba(3,9,32,.55), 0 0 0 1px rgba(3,9,32,.07); border-radius:2px; }
-}
-@media print {
-  .paper { background:#fff; padding:0; }
-  .sheet { margin:0; box-shadow:none; border-radius:0; }
-  .no-print { display:none !important; }
+  .rd { display:block; }
+  .sheet { box-shadow:0 1px 3px rgba(3,9,32,.10), 0 8px 24px rgba(3,9,32,.06);
+           border-radius:2px; margin-bottom:18px; }
+  .sheet:last-child { margin-bottom:0; }
 }
 
-/* ---------------------------------------------------------------- type */
-.eyebrow { font-size:7.5px; font-weight:700; letter-spacing:.16em;
-           text-transform:uppercase; color:#6C6C6C; }
-.mono { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; }
-.h-farm { font-size:25px; font-weight:800; letter-spacing:-0.9px; line-height:1.04; }
-.sec { margin:0 0 7px; }
-.sec td { vertical-align:middle; }
-.sec td:first-child { width:1%; white-space:nowrap; }
-.sec h2 { font-size:12.5px; font-weight:800; letter-spacing:-0.2px; white-space:nowrap; padding-right:9px; }
-.sec .rule { height:1px; background:#D6DBD5; width:100%; font-size:0; line-height:0; }
-.sec.gap { margin-top:13px; }
+.num { font-variant-numeric:tabular-nums; font-feature-settings:'tnum' 1; }
 
-/* ---------------------------------------------------------------- masthead */
-.mastwrap { border-bottom:2px solid #030920; padding-bottom:10px; margin-bottom:2px; }
-.mast td { vertical-align:bottom; }
-.mast .logo { height:26px; }
-.mast .right { text-align:right; }
+/* ---------------------------------------------------------------- running head */
+.rhead { border-bottom:2px solid #4A5D3A; padding-bottom:7px; margin-bottom:11px; }
+.rhead td { vertical-align:bottom; }
+.rhead .logo { height:26px; width:auto; }
+.rhead .right { text-align:right; }
+.rhead .eyebrow { font-size:8px; font-weight:700; letter-spacing:.14em;
+                  text-transform:uppercase; color:#8A8A8A; display:block; }
+.rhead .farm { font-size:15px; font-weight:800; letter-spacing:-.02em; color:#1A1A1A; }
 
-.facts { margin-top:9px; border:1px solid #D6DBD5; border-radius:7px; overflow:hidden; }
-.facts td { width:25%; padding:7px 9px; border-right:1px solid #D6DBD5; vertical-align:top; }
-.facts td:last-child { border-right:0; }
-.facts .k { font-size:7.5px; font-weight:700; letter-spacing:.12em;
-            text-transform:uppercase; color:#6C6C6C; }
-.facts .v { font-size:12px; font-weight:800; margin-top:2px; line-height:1.2; }
+/* ---------------------------------------------------------------- fact strip */
+.facts { background:#4A5D3A; border-radius:5px; margin-bottom:12px; }
+.facts td { padding:8px 12px; vertical-align:top; }
+.facts .k { font-size:7.5px; font-weight:700; letter-spacing:.13em;
+            text-transform:uppercase; color:rgba(255,255,255,.62); display:block; }
+.facts .v { font-size:11.5px; font-weight:700; color:#fff; display:block; margin-top:1px; }
 
-.lede { font-size:11px; line-height:1.6; margin:11px 0 13px !important; }
+.lede { font-size:11px; line-height:1.6; margin-bottom:13px !important; }
+.lede b { font-weight:700; }
 
-/* ---------------------------------------------------------------- categories
-   One card per pattern the flight actually produced. Counts and acreage only:
-   the brief rules out a single headline verdict. */
+/* ---------------------------------------------------------------- headings */
+h2.sec { font-size:13px; font-weight:700; color:#4A5D3A; letter-spacing:-.01em;
+         margin:0 0 8px !important; }
+h2.sec.tight { margin-top:13px !important; }
+
+/* ---------------------------------------------------------------- category cards */
 .cats td { width:25%; padding-right:7px; vertical-align:top; }
 .cats td:last-child { padding-right:0; }
-.cat { border:1px solid #D6DBD5; border-radius:9px; overflow:hidden; }
-.cat .cap { padding:6px 9px; border-bottom:1px solid #D6DBD5; background:#F2F5EF; }
-.cat .sw { display:inline-block; width:9px; height:9px; border-radius:2px;
-           vertical-align:middle; margin-right:5px; }
-.cat .nm { font-size:8.5px; font-weight:800; vertical-align:middle; letter-spacing:-0.1px; }
-.cat .body { padding:8px 9px 9px; }
-.cat .n { font-size:20px; font-weight:800; letter-spacing:-0.8px; line-height:1; }
-.cat .ac { font-size:8.5px; font-weight:600; color:#6C6C6C; margin-top:3px; }
+.cat-card { border:1px solid #E2E2DC; border-radius:5px; padding:9px 10px; height:100%; }
+.cat-card .dot { display:inline-block; width:9px; height:9px; border-radius:2px;
+                 vertical-align:middle; margin-right:5px; }
+.cat-card .nm { font-size:8.5px; font-weight:700; vertical-align:middle;
+                letter-spacing:-.01em; }
+.cat-card .n { font-size:19px; font-weight:800; letter-spacing:-.03em;
+               margin-top:5px; line-height:1; }
+.cat-card .ac { font-size:8.5px; color:#8A8A8A; margin-top:2px; }
 
-/* ---------------------------------------------------------------- patterns */
-.obs td { vertical-align:top; padding:0 0 9px; }
-.obs .n { width:22px; }
-.obs .n span { display:inline-block; width:16px; height:16px; border-radius:5px; color:#fff;
-               font-size:9px; font-weight:800; text-align:center; line-height:16px; }
-.obs .tx { font-size:10.5px; line-height:1.55; }
+/* ---------------------------------------------------------------- observations */
+.obs { margin-bottom:3px; }
+.obs td { vertical-align:top; padding:0 0 8px; }
+.obs .bullet { width:19px; }
+.obs .bullet span { display:inline-block; width:15px; height:15px; border-radius:50%;
+                    color:#fff; font-size:8.5px; font-weight:800; text-align:center;
+                    line-height:15px; }
+.obs .txt { font-size:10.5px; line-height:1.55; }
 
-.sug { border:1px solid #D6DBD5; border-radius:9px; padding:10px 12px; background:#F2F5EF; }
-.sug li { font-size:10px; line-height:1.55; padding-left:13px; position:relative; margin-bottom:7px; }
+/* ---------------------------------------------------------------- suggestions */
+.sug { border:1px solid #E2E2DC; border-radius:5px; padding:10px 12px; background:#FAFAF7; }
+.sug li { font-size:10px; line-height:1.55; padding-left:12px; position:relative;
+          margin-bottom:6px; }
 .sug li:last-child { margin-bottom:0; }
-.sug li::before { content:''; position:absolute; left:2px; top:6px; width:4px; height:4px;
-                  border-radius:50%; background:#9AA79A; }
+.sug li::before { content:'•'; position:absolute; left:2px; color:#8A8A8A; }
 
-/* ---------------------------------------------------------------- map sheet */
-.mapbox { border:1px solid #D6DBD5; border-radius:9px; overflow:hidden; background:#F2F5EF; }
-.mapbox img { width:100%; height:auto; max-height:168mm; object-fit:contain; }
-.mapcap { font-size:9px; color:#6C6C6C; margin-bottom:7px !important; line-height:1.5; }
-.legend { margin-top:9px; }
-.legend td { width:33.333%; padding:0 7px 7px 0; vertical-align:top; }
-.legend td:nth-child(3) { padding-right:0; }
-.legend .item { border:1px solid #D6DBD5; border-radius:7px; padding:6px 9px; }
-.legend .sw { display:inline-block; width:9px; height:9px; border-radius:2px;
-              vertical-align:middle; margin-right:6px; }
+/* ---------------------------------------------------------------- map */
+.mapbox { border:1px solid #E2E2DC; border-radius:5px; overflow:hidden; background:#F7F8F4; }
+.mapbox img { width:100%; height:auto; max-height:172mm; object-fit:contain; }
+.mapnote { font-size:9.5px; color:#6C6C6C; margin-bottom:9px !important; line-height:1.5; }
+.legend { margin-top:10px; }
+.legend td { width:33.33%; padding:0 7px 7px 0; vertical-align:top; }
+.legend .item { border:1px solid #E2E2DC; border-radius:4px; padding:6px 9px; }
+.legend .dot { display:inline-block; width:9px; height:9px; border-radius:2px;
+               vertical-align:middle; margin-right:6px; }
 .legend .lb { font-size:8.5px; font-weight:700; vertical-align:middle; }
 
-/* The document sets a { color:inherit; text-decoration:none } so it reads as a
-   printed page. The one link a farmer is meant to follow therefore needs a card
-   of its own rather than colour alone to be recognisable. */
-.ddlink { display:block; border:1px solid #D6DBD5; border-left:3px solid #3E7A24;
-          border-radius:9px; padding:9px 11px; margin-top:10px; background:#F2F5EF; }
+/* ---------------------------------------------------------------- map link
+   The document sets a { color:inherit; text-decoration:none } so that the
+   report reads as a printed page. That leaves a real link looking like body
+   text, so the one link a farmer is meant to follow is given a card of its own
+   rather than relying on colour alone. */
+.ddlink { display:block; border:1px solid #D6DBD5; border-left:3px solid #4A5D3A;
+          border-radius:5px; padding:9px 11px; margin-top:10px; background:#F7F9F4; }
 .ddlink td { vertical-align:middle; }
-.ddlink .ico { width:26px; }
-.ddlink .ico span { display:inline-block; width:19px; height:19px; border-radius:50%;
-                    background:#3E7A24; color:#fff; font-size:11px; line-height:19px; text-align:center; }
-.ddlink .t { font-size:10.5px; font-weight:800; }
+.ddlink .ico { width:24px; }
+.ddlink .ico span { display:inline-block; width:18px; height:18px; border-radius:50%;
+                    background:#4A5D3A; color:#fff; font-size:11px; line-height:18px;
+                    text-align:center; }
+.ddlink .t { font-size:10.5px; font-weight:700; color:#3E5230; }
 .ddlink .d { font-size:9px; color:#6C6C6C; margin-top:1px; }
 
-/* ---------------------------------------------------------------- detail */
-.grp { margin-bottom:11px; break-inside:avoid; page-break-inside:avoid; }
-.grp h3 { font-size:11px; font-weight:800; letter-spacing:-0.2px; margin:0 0 5px !important; }
-.grp h3 .sw { display:inline-block; width:9px; height:9px; border-radius:2px;
-              vertical-align:middle; margin-right:6px; }
-.zt { border:1px solid #D6DBD5; border-radius:8px; overflow:hidden; }
-.zt th { background:#F2F5EF; font-size:7.5px; font-weight:700; letter-spacing:.12em;
-         text-transform:uppercase; color:#6C6C6C; text-align:left;
-         padding:6px 9px; border-bottom:1px solid #D6DBD5; }
-.zt td { padding:6px 9px; border-bottom:1px solid #E9ECE6; font-size:9.2px;
-         vertical-align:top; line-height:1.42; }
-.zt tr:last-child td { border-bottom:0; }
-.zt .n { width:32px; }
-.zt .nchip { display:inline-block; width:19px; height:19px; border-radius:5px; color:#fff;
-             text-align:center; line-height:19px; font-size:9.5px; font-weight:800; }
-.zt .ac { width:46px; font-weight:700; }
-
-.note { margin-top:11px; border:1px solid #D6DBD5; border-radius:9px; padding:10px 12px; }
-.note .who { font-size:8.5px; color:#6C6C6C; margin-top:5px; }
+/* ---------------------------------------------------------------- detail tables */
+.grp { margin-bottom:11px; }
+.grp h3 { font-size:11px; font-weight:700; color:#4A5D3A; margin:0 0 5px !important;
+          letter-spacing:-.01em; }
+.dt table { font-size:8.8px; }
+.dt th { background:#4A5D3A; color:#fff; font-size:7.5px; font-weight:700;
+         letter-spacing:.09em; text-transform:uppercase; text-align:left;
+         padding:5px 7px; }
+.dt td { padding:5px 7px; border-bottom:1px solid #EFEFEA; vertical-align:top;
+         line-height:1.4; }
+.dt tr:last-child td { border-bottom:none; }
+.dt .z { width:34px; font-weight:700; }
+.dt .ac { width:44px; }
+.dt .cmt { font-size:8px; color:#8A8A8A; font-style:italic; padding-top:2px; }
 
 /* ---------------------------------------------------------------- footer */
-.foot { position:absolute; left:14mm; right:14mm; bottom:7mm; border-top:1px solid #E9ECE6;
-        padding-top:5px; font-size:7.5px; font-weight:600; letter-spacing:.09em;
-        text-transform:uppercase; color:#9A9A9A; }
+.foot { position:absolute; left:14mm; right:14mm; bottom:7mm; border-top:1px solid #EFEFEA;
+        padding-top:5px; font-size:7.5px; letter-spacing:.07em; text-transform:uppercase;
+        color:#9A9A9A; }
 .foot .r { float:right; }
 
-.rhead { border-bottom:1px solid #D6DBD5; padding-bottom:6px; margin-bottom:10px; }
-.rhead td { vertical-align:middle; }
-.rhead .logo { height:15px; opacity:.85; }
-.rhead .right { text-align:right; font-size:8px; font-weight:500; letter-spacing:.1em;
-                text-transform:uppercase; color:#6C6C6C; }
-
 @media screen and (max-width:820px) {
-  /* On a phone the sheet stops pretending to be paper: a fixed millimetre
-     height would either clip the content or leave a long blank gap. */
-  .paper { padding:0; background:#fff; overflow-x:visible; }
-  .sheet { width:100%; height:auto; min-height:0; padding:20px 16px 26px;
-           margin:0 0 10px; box-shadow:none; border-radius:0;
-           border-bottom:8px solid #E8ECE4; }
+  /* On a phone the sheet stops pretending to be paper: fixed millimetre
+     heights would either clip the content or leave a long blank gap. */
+  .sheet { width:100%; height:auto; min-height:0; padding:20px 16px 26px; }
   .foot { position:static; margin-top:18px; }
-  .cats td, .legend td, .facts td { display:block; width:100%; padding-right:0; }
-  .facts td { border-right:0; border-bottom:1px solid #D6DBD5; }
-  .facts td:last-child { border-bottom:0; }
-  .cats td { padding-bottom:7px; }
-  .zt table, .zt tbody, .zt tr, .zt td { display:block; width:100%; }
-  .zt thead { display:none; }
-  .zt tr { border-bottom:1px solid #E9ECE6; padding:8px 10px; }
-  .zt tr:last-child { border-bottom:0; }
-  .zt td { border:none; padding:2px 0; }
-  .zt td::before { content:attr(data-l); display:block; font-size:7px; font-weight:700;
-                   letter-spacing:.12em; text-transform:uppercase; color:#9A9A9A; }
-  .zt .n, .zt .ac { width:auto; }
+  .cats td, .legend td { display:block; width:100%; padding-right:0; padding-bottom:7px; }
+  .facts td { display:block; width:100%; padding:6px 12px; }
+  .dt table, .dt tbody, .dt tr, .dt td { display:block; width:100%; }
+  .dt thead { display:none; }
+  .dt tr { border:1px solid #E2E2DC; border-radius:5px; padding:8px 10px;
+           margin-bottom:8px; }
+  .dt td { border:none; padding:2px 0; }
+  .dt td::before { content:attr(data-l); display:block; font-size:7.5px;
+                   font-weight:700; letter-spacing:.09em; text-transform:uppercase;
+                   color:#9A9A9A; }
+  .dt .z, .dt .ac { width:auto; }
 }
 </style>
-
-{% macro sec(title, gap=false) -%}
-<table class="sec{{ ' gap' if gap }}"><tr>
-  <td><h2>{{ title }}</h2></td><td><div class="rule"></div></td>
-</tr></table>
-{%- endmacro %}
 
 {% macro runhead(label) -%}
 <table class="rhead"><tr>
   <td><img class="logo" src="{{ logo_src }}" alt="Acre Insights"></td>
-  <td class="right">{{ farm.name }} &middot; {{ flight.season }} &middot; {{ label }}</td>
+  <td class="right">
+    <span class="eyebrow">{{ label }}</span>
+    <span class="farm">{{ farm.name }}</span>
+  </td>
 </tr></table>
 {%- endmacro %}
 
-{% macro pagefoot(n) -%}
+{% macro pagefoot(n, total) -%}
 <div class="foot">
-  Prepared by Acre Insights &middot; Nairobi, Kenya
-  <span class="r">{{ farm.name }} &middot; Page {{ n }} of {{ total_pages }}</span>
+  Prepared by Acre Insights
+  <span class="r">{{ farm.name }} &middot; Page {{ n }} of {{ total }}</span>
 </div>
 {%- endmacro %}
 
-{% macro catcard(g) -%}
-<div class="cat">
-  <div class="cap"><span class="sw" style="background:{{ g.colour }}"></span><span class="nm">{{ g.name }}</span></div>
-  <div class="body">
-    <div class="n mono">{{ g.count }} area{{ '' if g.count == 1 else 's' }}</div>
-    {% if g.acres_text %}<div class="ac mono">~{{ g.acres_text }} acres</div>{% endif %}
-  </div>
-</div>
-{%- endmacro %}
+{% set total_pages = 3 if map_src else 2 %}
 
-<div class="rd"><div class="paper">
+<div class="rd">
 
 {# ============================================================== PAGE 1 #}
 <section class="sheet">
-  <div class="mastwrap">
-    <table class="mast"><tr>
-      <td><img class="logo" src="{{ logo_src }}" alt="Acre Insights"></td>
-      <td class="right">
-        <div class="eyebrow">Field scouting summary</div>
-        <div class="h-farm">{{ farm.name }}</div>
-      </td>
-    </tr></table>
-  </div>
+  {{ runhead('Field scouting summary') }}
 
   <table class="facts"><tr>
-    <td><div class="k">Crop</div><div class="v">{{ crop_name }}</div></td>
-    <td><div class="k">Area scouted</div><div class="v mono">{{ '%g'|format(scouted) ~ ' acres' if scouted else '—' }}</div></td>
-    <td><div class="k">Flown</div><div class="v mono">{{ flight.flight_date.strftime('%d %b %Y') if flight.flight_date else '—' }}</div></td>
-    <td><div class="k">Flight</div><div class="v mono">{{ flight.flight_number }} of {{ flight.flights_planned }}</div></td>
+    <td><span class="k">Crop</span><span class="v">{{ crop_name }}</span></td>
+    <td><span class="k">Area scouted</span><span class="v num">{{ '%g'|format(scouted) ~ ' acres' if scouted else '—' }}</span></td>
+    <td><span class="k">Flown</span><span class="v num">{{ flight.flight_date.strftime('%d %b %Y') if flight.flight_date else '—' }}</span></td>
+    <td><span class="k">Flight</span><span class="v num">{{ flight.flight_number }} of {{ flight.flights_planned }}, this season</span></td>
   </tr></table>
 
   {% if agg %}
   <p class="lede">{{ summary_line }}</p>
 
-  {{ sec('Issue categories') }}
+  <h2 class="sec">Issue categories</h2>
   <table class="cats"><tr>
-    {% for g in agg.groups[:4] %}<td>{{ catcard(g) }}</td>{% endfor %}
-    {% for _ in range(4 - (agg.groups[:4]|length)) %}<td></td>{% endfor %}
+    {% for g in agg.groups[:4] %}
+    <td>
+      <div class="cat-card">
+        <span class="dot" style="background:{{ g.colour }}"></span><span class="nm">{{ g.name }}</span>
+        <div class="n num">{{ g.count }} area{{ '' if g.count == 1 else 's' }}</div>
+        {% if g.acres_text %}<div class="ac num">~{{ g.acres_text }} acres</div>{% endif %}
+      </div>
+    </td>
+    {% endfor %}
   </tr></table>
   {% if agg.groups|length > 4 %}
   <table class="cats" style="margin-top:7px"><tr>
-    {% for g in agg.groups[4:8] %}<td>{{ catcard(g) }}</td>{% endfor %}
-    {% for _ in range(4 - (agg.groups[4:8]|length)) %}<td></td>{% endfor %}
+    {% for g in agg.groups[4:8] %}
+    <td>
+      <div class="cat-card">
+        <span class="dot" style="background:{{ g.colour }}"></span><span class="nm">{{ g.name }}</span>
+        <div class="n num">{{ g.count }} area{{ '' if g.count == 1 else 's' }}</div>
+        {% if g.acres_text %}<div class="ac num">~{{ g.acres_text }} acres</div>{% endif %}
+      </div>
+    </td>
+    {% endfor %}
+    {% for _ in range(4 - (agg.groups|length - 4)) %}<td></td>{% endfor %}
   </tr></table>
   {% endif %}
 
-  {{ sec('Key observations', gap=true) }}
+  <h2 class="sec tight">Key observations</h2>
   <table class="obs">
     {% for g in agg.groups %}
     <tr>
-      <td class="n"><span style="background:{{ g.colour }}">{{ loop.index }}</span></td>
-      <td class="tx">{{ g.observation }}</td>
+      <td class="bullet"><span style="background:{{ g.colour }}">{{ loop.index }}</span></td>
+      <td class="txt">{{ g.observation }}</td>
     </tr>
     {% endfor %}
   </table>
 
   {% if season and season.spark %}
-  {{ sec('This season so far', gap=true) }}
-  <p class="lede" style="margin:0 0 2px !important">
-    Across {{ season.flights_scored }} flights of {{ flight.season }}, the number of areas
-    flagged has ranged from <b class="mono">{{ season.points|map(attribute='zones')|min }}</b>
-    to <b class="mono">{{ season.points|map(attribute='zones')|max }}</b> per flight.
-    This flight recorded <b class="mono">{{ agg.total_findings }}</b>.
+  {# The season in one line rather than its own sheet. Cathy's V2 brief asks for
+     three pages, and a trend across flights is context for the summary rather
+     than a page in its own right. Stated as counts and a range, not a verdict. #}
+  <h2 class="sec tight">This season so far</h2>
+  <p class="lede" style="margin-bottom:0 !important">
+    Across {{ season.flights_scored }} flights of {{ flight.season }}, the number of
+    areas flagged has ranged from
+    <b class="num">{{ season.points|map(attribute='zones')|min }}</b> to
+    <b class="num">{{ season.points|map(attribute='zones')|max }}</b> per flight.
+    This flight recorded <b class="num">{{ agg.total_findings }}</b>.
   </p>
   {% endif %}
 
-  {{ sec('Suggested areas to investigate', gap=true) }}
+  <h2 class="sec tight">Suggested areas to investigate</h2>
   <div class="sug">
-    <ul>{% for g in agg.groups %}<li>{{ g.suggestion }}</li>{% endfor %}</ul>
+    <ul>
+      {% for g in agg.groups %}
+      <li>{{ g.suggestion }}</li>
+      {% endfor %}
+    </ul>
   </div>
   {% else %}
   <p class="lede">No areas were flagged on this flight.</p>
   {% endif %}
 
-  {{ pagefoot(1) }}
+  {{ pagefoot(1, total_pages) }}
 </section>
 
 {# ============================================================== PAGE 2 #}
 {% if map_src %}
 <section class="sheet">
   {{ runhead('Farm map') }}
-  <p class="mapcap">Zone numbers correspond to the detailed findings on page 3.
-  Colour shows the category an area was flagged under, not how urgent it is.</p>
+  <p class="mapnote">Zone numbers correspond to the detailed findings on page 3.
+  Colour indicates the category an area was flagged under, not its severity.</p>
 
   <div class="mapbox"><img src="{{ map_src }}" alt="Annotated field map"></div>
 
-  {{ sec('Legend', gap=true) }}
-  <table class="legend">
-    <tr>
-      {% for name, colour in (agg.legend[:3] if agg else []) %}
-      <td><div class="item"><span class="sw" style="background:{{ colour }}"></span><span class="lb">{{ name }}</span></div></td>
-      {% endfor %}
-    </tr>
-    <tr>
-      {% for name, colour in (agg.legend[3:6] if agg else []) %}
-      <td><div class="item"><span class="sw" style="background:{{ colour }}"></span><span class="lb">{{ name }}</span></div></td>
-      {% endfor %}
-    </tr>
-  </table>
+  <h2 class="sec" style="margin-top:11px !important">Legend</h2>
+  <table class="legend"><tr>
+    {% for name, colour in agg.legend[:3] if agg %}
+    <td><div class="item"><span class="dot" style="background:{{ colour }}"></span><span class="lb">{{ name }}</span></div></td>
+    {% endfor %}
+  </tr><tr>
+    {% for name, colour in agg.legend[3:6] if agg %}
+    <td><div class="item"><span class="dot" style="background:{{ colour }}"></span><span class="lb">{{ name }}</span></div></td>
+    {% endfor %}
+  </tr></table>
 
   {% if flight.dronedeploy_project_url %}
   <a class="ddlink" href="{{ flight.dronedeploy_project_url }}"{% if not pdf %} target="_blank" rel="noopener"{% endif %}>
@@ -333,31 +317,33 @@
   </a>
   {% endif %}
 
-  {{ pagefoot(2) }}
+  {{ pagefoot(2, total_pages) }}
 </section>
 {% endif %}
 
 {# ============================================================== PAGE 3 #}
 <section class="sheet">
   {{ runhead('Detailed findings') }}
-  <p class="mapcap">Every area flagged on this flight, exactly as the agronomist
-  recorded it, grouped under the pattern it belongs to.</p>
+  <p class="mapnote">Every area flagged on this flight, as recorded by the
+  agronomist, grouped under the pattern it belongs to.</p>
 
   {% if agg %}
   {% for g in agg.groups %}
   <div class="grp">
-    <h3><span class="sw" style="background:{{ g.colour }}"></span>{{ g.heading }}</h3>
-    <div class="zt">
+    <h3><span class="dot" style="display:inline-block;width:9px;height:9px;border-radius:2px;background:{{ g.colour }};margin-right:6px"></span>{{ g.heading }}</h3>
+    <div class="dt">
       <table>
-        <thead><tr>
-          <th class="n">Zone</th><th class="ac">Acres</th>
-          <th>Observation</th><th>Likely cause</th><th>Recommendation</th>
-        </tr></thead>
+        <thead>
+          <tr>
+            <th class="z">Zone</th><th class="ac">Acres</th>
+            <th>Observation</th><th>Likely cause</th><th>Recommendation</th>
+          </tr>
+        </thead>
         <tbody>
         {% for f in g.findings %}
         <tr>
-          <td class="n" data-l="Zone"><span class="nchip" style="background:{{ g.colour }}">{{ g.zones[loop.index0] }}</span></td>
-          <td class="ac mono" data-l="Acres">{{ '%.2f'|format(f.area_acres) if f.area_acres else '—' }}</td>
+          <td class="z num" data-l="Zone">{{ g.zones[loop.index0] }}</td>
+          <td class="ac num" data-l="Acres">{{ '%.2f'|format(f.area_acres) if f.area_acres else '—' }}</td>
           <td data-l="Observation">{{ f.observation }}</td>
           <td data-l="Likely cause">{{ f.likely_cause }}</td>
           <td data-l="Recommendation">{{ f.recommendation }}</td>
@@ -371,17 +357,17 @@
   {% endif %}
 
   {% if flight.agronomist_note %}
-  {# Shown only when the agronomist actually wrote something. V1 filled this
-     with reassurance by default, which is the tone the brief asks us to drop —
-     the report should not speak where its author did not. #}
-  <div class="note">
-    <div class="eyebrow">A note from your agronomist</div>
-    <p style="font-size:10px;line-height:1.55;margin-top:4px !important">{{ flight.agronomist_note }}</p>
-    <div class="who">Acre Insights &middot; Nature meets intelligence</div>
+  {# Only shown when the agronomist actually wrote something. V1 filled this
+     with reassurance by default, which is the tone the V2 brief asks us to
+     drop — the report should not speak where its author did not. #}
+  <div class="sug" style="margin-top:11px">
+    <div style="font-size:8px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#8A8A8A;margin-bottom:4px">
+      A note from your agronomist</div>
+    <p style="font-size:10px;line-height:1.55">{{ flight.agronomist_note }}</p>
   </div>
   {% endif %}
 
-  {{ pagefoot(total_pages) }}
+  {{ pagefoot(total_pages, total_pages) }}
 </section>
 
-</div></div>
+</div>

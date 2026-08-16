@@ -25,8 +25,6 @@ urgent".
 import decimal
 import re
 
-from markupsafe import Markup, escape
-
 # ----------------------------------------------------------------- categories
 # The report-facing set, in the order they appear in the legend. Colour is by
 # category rather than by urgency: nothing here means "healthy", because every
@@ -99,10 +97,6 @@ CAUSE_PATTERNS = [
         "deficien", "uptake", "nitrogen", "phosph", "potass", "npk", "manure",
         "fertiliser", "fertilizer", "top-dress", "topdress", "soil ph",
         "acidity", "organic matter",
-        # The observation this dataset records again and again for a nutrition
-        # problem. Written out in full rather than as "vigour", which would also
-        # match "vigorous" and file a healthy patch here.
-        "plant vigour", "crop vigour", "plant vigor", "crop vigor",
     ]),
     ("Weeds", [
         "weed",
@@ -114,57 +108,31 @@ def _norm(text):
     return " ".join(str(text or "").lower().split())
 
 
-# How much each field counts towards a category. The brief asks for clustering
-# on "the likely-cause and recommendation text"; the observation is weighed with
-# them because on a flight where the cause was filled in loosely it is often the
-# only field that says what was actually seen.
-#
-# The cause carries the most weight because it is where the agronomist wrote
-# down their reading of the problem. The other two corroborate it, and together
-# can outweigh it: an area whose cause reads "water stress" but whose
-# observation is "weeds" and recommendation is "weeding" is a weed problem, and
-# reading the cause alone would have filed it under irrigation.
-FIELD_WEIGHTS = (("likely_cause", 3), ("recommendation", 2), ("observation", 2))
-
-
-def classify_text(observation="", likely_cause="", recommendation=""):
-    """
-    The report category the agronomist's own words point to, or "" for none.
-
-    Scored rather than first-match, so a field that mentions two categories does
-    not decide the answer on its own. Ties go to whichever category is declared
-    first in CAUSE_PATTERNS, which is what keeps an aphid finding out of Weeds
-    when its cause names the weedy edge the aphids came in from.
-    """
-    fields = {"observation": _norm(observation),
-              "likely_cause": _norm(likely_cause),
-              "recommendation": _norm(recommendation)}
-    scores = {}
-    for name, words in CAUSE_PATTERNS:
-        total = sum(weight for field, weight in FIELD_WEIGHTS
-                    if any(w in fields[field] for w in words))
-        if total:
-            scores[name] = total
-    if not scores:
-        return ""
-    order = [name for name, _words in CAUSE_PATTERNS]
-    return max(scores, key=lambda name: (scores[name], -order.index(name)))
-
-
 def classify(finding):
     """
     The report category for one finding.
 
-    The agronomist's own text decides it. The category stored against the
-    finding is only a fallback, because for a CSV import it was suggested rather
-    than chosen.
+    The likely cause is read first, because it is where the agronomist recorded
+    what they actually think is happening. The category they picked is the
+    fallback, since in V1 it was often the same broad label for everything.
     """
-    name = classify_text(getattr(finding, "observation", ""),
-                         getattr(finding, "likely_cause", ""),
-                         getattr(finding, "recommendation", ""))
-    if name:
-        return name
-    return DIRECT_MAP.get(_norm(getattr(finding, "category", ""))) or "Needs Investigation"
+    cause = _norm(finding.likely_cause)
+    obs = _norm(finding.observation)
+    haystack = f"{cause} {obs}"
+
+    if cause:
+        for name, words in CAUSE_PATTERNS:
+            if any(w in cause for w in words):
+                return name
+
+    direct = DIRECT_MAP.get(_norm(finding.category))
+    if direct:
+        return direct
+
+    for name, words in CAUSE_PATTERNS:
+        if any(w in haystack for w in words):
+            return name
+    return "Needs Investigation"
 
 
 # ----------------------------------------------------------------- phrasing
@@ -200,7 +168,7 @@ def _phrases(findings, field, limit=3):
     """
     seen = {}
     for f in findings:
-        raw = (getattr(f, field, "") or "").strip().rstrip(".:;, ")
+        raw = (getattr(f, field, "") or "").strip().rstrip(".")
         if not raw:
             continue
         key = _norm(raw)
@@ -249,19 +217,17 @@ def _observation_sentence(group):
     causes = _phrases(group["findings"], "likely_cause", 2)
 
     if n == 1:
-        head = f"One area (~{acres} acres)" if acres else "One area"
+        head = f"One area ({acres} acres)" if acres else "One area"
+        # fall through
     else:
-        head = (f"{_count_word(n).capitalize()} areas (~{acres} acres in total)" if acres
-                else f"{_count_word(n).capitalize()} areas")
-    head = Markup(f"<b>{escape(head)}</b>")
+        head = f"{_count_word(n).capitalize()} areas ({acres} acres in total)" if acres \
+               else f"{_count_word(n).capitalize()} areas"
 
     obs_text = _join([o[0].lower() + o[1:] for o in obs]) if obs else "an observation worth noting"
-    sentence = f"{head} showed {escape(obs_text)}"
+    sentence = f"{head} showed {obs_text}"
     if causes:
-        sentence += f", associated with {escape(_join([c[0].lower() + c[1:] for c in causes]))}"
-    # Markup because the lead carries a <b>; everything interpolated around it is
-    # escaped first, so the agronomist's own text can never inject markup.
-    return Markup(sentence + ".")
+        sentence += f", associated with {_join([c[0].lower() + c[1:] for c in causes])}"
+    return sentence + "."
 
 
 def _suggestion(group):
@@ -273,33 +239,19 @@ def _suggestion(group):
     distinct ones are offered together. Nothing new is proposed.
     """
     recs = _phrases(group["findings"], "recommendation", 3)
-    biggest = group["findings"][0]
-    zone = group["zones"][0]
-    # Two forms: one that sits inside brackets already, and one that carries its
-    # own, so neither ends up with nested parentheses or a run of commas.
-    inline = f"zone {zone}"
-    standalone = f"zone {zone}"
-    if biggest.area_acres:
-        inline += f", ~{_acres(biggest.area_acres)} acres"
-        standalone += f" (~{_acres(biggest.area_acres)} acres)"
-
     if not recs:
-        return (f"No next step was recorded against the {group['name'].lower()} "
-                "areas, so they may be worth a closer look.")
-
-    # Attributed rather than instructed: "the agronomist suggested" offers the
-    # farmer what was written, where the imperative the agronomist used for
-    # their own notes would read as an order.
+        return (f"No specific next step was recorded against the "
+                f"{group['name'].lower()} areas, so they may be worth a closer look.")
     cleaned = [r[0].lower() + r[1:] for r in recs]
     if group["count"] == 1:
-        return f"For the one area here ({inline}), the agronomist suggested: {cleaned[0]}."
-    # Distinct recommendations are separated by semicolons rather than "and",
-    # because several are themselves two clauses joined by "and" and chaining
+        zone = group["zones"][0]
+        return f"For the one area here (zone {zone}), the agronomist recorded: {cleaned[0]}."
+    # Separate recommendations are joined with semicolons rather than "and".
+    # Several of them are themselves two clauses joined by "and", so chaining
     # them that way produced a sentence that ran on without a break in it.
-    acres = f" (~{group['acres_text']} acres)" if group["acres_text"] else ""
-    return (f"Across the {_count_word(group['count'])} areas in this pattern{acres}, "
-            f"the agronomist suggested: {'; '.join(cleaned)}. The largest, "
-            f"{standalone}, may be the most useful place to start.")
+    return (f"Across the {_count_word(group['count'])} areas here, the agronomist "
+            f"recorded: {'; '.join(cleaned)}. The largest of them may be the most "
+            "useful place to start.")
 
 
 # ----------------------------------------------------------------- aggregation

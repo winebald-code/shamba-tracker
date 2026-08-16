@@ -31,11 +31,6 @@ Built with Flask · SQLite · Tailwind CSS · vanilla JS · WeasyPrint. Ready fo
 | Grey | Pending review (logged, awaiting agronomist) |
 
 Any hex a pin uses in DroneDeploy is bucketed to the nearest meaning by hue.
-Colour is never used to choose a category: it records how urgent an area is,
-while a category records what kind of problem it is, and one cannot be derived
-from the other. On a flight where every pin was the same red, deriving one from
-the other filed all fifteen findings under a single heading whatever the notes
-said.
 
 ### Categories
 
@@ -113,7 +108,6 @@ python tests/test_generate_gate.py    # what a report needs before it generates
 python tests/test_report_v2.py       # pattern grouping, report voice, security headers
 python tests/test_responsive.py      # every page on a phone-sized viewport
 python tests/test_categories.py      # one category list across review and report
-python tests/test_real_flight.py     # the reference flight, from its real export
 ```
 
 ---
@@ -271,9 +265,7 @@ Two rules govern what the summary is allowed to say:
   order". An annotation records what was seen and what the agronomist suspects,
   not a result.
 
-Clustering scores the agronomist's own words across all three fields — the
-likely cause counts most, with the recommendation and observation corroborating
-it — which is
+Clustering reads the **likely cause** rather than the category label, which is
 what separates irrigation from soil fertility when both were filed under one
 broad heading. Patterns are ordered by acreage so the largest finding leads, and
 genuinely different causes stay apart rather than being merged for tidiness — on
