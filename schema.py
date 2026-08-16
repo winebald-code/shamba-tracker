@@ -110,6 +110,7 @@ def ensure_schema(db):
         backfill_share_tokens(db)
     if "findings" in existing_tables:
         migrate_categories(db)
+        reclassify_colour_guesses(db)
     return added
 
 
@@ -136,6 +137,52 @@ def migrate_categories(db):
             print(f"[schema] moved {moved} finding(s) onto the current category names")
     except Exception as exc:
         print(f"[schema] category migration skipped: {exc}")
+
+
+# What the old colour-to-category map produced. A finding still carrying one of
+# these, on a pin of the matching colour, was filed by the colour rather than by
+# anything the agronomist wrote.
+COLOUR_GUESSES = {
+    "New growth": "Soil Fertility / Nutrition",
+    "Healthy": "Soil Fertility / Nutrition",
+    "Monitor": "Needs Investigation",
+    "Needs testing": "Pest / Disease",
+    "Pending review": "Needs Investigation",
+}
+
+
+def reclassify_colour_guesses(db):
+    """
+    Re-derive the category for findings that were filed by pin colour.
+
+    Colour records how urgent an area is, not what kind of problem it is, so a
+    category derived from it carries no information — on a flight where every
+    pin was red, all of them arrived as "Pest / Disease" whatever the notes
+    said. Those are re-read from the agronomist's own text.
+
+    Only findings whose stored category still equals the guess their colour
+    would have produced are touched, so a category an agronomist chose by hand
+    is left exactly as they set it.
+    """
+    from aggregation import classify_text
+    moved = 0
+    try:
+        with db.engine.begin() as conn:
+            rows = conn.execute(text(
+                "SELECT id, colour_meaning, category, observation, likely_cause, "
+                "recommendation FROM findings")).fetchall()
+            for fid, meaning, category, obs, cause, rec in rows:
+                if COLOUR_GUESSES.get((meaning or "").strip()) != (category or "").strip():
+                    continue
+                derived = classify_text(obs or "", cause or "", rec or "")
+                if derived and derived != category:
+                    conn.execute(text("UPDATE findings SET category=:c WHERE id=:i"),
+                                 {"c": derived, "i": fid})
+                    moved += 1
+        if moved:
+            print(f"[schema] re-read {moved} finding(s) whose category came from the pin colour")
+    except Exception as exc:
+        print(f"[schema] category re-read skipped: {exc}")
 
 
 def backfill_share_tokens(db):

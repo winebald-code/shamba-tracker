@@ -28,21 +28,12 @@ def chk(l,c,d=""):
     global P,F
     print(("  [PASS] " if c else "  [FAIL] ")+l+("" if c else "  -> "+str(d))); P,F=(P+1,F) if c else (P,F+1)
 
-IPM=[(4.09,"Uneven germination, weeds","Overmounding / excess soil cover, water stress","Reduce soil cover, maintain proper mound height"),
- (3.76,"Reduced crop vigour","Soil fertility","Soil testing"),
- (3.01,"Poor plant vigour, red soil","Soil condition/fertility","Soil testing"),
- (2.54,"Reduced crop vigour, weeds overgrowth","Soil fertility","Soil testing and weeding"),
- (1.15,"Poor plant vigour","Nutrient deficiencies, soil condition","Soil testing"),
- (0.89,"Poor plant vigour","Soil condition","Soil testing"),
- (0.77,"Uneven growth","Water stress — low pressure at drip line end","Compare water vs. healthy section, adjust irrigation"),
- (0.76,"Poor plant vigour","Soil fertility","Soil testing"),
- (0.65,"Poor plant vigour","Inadequate moisture, nutrient uptake","Soil testing; compare water vs. healthy section"),
- (0.60,"Poor plant vigour","Soil condition, nutrient uptake","Soil testing"),
- (0.41,"Poor plant vigour","Soil condition","Soil testing"),
- (0.25,"Plant vigour","Water stress","Compare water collected vs. other section"),
- (0.24,"Plant vigour","Soil condition, loose covering","Soil testing"),
- (0.02,"Poor emergence","Water stress","Fix drip line on the ridge"),
- (0.01,"Weeds","Poor weed management","Weeding")]
+# The real DroneDeploy export for this flight, so the fixture cannot drift from
+# the file the agronomist actually produced.
+import parsing as _parsing
+IPM = [(d["area_acres"], d["observation"], d["likely_cause"], d["recommendation"])
+       for d in _parsing.parse_csv(open(os.path.join(
+           ROOT, "samples", "ipm_flight1_dronedeploy_export.csv"), "rb").read())]
 
 with appmod.app.app_context():
     fm=Farm(name="IPM Farm",crop="Potatoes",acreage=38.0,farmer_name="J. Mwangi",location="Nakuru")
