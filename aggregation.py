@@ -25,8 +25,6 @@ urgent".
 import decimal
 import re
 
-from markupsafe import Markup, escape
-
 # ----------------------------------------------------------------- categories
 # The report-facing set, in the order they appear in the legend. Colour is by
 # category rather than by urgency: nothing here means "healthy", because every
@@ -219,19 +217,17 @@ def _observation_sentence(group):
     causes = _phrases(group["findings"], "likely_cause", 2)
 
     if n == 1:
-        head = f"One area (~{acres} acres)" if acres else "One area"
+        head = f"One area ({acres} acres)" if acres else "One area"
+        # fall through
     else:
-        head = (f"{_count_word(n).capitalize()} areas (~{acres} acres in total)" if acres
-                else f"{_count_word(n).capitalize()} areas")
-    head = Markup(f"<b>{escape(head)}</b>")
+        head = f"{_count_word(n).capitalize()} areas ({acres} acres in total)" if acres \
+               else f"{_count_word(n).capitalize()} areas"
 
     obs_text = _join([o[0].lower() + o[1:] for o in obs]) if obs else "an observation worth noting"
-    sentence = f"{head} showed {escape(obs_text)}"
+    sentence = f"{head} showed {obs_text}"
     if causes:
-        sentence += f", associated with {escape(_join([c[0].lower() + c[1:] for c in causes]))}"
-    # Markup because the lead carries a <b>; everything interpolated around it is
-    # escaped first, so the agronomist's own text can never inject markup.
-    return Markup(sentence + ".")
+        sentence += f", associated with {_join([c[0].lower() + c[1:] for c in causes])}"
+    return sentence + "."
 
 
 def _suggestion(group):
@@ -243,33 +239,19 @@ def _suggestion(group):
     distinct ones are offered together. Nothing new is proposed.
     """
     recs = _phrases(group["findings"], "recommendation", 3)
-    biggest = group["findings"][0]
-    zone = group["zones"][0]
-    # Two forms: one that sits inside brackets already, and one that carries its
-    # own, so neither ends up with nested parentheses or a run of commas.
-    inline = f"zone {zone}"
-    standalone = f"zone {zone}"
-    if biggest.area_acres:
-        inline += f", ~{_acres(biggest.area_acres)} acres"
-        standalone += f" (~{_acres(biggest.area_acres)} acres)"
-
     if not recs:
-        return (f"No next step was recorded against the {group['name'].lower()} "
-                "areas, so they may be worth a closer look.")
-
-    # Attributed rather than instructed: "the agronomist suggested" offers the
-    # farmer what was written, where the imperative the agronomist used for
-    # their own notes would read as an order.
+        return (f"No specific next step was recorded against the "
+                f"{group['name'].lower()} areas, so they may be worth a closer look.")
     cleaned = [r[0].lower() + r[1:] for r in recs]
     if group["count"] == 1:
-        return f"For the one area here ({inline}), the agronomist suggested: {cleaned[0]}."
-    # Distinct recommendations are separated by semicolons rather than "and",
-    # because several are themselves two clauses joined by "and" and chaining
+        zone = group["zones"][0]
+        return f"For the one area here (zone {zone}), the agronomist recorded: {cleaned[0]}."
+    # Separate recommendations are joined with semicolons rather than "and".
+    # Several of them are themselves two clauses joined by "and", so chaining
     # them that way produced a sentence that ran on without a break in it.
-    acres = f" (~{group['acres_text']} acres)" if group["acres_text"] else ""
-    return (f"Across the {_count_word(group['count'])} areas in this pattern{acres}, "
-            f"the agronomist suggested: {'; '.join(cleaned)}. The largest, "
-            f"{standalone}, may be the most useful place to start.")
+    return (f"Across the {_count_word(group['count'])} areas here, the agronomist "
+            f"recorded: {'; '.join(cleaned)}. The largest of them may be the most "
+            "useful place to start.")
 
 
 # ----------------------------------------------------------------- aggregation
