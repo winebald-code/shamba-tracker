@@ -32,11 +32,6 @@ Built with Flask · SQLite · Tailwind CSS · vanilla JS · WeasyPrint. Ready fo
 
 Any hex a pin uses in DroneDeploy is bucketed to the nearest meaning by hue.
 
-This code says *how urgent a zone looked*, and it stays internal to triage. It
-does not decide a category. It used to: every red pin was filed as Pest /
-Disease, so a flight where the agronomist marked all fifteen zones red arrived
-with one label covering fifteen different things.
-
 ### Categories
 
 Separate from the colour code above, and shared by the review page and the
@@ -53,22 +48,7 @@ report:
 
 The colour code says *how urgent*; the category says *what kind*. Both matter,
 but only the category reaches the farmer's map, because that is the question a
-map answers well. Nothing in this set means healthy or fine — every colour on
-the map marks something the agronomist chose to flag.
-
-**What decides a category.** The one the agronomist picked. They are standing in
-the field and the code is reading a spreadsheet, so a finding filed under one of
-the six stays there — a weed patch is still a weed patch when the cause they
-wrote down happens to mention water.
-
-The text is read only when the stored category decides nothing: blank, or one of
-the broad labels everything used to land in. That is the case the keyword lists
-in `aggregation.py` exist for, and it is what separates soil fertility from
-irrigation on a flight filed entirely under one heading. When the text points
-nowhere either, the finding is Needs Investigation rather than a guess.
-
-At import the same rule assigns the category, so the review page and the report
-start from one answer and cannot disagree about where a zone belongs.
+map answers well.
 
 These are defined once, in `aggregation.py`, and the review page reads the same
 list. They used to be two lists, so a finding filed as "Nutrient / Vigor" while
@@ -125,12 +105,10 @@ python tests/test_import.py     # CSV/Excel import of farms and flights
 python tests/test_homepage.py   # admin-managed homepage content
 python tests/test_farmer_comment.py   # the farmer's reply, and its isolation
 python tests/test_generate_gate.py    # what a report needs before it generates
-python tests/test_report_v2.py       # pattern grouping, report voice, page parity
+python tests/test_report_v2.py       # pattern grouping, report voice, security headers
 python tests/test_responsive.py      # every page on a phone-sized viewport
 python tests/test_categories.py      # one category list across review and report
 ```
-
-358 checks at the time of writing.
 
 ---
 
@@ -319,28 +297,10 @@ Two things hold that guarantee up:
 * **Findings are paginated in Python** (`report_data.paginate`), not left to the
   renderer, so a card is never split and both engines break in the same places.
 
-### On a small screen
-
-The report is **not reflowed**. A phone gets the same A4 page the printer and the
-PDF produce, fitted to the width of the screen the way a PDF viewer fits a page
-when you open it, with pinch-zoom left available for reading it.
-
-That is a deliberate trade. Reflowing gives a larger default type size, but it
-hands a farmer reading on a handset a different-looking document from the one
-their agronomist has open on a laptop and the one attached to the message — so a
-conversation about "the box at the top of page one" stops working. Design
-fidelity is worth more than default type size when zooming is one gesture away.
-
-A script sets `--sheet-fit` from the width available; `zoom` is used rather than
-`transform` because it also shrinks the box the sheet occupies, so the page does
-not end in a column of dead white space. A browser without `zoom` falls back to
-`transform`. Print resets the scale to 1, so nothing here reaches the PDF.
-
-Measured fit: 0.40 at 320px, 0.47 at 375px, 0.51 at 412px, 0.96 at 768px, and
-full size from about 820px up. Every route is walked in a real browser at those
-widths and any horizontal scroll fails the check
-(`tests/test_responsive.py`). The rest of the application — dashboards, the
-review table, the import page — is responsive in the ordinary way.
+Below 820px the sheets stop pretending to be paper: fixed millimetre heights
+would either clip the content or leave a long blank gap, so the sheet reflows and
+the detail tables become cards. The rest of the application is responsive
+throughout.
 
 **Download** produces a real file named `Farm Name_Crop Name_Season Year_Flight No.pdf` —
 `Content-Disposition: attachment` plus a matching `download` attribute on the
@@ -414,7 +374,7 @@ shamba-tracker/
 ├── aggregation.py     # groups findings into the patterns the report is built from
 ├── schema.py          # additive migrations + share-token backfill
 ├── templates/         # Tailwind UI + report templates
-│   ├── report_v2.html     # THE report — screen, print and PDF, one file
+│   ├── report_doc.html    # THE report — screen, print and PDF, one file
 │   ├── report_v2.html     # THE report — three pages, screen, print and PDF
 │   ├── report.html        # app chrome around the document
 │   ├── report_print.html  # bare wrapper WeasyPrint renders

@@ -25,13 +25,14 @@ COLOUR_CODE = {
     "Pending review":{"swatch": "#6C6C6C","hue": "grey",   "note": "Logged, awaiting agronomist review"},
 }
 
-# The pin colour no longer suggests a category, and the mapping that did it is
-# gone. The colour code says how urgent a zone looked; the report categories say
-# what kind of problem it is. Deriving the second from the first put every red
-# pin under Pest / Disease — and on a flight where the agronomist marked all
-# fifteen zones red, that is one label for fifteen different things, which is
-# the exact failure the report was rebuilt to stop making. Category now comes
-# from what they wrote.
+# suggested issue category per colour meaning (agronomist can override)
+MEANING_TO_CATEGORY = {
+    "New growth": "Soil Fertility / Nutrition",
+    "Healthy": "Soil Fertility / Nutrition",
+    "Monitor": "Needs Investigation",
+    "Needs testing": "Pest / Disease",
+    "Pending review": "Needs Investigation",
+}
 
 # The categories an agronomist picks, and the ones the report map is keyed by.
 # These were two different lists: a finding filed under "Nutrient / Vigor" showed
@@ -40,7 +41,7 @@ COLOUR_CODE = {
 #
 # Kept in aggregation.py, which owns the report legend, so there is one list
 # rather than two that have to be remembered to stay in step.
-from aggregation import CATEGORY_ORDER as CATEGORIES, classify_text
+from aggregation import CATEGORY_ORDER as CATEGORIES
 
 # What the older names became, for findings recorded before the two lists were
 # merged. Applied on read, so an existing flight's report groups correctly
@@ -131,7 +132,7 @@ _LABEL_ALT = "|".join(re.escape(k) for k in sorted(_LABELS, key=len, reverse=Tru
 # by ':' or '-'/'–' and optional surrounding space. Matches anywhere in the string.
 _LABEL_RE = re.compile(r"(?i)(?<![A-Za-z])(" + _LABEL_ALT + r")\s*[:\-\u2013]\s*")
 
-_STRIP_EDGES = " \t\r\n|;:,•·—–-"
+_STRIP_EDGES = " \t\r\n|;•·—–-"
 
 
 def parse_description(text):
@@ -216,14 +217,12 @@ def parse_csv(file_bytes):
 
         category = parsed["category"]
         if category not in CATEGORIES:
-            # Snap a loose or legacy name onto the current list. Where the
-            # annotation named no category at all, read the observation and
-            # likely cause the same way the report does, so the review page and
-            # the report start from the same answer. Text that points nowhere
-            # stays Needs Investigation rather than being guessed at.
+            # Snap a loose or legacy category onto the current list. Where the
+            # text gives nothing to go on, fall back to what the annotation
+            # colour suggests rather than filing everything as unknown.
             snapped = normalise_category(category)
             category = (snapped if snapped != "Needs Investigation"
-                        else classify_text(category, parsed["observation"], parsed["cause"]))
+                        else MEANING_TO_CATEGORY.get(meaning, "Needs Investigation"))
 
         findings.append({
             "annotation_id": _clean(row.get("AnnotationId")) or f"row-{i+1}",

@@ -30,9 +30,9 @@
     <form method="post" action="{{ url_for('import_preview', kind=kind) }}" enctype="multipart/form-data" class="mt-4">
       <label class="block">
         <input type="file" name="sheet" accept=".csv,.xlsx,.xlsm" required
-               class="block w-full min-w-0 text-[12.5px] text-dove file:mr-3 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12.5px] file:cursor-pointer cursor-pointer">
+               class="block w-full text-[12.5px] text-dove file:mr-3 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12.5px] file:cursor-pointer cursor-pointer">
       </label>
-      <div class="mt-4 flex flex-wrap items-center gap-3">
+      <div class="mt-4 flex items-center gap-3">
         <button class="px-5 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition flex items-center gap-2">
           {{ icon('arrow-right','w-4 h-4') }} Preview the import
         </button>
