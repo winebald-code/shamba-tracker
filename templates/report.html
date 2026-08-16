@@ -10,12 +10,7 @@
 #}
 
 {% block body %}
-<style>
-  /* Breathing room around the sheets on screen. The print path takes none of
-     this, so the page box still supplies the only margin on paper. */
-  @media screen { .rdwrap { padding: 20px 16px 40px; } }
-  @media print  { .rdwrap { padding: 0; } }
-</style>
+
 <div class="min-h-screen bg-canvas">
 
 {% if not public %}
@@ -59,7 +54,7 @@
 </div>
 {% endif %}
 
-<div class="rdwrap">{% include 'report_v2.html' %}</div>
+{% include 'report_v2.html' %}
 
 {% if public %}
 <p class="text-center text-[11.5px] text-dove pb-8 px-4 no-print">Questions? Reply to the message this came from, or call Acre Insights any time.</p>

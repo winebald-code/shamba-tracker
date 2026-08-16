@@ -15,6 +15,8 @@ import io
 import re
 import colorsys
 
+import aggregation
+
 # ---- Acre Insights annotation colour code (from the internal SOP) ----
 # meaning + a canonical swatch used only when we have no real hex to show.
 COLOUR_CODE = {
@@ -25,14 +27,6 @@ COLOUR_CODE = {
     "Pending review":{"swatch": "#6C6C6C","hue": "grey",   "note": "Logged, awaiting agronomist review"},
 }
 
-# suggested issue category per colour meaning (agronomist can override)
-MEANING_TO_CATEGORY = {
-    "New growth": "Soil Fertility / Nutrition",
-    "Healthy": "Soil Fertility / Nutrition",
-    "Monitor": "Needs Investigation",
-    "Needs testing": "Pest / Disease",
-    "Pending review": "Needs Investigation",
-}
 
 # The categories an agronomist picks, and the ones the report map is keyed by.
 # These were two different lists: a finding filed under "Nutrient / Vigor" showed
@@ -217,12 +211,18 @@ def parse_csv(file_bytes):
 
         category = parsed["category"]
         if category not in CATEGORIES:
-            # Snap a loose or legacy category onto the current list. Where the
-            # text gives nothing to go on, fall back to what the annotation
-            # colour suggests rather than filing everything as unknown.
-            snapped = normalise_category(category)
-            category = (snapped if snapped != "Needs Investigation"
-                        else MEANING_TO_CATEGORY.get(meaning, "Needs Investigation"))
+            # Suggest the category from what the agronomist wrote, not from the
+            # pin colour. Colour records how urgent an area is; a category
+            # records what kind of problem it is, and one cannot be derived from
+            # the other. Deriving it from colour filed every pin of one colour
+            # under one heading — on a flight where all fifteen pins were red,
+            # all fifteen arrived as "Pest / Disease" whatever the notes said.
+            snapped = normalise_category(category) if category else ""
+            category = (snapped if snapped and snapped != "Needs Investigation"
+                        else aggregation.classify_text(parsed["observation"],
+                                                       parsed["cause"],
+                                                       parsed["recommendation"])
+                        or "Needs Investigation")
 
         findings.append({
             "annotation_id": _clean(row.get("AnnotationId")) or f"row-{i+1}",
