@@ -99,17 +99,22 @@ import subprocess
 pages=int([l for l in subprocess.run(["pdfinfo",os.path.join(TMP,"v2.pdf")],capture_output=True,text=True).stdout.split("\n") if l.startswith("Pages")][0].split()[-1])
 chk("exactly 3 PDF pages",pages==3,pages)
 chk("public link works",appmod.app.test_client().get(f"/r/{TOK}").status_code==200)
-print("\n=== 5. a second real flight groups by what the cause says ===")
+print("\n=== 5. a flight left on the catch-all is unbundled by its causes ===")
 # The IPM flight above is the brief's worked example. This one is a later flight
-# whose six findings had all been filed under one category, and it is here
+# whose six findings were never filed anywhere in particular, and it is here
 # because it caught three faults the first dataset could not: "nitrogen" and
 # "sprinkler" were in no keyword list, and a pest finding that mentioned the
-# weedy edge the aphids came from was filed under Weeds.
+# weedy edge the aphids came from was landing under Weeds.
+#
+# The catch-all is the whole point of this fixture. Reading the cause text is
+# what the keyword lists are for, and it is reached only when the stored
+# category decides nothing — which is this case, and is not the case where an
+# agronomist has picked one of the six on purpose.
 class _F:
     def __init__(self, i, acres, obs, cause, rec):
         self.id, self.area_acres = i, acres
         self.observation, self.likely_cause, self.recommendation = obs, cause, rec
-        self.category = "Pest / Disease"          # as they were all stored
+        self.category = "Nutrient / Vigor"        # the label everything landed in
 
 FLIGHT2 = [
     _F(1, 8.08, "Reduced growth along one irrigation line.",
@@ -146,6 +151,12 @@ chk("a sprinkler cause is an irrigation problem",
     _agg.classify(FLIGHT2[4]) == "Irrigation / Moisture", _agg.classify(FLIGHT2[4]))
 chk("aphids beat the weedy edge they came from",
     _agg.classify(FLIGHT2[3]) == "Pest / Disease", _agg.classify(FLIGHT2[3]))
+# A category the agronomist actually picked is the answer. They are standing in
+# the field; a keyword list is not. The weed patch on the IPM flight is the live
+# case: its recorded cause is water stress, and it stays under Weeds.
+chk("a category picked on purpose is not overruled by the cause text",
+    _agg.classify_text("Weeds", "weeds", "Water stress") == "Weeds",
+    _agg.classify_text("Weeds", "weeds", "Water stress"))
 chk("'ph' no longer matches inside 'aphid'",
     "ph" not in dict(_agg.CAUSE_PATTERNS)["Soil Fertility / Nutrition"])
 chk("the acreage still totals what the header claims",

@@ -136,7 +136,7 @@
   <div class="px-5 py-4 border-b border-silver flex items-center justify-between gap-3">
     <div>
       <h3 class="text-[15px] font-bold">Findings &amp; recommendations</h3>
-      <p class="text-[11.5px] text-dove mt-0.5">Edit inline — changes save automatically. Categories are suggested from the pin colour; correct any that are off.</p>
+      <p class="text-[11.5px] text-dove mt-0.5">Edit inline — changes save automatically. Categories are suggested from what you wrote; the report groups by whatever is set here.</p>
     </div>
     <form method="post" action="{{ url_for('finding_add', flight_id=flight.id) }}">
       <button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl glass-solid text-[12.5px] font-bold hover:border-sage transition whitespace-nowrap">{{ icon('plus','w-4 h-4') }} Add finding</button>

@@ -108,31 +108,56 @@ def _norm(text):
     return " ".join(str(text or "").lower().split())
 
 
-def classify(finding):
-    """
-    The report category for one finding.
+# The broad labels that carry no decision. A finding sitting under one of these
+# has not been filed anywhere in particular — either it predates the current
+# list, or it is the catch-all everything landed in — so its text is read
+# instead. Anything outside this set is a choice somebody made.
+UNDECIDED_CATEGORIES = {
+    "", "irrigation", "drainage / soil", "nutrient / vigor", "nutrient / vigour",
+    "planting gap",
+}
 
-    The likely cause is read first, because it is where the agronomist recorded
-    what they actually think is happening. The category they picked is the
-    fallback, since in V1 it was often the same broad label for everything.
-    """
-    cause = _norm(finding.likely_cause)
-    obs = _norm(finding.observation)
-    haystack = f"{cause} {obs}"
 
+def classify_text(category, observation, likely_cause):
+    """
+    The report category for one annotation.
+
+    The agronomist's own category comes first. They are standing in the field
+    and we are reading a spreadsheet, so when they have filed a finding under
+    one of the six, that is the answer — a weed patch stays a weed patch even
+    though the cause they wrote down mentions water.
+
+    The text is read only when the category does not decide anything: blank, or
+    one of the broad labels that everything used to land in. That is the case
+    the keyword lists exist for, and it is what separates soil fertility from
+    irrigation when both were filed under the same catch-all.
+    """
+    stored = _norm(category)
+    if stored not in UNDECIDED_CATEGORIES:
+        chosen = DIRECT_MAP.get(stored)
+        if chosen:
+            return chosen
+
+    cause = _norm(likely_cause)
     if cause:
         for name, words in CAUSE_PATTERNS:
             if any(w in cause for w in words):
                 return name
 
-    direct = DIRECT_MAP.get(_norm(finding.category))
-    if direct:
-        return direct
+    legacy = DIRECT_MAP.get(stored)
+    if legacy:
+        return legacy
 
+    haystack = f"{cause} {_norm(observation)}"
     for name, words in CAUSE_PATTERNS:
         if any(w in haystack for w in words):
             return name
     return "Needs Investigation"
+
+
+def classify(finding):
+    """The report category for one stored finding."""
+    return classify_text(finding.category, finding.observation, finding.likely_cause)
 
 
 # ----------------------------------------------------------------- phrasing

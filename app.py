@@ -1636,7 +1636,7 @@ def _pdf_bytes(flight, use_cache=True):
     """
     Render the report to PDF bytes, or None if PDF can't be produced here.
 
-    This renders the same report_doc.html the browser shows, wrapped in a bare
+    This renders the same report_v2.html the browser shows, wrapped in a bare
     page shell. Screen and paper therefore run on one stylesheet and one set of
     page breaks, which is the only way the two can be guaranteed to match.
 
