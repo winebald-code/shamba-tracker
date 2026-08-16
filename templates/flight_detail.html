@@ -8,13 +8,12 @@
   {% if flight.report_generated %}
   <a href="{{ url_for('flight_report', flight_id=flight.id) }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl glass-solid text-[13px] font-bold hover:border-dove transition">{{ icon('report','w-4 h-4') }} <span class="hidden sm:inline">View report</span></a>
   {% endif %}
-  <button id="genBtn" data-submit="genForm" {% if not flight.can_generate %}disabled{% endif %}
+  <button id="genBtn" onclick="document.getElementById('genForm').submit()" {% if not flight.can_generate %}disabled{% endif %}
       class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold transition
              {{ 'bg-sage text-ink hover:bg-sage/80' if flight.can_generate else 'bg-canvas text-dove cursor-not-allowed' }}">
     {{ icon('check','w-4 h-4') }} <span class="hidden sm:inline">Generate report</span>
   </button>
-  <form id="genForm" method="post" action="{{ url_for('flight_generate', flight_id=flight.id) }}" class="hidden">
-    {{ csrf_field() }}</form>
+  <form id="genForm" method="post" action="{{ url_for('flight_generate', flight_id=flight.id) }}" class="hidden"></form>
 </div>
 {% endblock %}
 
@@ -27,9 +26,8 @@
     <h3 class="text-[14px] font-bold flex items-center gap-2">{{ icon('upload','w-4 h-4') }} DroneDeploy import</h3>
     <p class="text-[12px] text-dove mt-1.5">Upload the annotation CSV export. Re-uploading replaces the findings below.</p>
     <form method="post" action="{{ url_for('flight_upload_csv', flight_id=flight.id) }}" enctype="multipart/form-data" class="mt-3">
-      {{ csrf_field() }}
       <label class="block">
-        <input type="file" name="csv" accept=".csv" required data-autosubmit
+        <input type="file" name="csv" accept=".csv" required onchange="this.form.submit()"
                class="block w-full text-[12px] text-dove file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12px] file:cursor-pointer cursor-pointer">
       </label>
     </form>
@@ -47,9 +45,8 @@
     </div>
     {% endif %}
     <form method="post" action="{{ url_for('flight_upload_map', flight_id=flight.id) }}" enctype="multipart/form-data" class="mt-3">
-      {{ csrf_field() }}
       <label class="block">
-        <input type="file" name="map" accept="image/*" required data-autosubmit
+        <input type="file" name="map" accept="image/*" required onchange="this.form.submit()"
                class="block w-full text-[12px] text-dove file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-sagesoft file:text-sagedeep file:font-bold file:text-[12px] file:cursor-pointer cursor-pointer">
       </label>
     </form>
@@ -59,8 +56,7 @@
   <div class="glass-solid rounded-xl2 p-5">
     <h3 class="text-[14px] font-bold flex items-center gap-2">{{ icon('clock','w-4 h-4') }} Status</h3>
     <form method="post" action="{{ url_for('flight_status', flight_id=flight.id) }}" class="mt-3">
-      {{ csrf_field() }}
-      <select name="status" data-autosubmit class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold">
+      <select name="status" onchange="this.form.submit()" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[13.5px] font-semibold">
         {% for s in ['Draft','Ready for Review','Approved','Sent'] %}
         <option value="{{ s }}" {{ 'selected' if flight.status==s }}>{{ s }}</option>
         {% endfor %}
@@ -143,7 +139,6 @@
       <p class="text-[11.5px] text-dove mt-0.5">Edit inline — changes save automatically. Categories are suggested from the pin colour; correct any that are off.</p>
     </div>
     <form method="post" action="{{ url_for('finding_add', flight_id=flight.id) }}">
-      {{ csrf_field() }}
       <button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl glass-solid text-[12.5px] font-bold hover:border-sage transition whitespace-nowrap">{{ icon('plus','w-4 h-4') }} Add finding</button>
     </form>
   </div>
@@ -168,8 +163,7 @@
         {% if f.area_text %}<span class="text-[11.5px] font-bold text-dove tnum">· {{ f.area_text }}</span>{% endif %}
         <span class="flex-1"></span>
         {% if f.annotation_link %}<a href="{{ f.annotation_link }}" target="_blank" title="View pin in DroneDeploy" class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition">{{ icon('external','w-4 h-4') }}</a>{% endif %}
-        <form method="post" action="{{ url_for('finding_delete', finding_id=f.id) }}" data-confirm="Delete this finding?">
-          {{ csrf_field() }}
+        <form method="post" action="{{ url_for('finding_delete', finding_id=f.id) }}" onsubmit="return confirm('Delete this finding?')">
           <button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Delete">{{ icon('trash','w-4 h-4') }}</button>
         </form>
       </div>
@@ -193,9 +187,16 @@
       <!-- Category -->
       <div>
         <label class="lg:hidden block text-[10px] font-bold uppercase tracking-wider text-dove mb-1">Category</label>
-        <select data-field="category" class="cell w-full text-[12.5px] font-semibold px-2 py-1.5 bg-transparent">
-          {% for c in CATEGORIES %}<option value="{{ c }}" {{ 'selected' if f.category==c }}>{{ c }}</option>{% endfor %}
-        </select>
+        <div class="flex items-center gap-1.5">
+          {# The swatch is the colour this category gets on the report map, so the
+             label chosen here and the legend the farmer reads are visibly the
+             same thing rather than two lists that happen to agree. #}
+          <span class="shrink-0 w-2.5 h-2.5 rounded-sm" title="Colour on the report map"
+                style="background:{{ CATEGORY_COLOURS.get(f.category, '#6B4E8C') }}"></span>
+          <select data-field="category" class="cell w-full text-[12.5px] font-semibold px-2 py-1.5 bg-transparent">
+            {% for c in CATEGORIES %}<option value="{{ c }}" {{ 'selected' if f.category==c }}>{{ c }}</option>{% endfor %}
+          </select>
+        </div>
       </div>
       <!-- Observation -->
       <div class="mt-2.5 lg:mt-0">
@@ -215,8 +216,7 @@
       <!-- DESKTOP actions -->
       <div class="hidden lg:flex items-center gap-1">
         {% if f.annotation_link %}<a href="{{ f.annotation_link }}" target="_blank" title="View pin in DroneDeploy" class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition">{{ icon('external','w-4 h-4') }}</a>{% endif %}
-        <form method="post" action="{{ url_for('finding_delete', finding_id=f.id) }}" data-confirm="Delete this finding?">
-          {{ csrf_field() }}
+        <form method="post" action="{{ url_for('finding_delete', finding_id=f.id) }}" onsubmit="return confirm('Delete this finding?')">
           <button class="w-8 h-8 grid place-items-center rounded-lg glass-solid text-dove hover:text-ink transition" title="Delete">{{ icon('trash','w-4 h-4') }}</button>
         </form>
       </div>
@@ -258,7 +258,6 @@
 <!-- agronomist note + danger -->
 <div class="grid lg:grid-cols-3 gap-5 mt-5">
   <form method="post" action="{{ url_for('flight_note', flight_id=flight.id) }}" class="lg:col-span-2 glass-solid rounded-xl2 p-5">
-    {{ csrf_field() }}
     <label class="block text-[14px] font-bold mb-2">Note to the farmer <span class="text-dove font-medium text-[12px]">(optional — appears on the report)</span></label>
     <textarea name="note" rows="3" placeholder="A short, plain-language summary in Acre's voice…" class="field w-full glass-solid rounded-xl px-3.5 py-2.5 text-[13.5px] leading-relaxed resize-none">{{ flight.agronomist_note }}</textarea>
     <div class="mt-3 flex justify-end"><button class="px-4 py-2 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition flex items-center gap-2">{{ icon('check','w-4 h-4') }} Save note</button></div>
@@ -266,14 +265,13 @@
   <div class="glass-solid rounded-xl2 p-5 flex flex-col">
     <h3 class="text-[14px] font-bold">Remove flight</h3>
     <p class="text-[12.5px] text-dove mt-1.5 leading-relaxed">Deletes this flight and its findings. This cannot be undone.</p>
-    <form method="post" action="{{ url_for('flight_delete', flight_id=flight.id) }}" data-confirm="Delete this flight and all its findings?" class="mt-auto pt-4">
-      {{ csrf_field() }}
+    <form method="post" action="{{ url_for('flight_delete', flight_id=flight.id) }}" onsubmit="return confirm('Delete this flight and all its findings?')" class="mt-auto pt-4">
       <button class="text-[12.5px] text-dove hover:text-ink font-semibold flex items-center gap-2 transition">{{ icon('trash','w-4 h-4') }} Delete flight</button>
     </form>
   </div>
 </div>
 
-<script nonce="{{ csp_nonce }}">
+<script>
   const UPDATE_URL = fid => `/findings/${fid}/update`;
   const rows = () => document.querySelectorAll('.finding-row');
   const val = (row, field) => {
@@ -355,8 +353,7 @@
     clearTimeout(timers[fid+field]);
     timers[fid+field] = setTimeout(() => {
       fetch(UPDATE_URL(fid), {
-        method:'POST',
-        headers:{'Content-Type':'application/json', 'X-CSRFToken': window.SHAMBA_CSRF},
+        method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ [field]: el.value })
       }).catch(e => console.error('save failed', e));
     }, 500);
@@ -371,8 +368,7 @@
     clearTimeout(timers['c'+fid]);
     timers['c'+fid] = setTimeout(() => {
       fetch(COMMENT_URL(fid), {
-        method:'POST',
-        headers:{'Content-Type':'application/json', 'X-CSRFToken': window.SHAMBA_CSRF},
+        method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ farmer_comment: el.value })
       })
       .then(r => r.ok ? r.json() : null)

@@ -29,7 +29,6 @@ os.environ.update(DATABASE_URL="sqlite:///"+os.path.join(TMP,"s3.db"), SECRET_KE
                   S3_BUCKET="shamba-test", S3_REGION="us-east-1",
                   S3_ACCESS_KEY_ID="test", S3_SECRET_ACCESS_KEY="test")
 import app as appmod
-appmod.app.config["TESTING"] = True
 from models import db, Farm, Flight, Finding
 from datetime import date
 

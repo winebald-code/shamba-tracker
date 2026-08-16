@@ -16,7 +16,6 @@ TMP=tempfile.mkdtemp()
 os.environ.update(DATABASE_URL="sqlite:///"+os.path.join(TMP,"i.db"), SECRET_KEY="t",
                   ADMIN_EMAIL="a@a.com", ADMIN_PASSWORD="password123")
 import app as appmod
-appmod.app.config["TESTING"] = True
 from models import db, Farm, Flight
 P=F=0
 def chk(l,c,d=""):

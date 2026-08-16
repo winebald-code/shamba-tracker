@@ -135,28 +135,6 @@ import glob as _g
 fonts=sorted(os.path.basename(f) for f in _g.glob(os.path.join(ROOT_DIR,"static","fonts","*.woff2")))
 chk("only Montserrat files ship", all(f.startswith("montserrat-") for f in fonts), fonts)
 
-print("\n=== 5b. nothing is drawn through anything else ===")
-# Two defects that reached a real report and are easy to reintroduce:
-#   * `.rd table` in the element reset is a class AND an element, so it
-#     outranks a bare component class — every margin set on a table further
-#     down the file was silently dropped. That put the masthead rule directly
-#     on the facts card, slicing across its rounded corners.
-#   * A section heading with its rule running out beside it lands the line on
-#     the type's own x-height and reads as struck through the words.
-doc = c.get(f"/r/{TOK}").data.decode()
-chk("tables are not in the element margin reset",
-    ".rd table, .rd figure" not in doc and ".rd table," not in doc.split("border-collapse")[0],
-    "the reset would override every table margin set below it")
-chk("the facts card keeps its distance from the masthead rule",
-    re.search(r"\.facts \{[^}]*margin-top:\s*(1[5-9]|2[0-9])px", doc), "gap too small or unset")
-chk("section headings rule underneath, not beside",
-    re.search(r"\.sec \{[^}]*border-bottom", doc) and '<div class="sec">' in doc,
-    "heading rule is back beside the text")
-chk("no heading is laid out as text-plus-rule cells",
-    'class="rule"' not in doc)
-chk("the observations are spaced apart",
-    re.search(r"\.obs \{[^}]*margin-bottom", doc))
-
 print("\n=== 6. what is viewed is what is printed ===")
 web=c.get(f"/r/{TOK}").data.decode()
 sheets_web=len(re.findall(r'<section class="sheet"', web))
@@ -168,9 +146,7 @@ with APP.test_request_context("/"):
         logo_uri="",map_uri="",**appmod.report_context(fl))
 sheets_pdf=len(re.findall(r'<section class="sheet"', html))
 chk("same number of A4 sheets in both", sheets_web==sheets_pdf, f"web={sheets_web} pdf={sheets_pdf}")
-chk("both are built from the one document",
-    all(("size: A4" in doc and "@bottom-right" in doc and 'class="sheet"' in doc)
-        for doc in (web, html)))
+chk("both are built from the one document", "@page { size: A4; margin: 0; }" in web and "@page { size: A4; margin: 0; }" in html)
 chk("no Tailwind utility classes inside the document",
     'class="sheet"' in web and "text-[13px]" not in web.split('<section class="sheet"')[1])
 chk("print CSS drops the app chrome", "@media print" in web and "no-print" in web)

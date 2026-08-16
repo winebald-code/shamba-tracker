@@ -10,7 +10,7 @@
   {{ icon('upload','w-4 h-4') }} <span class="hidden sm:inline">Import</span>
 </a>
 {% endif %}
-<button data-open="addFarm"
+<button onclick="document.getElementById('addFarm').showModal()"
         class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition">
   {{ icon('plus','w-4 h-4') }} <span class="hidden sm:inline">Add farm</span>
 </button>
@@ -41,7 +41,7 @@
   <span class="inline-grid place-items-center w-14 h-14 rounded-2xl bg-sagesoft text-sagedeep mb-4">{{ icon('farm','w-7 h-7') }}</span>
   <h3 class="text-[17px] font-extrabold">Add your first farm</h3>
   <p class="text-[13px] text-dove mt-1.5 max-w-sm mx-auto">A farm holds its flights, findings and the farmer&rsquo;s contact details for delivery.</p>
-  <button data-open="addFarm"
+  <button onclick="document.getElementById('addFarm').showModal()"
           class="mt-6 inline-flex items-center gap-2 px-5 py-3 rounded-xl2 bg-sage text-ink font-bold hover:bg-sage/80 transition">
     {{ icon('plus','w-5 h-5') }} Add farm
   </button>

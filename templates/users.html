@@ -4,7 +4,7 @@
 {% block heading %}People{% endblock %}
 {% block subheading %}<p class="text-[12.5px] text-dove truncate">Approve requests, set roles, and manage every account.</p>{% endblock %}
 {% block topbar_actions %}
-<button data-open="newUser"
+<button onclick="document.getElementById('newUser').showModal()"
         class="shrink-0 inline-flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 transition">
   {{ icon('plus','w-4 h-4') }}<span class="hidden sm:inline">Add someone</span>
 </button>
@@ -37,15 +37,13 @@
         </div>
         <div class="flex flex-wrap items-center gap-2 shrink-0">
           <form method="post" action="{{ url_for('user_approve', user_id=u.id) }}" class="flex items-center gap-2">
-            {{ csrf_field() }}
             <select name="role" class="field glass-solid rounded-xl px-3 py-2.5 text-[12.5px] font-semibold bg-white" aria-label="Role for {{ u.name }}">
               {% for r in ROLES %}<option value="{{ r }}" {{ 'selected' if r == u.requested_role }}>{{ ROLE_LABELS[r] }}</option>{% endfor %}
             </select>
             <button class="px-4 py-2.5 rounded-xl bg-sage text-ink text-[12.5px] font-bold hover:bg-sage/80 transition flex items-center gap-1.5 whitespace-nowrap">{{ icon('check','w-4 h-4') }} Approve</button>
           </form>
           <form method="post" action="{{ url_for('user_reject', user_id=u.id) }}"
-                data-confirm="Decline access for {{ u.name }}?">
-            {{ csrf_field() }}
+                onsubmit="return confirm('Decline access for {{ u.name }}?')">
             <button class="px-4 py-2.5 rounded-xl border border-silver text-[12.5px] font-bold text-dove hover:bg-canvas hover:text-ink transition">Decline</button>
           </form>
         </div>
@@ -84,17 +82,15 @@
         <span class="text-[11px] font-bold px-3 py-1.5 rounded-full shrink-0 self-start sm:self-auto
               {{ 'bg-ink text-white' if u.role=='admin' else 'bg-canvas text-dove' }}">{{ u.role_label }}</span>
         <div class="flex items-center gap-1.5 shrink-0">
-          <button data-open="edit{{ u.id }}"
+          <button onclick="document.getElementById('edit{{ u.id }}').showModal()"
                   class="w-9 h-9 grid place-items-center rounded-lg text-dove hover:text-ink hover:bg-canvas transition" title="Edit {{ u.name }}">{{ icon('edit','w-4 h-4') }}</button>
           {% if u.id != current_user.id %}
           <form method="post" action="{{ url_for('user_toggle', user_id=u.id) }}">
-            {{ csrf_field() }}
             <button class="w-9 h-9 grid place-items-center rounded-lg text-dove hover:text-ink hover:bg-canvas transition"
                     title="{{ 'Deactivate' if u.active else 'Reactivate' }} {{ u.name }}">{{ icon('shield' if u.active else 'shield-check','w-4 h-4') }}</button>
           </form>
           <form method="post" action="{{ url_for('user_delete', user_id=u.id) }}"
-                data-confirm="Remove {{ u.name }} from the workspace? This cannot be undone.">
-            {{ csrf_field() }}
+                onsubmit="return confirm('Remove {{ u.name }} from the workspace? This cannot be undone.')">
             <button class="w-9 h-9 grid place-items-center rounded-lg text-dove hover:text-ink hover:bg-canvas transition" title="Remove {{ u.name }}">{{ icon('trash','w-4 h-4') }}</button>
           </form>
           {% endif %}
@@ -118,12 +114,10 @@
           <p class="text-[12px] text-dove break-all">{{ u.email }}{% if u.decision_note %} · {{ u.decision_note }}{% endif %}</p>
         </div>
         <form method="post" action="{{ url_for('user_approve', user_id=u.id) }}" class="shrink-0">
-          {{ csrf_field() }}
           <input type="hidden" name="role" value="{{ u.requested_role or 'agronomist' }}">
           <button class="px-3.5 py-2 rounded-xl border border-silver text-[12px] font-bold hover:bg-canvas transition">Approve after all</button>
         </form>
-        <form method="post" action="{{ url_for('user_delete', user_id=u.id) }}" data-confirm="Remove {{ u.name }}?" class="shrink-0">
-          {{ csrf_field() }}
+        <form method="post" action="{{ url_for('user_delete', user_id=u.id) }}" onsubmit="return confirm('Remove {{ u.name }}?')" class="shrink-0">
           <button class="w-9 h-9 grid place-items-center rounded-lg text-dove hover:text-ink hover:bg-canvas transition" title="Remove">{{ icon('trash','w-4 h-4') }}</button>
         </form>
       </div>
@@ -137,10 +131,9 @@
 {% for u in approved %}
 <dialog id="edit{{ u.id }}" class="rounded-xl2 p-0 w-full max-w-md backdrop:bg-ink/50 shadow-2xl">
   <form method="post" action="{{ url_for('user_edit', user_id=u.id) }}" class="bg-white">
-    {{ csrf_field() }}
     <div class="px-6 py-4 border-b border-silver flex items-center justify-between">
       <h3 class="text-[16px] font-extrabold">Edit {{ u.name.split()[0] }}</h3>
-      <button type="button" data-close="edit{{ u.id }}" class="text-dove hover:text-ink" aria-label="Close">{{ icon('x','w-5 h-5') }}</button>
+      <button type="button" onclick="document.getElementById('edit{{ u.id }}').close()" class="text-dove hover:text-ink" aria-label="Close">{{ icon('x','w-5 h-5') }}</button>
     </div>
     <div class="p-6 space-y-4">
       <div>
@@ -151,7 +144,7 @@
         <label class="block text-[12.5px] font-semibold mb-1.5">Email</label>
         <input name="email" type="email" required value="{{ u.email }}" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-[12.5px] font-semibold mb-1.5">Job title</label>
           <input name="job_title" value="{{ u.job_title or '' }}" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
@@ -178,7 +171,7 @@
       </div>
     </div>
     <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
-      <button type="button" data-close="edit{{ u.id }}" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
+      <button type="button" onclick="document.getElementById('edit{{ u.id }}').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
       <button class="px-5 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 flex items-center gap-2">{{ icon('check','w-4 h-4') }} Save</button>
     </div>
   </form>
@@ -187,10 +180,9 @@
 
 <dialog id="newUser" class="rounded-xl2 p-0 w-full max-w-md backdrop:bg-ink/50 shadow-2xl">
   <form method="post" action="{{ url_for('user_new') }}" class="bg-white">
-    {{ csrf_field() }}
     <div class="px-6 py-4 border-b border-silver flex items-center justify-between">
       <h3 class="text-[16px] font-extrabold">Add someone</h3>
-      <button type="button" data-close="newUser" class="text-dove hover:text-ink" aria-label="Close">{{ icon('x','w-5 h-5') }}</button>
+      <button type="button" onclick="document.getElementById('newUser').close()" class="text-dove hover:text-ink" aria-label="Close">{{ icon('x','w-5 h-5') }}</button>
     </div>
     <div class="p-6 space-y-4">
       <p class="text-[12.5px] text-dove leading-relaxed">Accounts you add here are approved straight away. Give them the temporary password in person.</p>
@@ -202,7 +194,7 @@
         <label class="block text-[12.5px] font-semibold mb-1.5">Email</label>
         <input name="email" type="email" required placeholder="jane@acre-insights.com" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-[12.5px] font-semibold mb-1.5">Job title</label>
           <input name="job_title" placeholder="Field agronomist" class="field w-full glass-solid rounded-xl px-4 py-3 text-[14px]">
@@ -225,7 +217,7 @@
       </div>
     </div>
     <div class="px-6 py-4 border-t border-silver flex items-center justify-end gap-3">
-      <button type="button" data-close="newUser" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
+      <button type="button" onclick="document.getElementById('newUser').close()" class="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-dove hover:bg-canvas">Cancel</button>
       <button class="px-5 py-2.5 rounded-xl bg-sage text-ink text-[13px] font-bold hover:bg-sage/80 flex items-center gap-2">{{ icon('plus','w-4 h-4') }} Add</button>
     </div>
   </form>

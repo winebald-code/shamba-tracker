@@ -108,7 +108,34 @@ def ensure_schema(db):
 
     if "flights" in existing_tables:
         backfill_share_tokens(db)
+    if "findings" in existing_tables:
+        migrate_categories(db)
     return added
+
+
+def migrate_categories(db):
+    """
+    Move findings off the category names used before the review page and the
+    report legend were merged onto one list.
+
+    Without this, a flight recorded earlier still reads "Nutrient / Vigor" on the
+    review page while its report groups it under "Soil Fertility / Nutrition" —
+    the same mismatch the merge was meant to remove. Idempotent: a database
+    already using the current names has nothing to update.
+    """
+    from parsing import LEGACY_CATEGORIES
+    moved = 0
+    try:
+        with db.engine.begin() as conn:
+            for old_name, new_name in LEGACY_CATEGORIES.items():
+                result = conn.execute(
+                    text("UPDATE findings SET category=:new WHERE category=:old"),
+                    {"new": new_name, "old": old_name})
+                moved += result.rowcount or 0
+        if moved:
+            print(f"[schema] moved {moved} finding(s) onto the current category names")
+    except Exception as exc:
+        print(f"[schema] category migration skipped: {exc}")
 
 
 def backfill_share_tokens(db):
