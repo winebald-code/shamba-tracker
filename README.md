@@ -54,6 +54,10 @@ report:
 The colour code says *how urgent*; the category says *what kind*. They are two
 systems answering two questions, and neither is derived from the other.
 
+The link to the interactive map is read from the flight when it has one of its
+own and from the farm otherwise, so changing it on the farm reaches every flight
+that never had one — nothing needs recreating.
+
 The pins on the aerial image carry whatever colour the agronomist chose in
 DroneDeploy, because that image is their annotation, not ours to repaint. So the
 report gives the map a **zone key** instead: each category present on the flight,
@@ -121,6 +125,8 @@ python tests/test_report_v2.py       # pattern grouping, report voice, security 
 python tests/test_responsive.py      # every page on a phone-sized viewport
 python tests/test_categories.py      # one category list across review and report
 python tests/test_real_flight.py     # the reference flight, from its real export
+python tests/test_summary_edit.py    # rewording the summary before it is sent
+python tests/test_map_and_season.py  # the map link, zone numbering and season scope
 ```
 
 ---
@@ -257,17 +263,22 @@ summary page:
 1. **Field scouting summary** — what was scouted, the categories found with
    counts and acreage, the patterns behind them, and areas worth investigating.
 2. **Farm map** — the annotated image, with a key tying each numbered zone to
-   its category.
+   its category. Zones are numbered in the order the areas were annotated, which
+   is the order DroneDeploy numbered them on the image, so the key and the map
+   always name the same area.
 3. **Detailed findings** — every annotation the agronomist wrote, unchanged,
    grouped under the pattern it belongs to, across as many sheets as it needs.
-4. **Season to date** — added once a second flight of the season has been
-   reported: areas flagged and the ground they cover, flight by flight, split by
+4. **Season to date** — added once an earlier flight of the same season has been
+   reported. A report is a record of the field on the day it was flown, so it
+   covers the season up to that flight and no further: the first report of a
+   season never gains this page, even after later flights are added. It shows
+   areas flagged and the ground they cover, flight by flight, split by
    category, with every count shown. Plain figures rather than a score, because a
    number between 0 and 100 states a verdict the annotations do not support.
 
-V1 listed all fifteen zones one after another, nine of them near-identical
-entries under a single category. That is an annotation dump rather than a
-report. `aggregation.py` groups a flight's findings into the few patterns
+A flight can produce a dozen or more annotations, many of them near-identical
+entries under one category. Listing every one is an annotation dump rather than
+a report. `aggregation.py` groups a flight's findings into the few patterns
 actually present in them, so the summary says *"reduced crop vigour across nine
 areas (~13.4 acres), associated with soil condition or nutrient availability"*
 once, instead of nine times.

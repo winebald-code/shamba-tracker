@@ -424,7 +424,7 @@ def paginate_groups(groups, budget=DETAIL_BUDGET_PX):
 
 
 # ----------------------------------------------------------------- the season
-def season_overview(season_flights, current_id):
+def season_overview(season_flights, current_id, current_number=None):
     """
     The season so far, flight by flight, in the same terms as the report itself.
 
@@ -436,11 +436,17 @@ def season_overview(season_flights, current_id):
     export has not been imported yet has nothing to say, and a zero column would
     read as a field with nothing wrong with it.
 
-    Returns None until two flights carry findings, since one flight is not a
-    trend.
+    Returns None until two flights up to this one carry findings, since a single
+    flight is a reading rather than a trend.
     """
     points = []
     for flight in sorted(season_flights, key=lambda f: (f.flight_number or 0, f.id or 0)):
+        # The season to date, not the season in full: a report is a record of
+        # the field on the day it was flown, so a flight flown afterwards has no
+        # place in it. Without this, the first report of a season would gain a
+        # comparison page the moment a second flight was reported.
+        if current_number is not None and (flight.flight_number or 0) > current_number:
+            continue
         agg = aggregate(flight.findings)
         if not agg:
             continue

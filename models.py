@@ -216,6 +216,21 @@ class Flight(db.Model):
                                     cascade="all, delete-orphan")
 
     @property
+    def map_link(self):
+        """
+        Where the interactive map lives for this flight.
+
+        A flight may carry its own project link, but most do not, and those
+        follow the farm's. Reading it through here rather than copying the
+        farm's value onto the flight means changing it on the farm reaches every
+        flight that never had one of its own.
+        """
+        own = (self.dronedeploy_project_url or "").strip()
+        if own:
+            return own
+        return (self.farm.dronedeploy_project_url or "").strip() if self.farm else ""
+
+    @property
     def farmer_comment_count(self):
         """Findings the farmer has commented on. Internal; never in the report."""
         return sum(1 for f in self.findings if f.has_farmer_comment)
