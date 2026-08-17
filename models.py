@@ -212,6 +212,9 @@ class Flight(db.Model):
     def incomplete_count(self):
         return sum(1 for f in self.findings if not f.is_complete)
 
+    summary_edits = db.relationship("SummaryEdit", backref="flight", lazy=True,
+                                    cascade="all, delete-orphan")
+
     @property
     def farmer_comment_count(self):
         """Findings the farmer has commented on. Internal; never in the report."""
@@ -284,6 +287,33 @@ class Finding(db.Model):
     @property
     def has_farmer_comment(self):
         return bool((self.farmer_comment or "").strip())
+
+
+class SummaryEdit(db.Model):
+    """
+    An agronomist's wording for one pattern on the summary page.
+
+    The summary is assembled from the findings, which is the right default but
+    not always the right sentence: the agronomist knows the field and may want to
+    say it differently before it reaches the farmer. A row here overrides the
+    assembled text for one category on one flight; where there is no row, or the
+    text is blank, the assembled version stands.
+
+    Keyed by category rather than by position, so re-importing the export and
+    renumbering the zones does not detach an edit from what it describes.
+    """
+    __tablename__ = "summary_edits"
+    id = db.Column(db.Integer, primary_key=True)
+    flight_id = db.Column(db.Integer, db.ForeignKey("flights.id", ondelete="CASCADE"),
+                          nullable=False, index=True)
+    category = db.Column(db.String(60), nullable=False)
+    observation = db.Column(db.Text, default="")
+    suggestion = db.Column(db.Text, default="")
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_by_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    updated_by = db.relationship("User", foreign_keys=[updated_by_id])
+
+    __table_args__ = (db.UniqueConstraint("flight_id", "category", name="uq_summary_edit"),)
 
 
 class SiteContent(db.Model):

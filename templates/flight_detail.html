@@ -131,12 +131,61 @@
   </p>
 </div>
 
+<!-- summary the farmer will read, before it goes out -->
+{% if ctx.agg and can('edit_findings') %}
+<div class="glass-solid rounded-xl2 overflow-hidden mb-5">
+  <div class="px-5 py-4 border-b border-silver">
+    <h3 class="text-[15px] font-bold">Summary the farmer will read</h3>
+    <p class="text-[11.5px] text-dove mt-0.5">
+      Written from the findings below, one entry per pattern. Edit any of it and your
+      wording is what the report carries; clear a box to go back to the written version.
+      Changes save automatically and the report needs generating again after them.
+    </p>
+  </div>
+
+  <div class="divide-y divide-silver">
+    {% for g in ctx.agg.groups %}
+    <div class="px-5 py-4">
+      <div class="flex items-center gap-2 mb-2.5">
+        <span class="shrink-0 w-2.5 h-2.5 rounded-sm" style="background:{{ g.colour }}"></span>
+        <span class="text-[13px] font-bold">{{ g.name }}</span>
+        <span class="text-[11.5px] text-dove">{{ g.count }} area{{ '' if g.count == 1 else 's' }}{% if g.acres_text %} · ~{{ g.acres_text }} ac{% endif %}</span>
+      </div>
+
+      <div class="grid lg:grid-cols-2 gap-3">
+        <div>
+          <label class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-dove mb-1">
+            Key observation
+            <span data-mark="observation:{{ g.name }}"
+                  class="text-[9.5px] font-semibold px-1.5 py-0.5 rounded {{ '' if g.observation_edited else 'hidden' }}"
+                  style="background:#E7F1DB;color:#3E7A24">your wording</span>
+          </label>
+          <textarea data-summary="observation" data-category="{{ g.name }}" rows="3"
+                    class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ g.observation }}</textarea>
+        </div>
+        <div>
+          <label class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-dove mb-1">
+            Suggested area to investigate
+            <span data-mark="suggestion:{{ g.name }}"
+                  class="text-[9.5px] font-semibold px-1.5 py-0.5 rounded {{ '' if g.suggestion_edited else 'hidden' }}"
+                  style="background:#E7F1DB;color:#3E7A24">your wording</span>
+          </label>
+          <textarea data-summary="suggestion" data-category="{{ g.name }}" rows="3"
+                    class="cell w-full text-[12.5px] leading-snug px-2 py-1.5 bg-transparent resize-none">{{ g.suggestion }}</textarea>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <!-- findings table -->
 <div class="glass-solid rounded-xl2 overflow-hidden">
   <div class="px-5 py-4 border-b border-silver flex items-center justify-between gap-3">
     <div>
       <h3 class="text-[15px] font-bold">Findings &amp; recommendations</h3>
-      <p class="text-[11.5px] text-dove mt-0.5">Edit inline — changes save automatically. Categories are suggested from the pin colour; correct any that are off.</p>
+      <p class="text-[11.5px] text-dove mt-0.5">Edit inline — changes save automatically. Categories are suggested from what you wrote in the description; correct any that are off.</p>
     </div>
     <form method="post" action="{{ url_for('finding_add', flight_id=flight.id) }}">
       <button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl glass-solid text-[12.5px] font-bold hover:border-sage transition whitespace-nowrap">{{ icon('plus','w-4 h-4') }} Add finding</button>
@@ -381,6 +430,34 @@
       .catch(e => console.error('comment save failed', e));
     }, 600);
   }
+
+  // The summary text saves to its own endpoint: it is keyed by category rather
+  // than by finding, and clearing a box restores the written sentence instead of
+  // storing an empty one.
+  function persistSummary(el){
+    const key = el.dataset.summary + ':' + el.dataset.category;
+    clearTimeout(timers['s' + key]);
+    timers['s' + key] = setTimeout(() => {
+      fetch(`/flights/{{ flight.id }}/summary`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ category: el.dataset.category,
+                               field: el.dataset.summary, text: el.value })
+      })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return;
+        const mark = document.querySelector(`[data-mark="${key}"]`);
+        if (mark) mark.classList.toggle('hidden', !d.edited);
+      })
+      .catch(e => console.error('summary save failed', e));
+    }, 600);
+  }
+
+  document.querySelectorAll('[data-summary]').forEach(el => {
+    el.addEventListener('input', () => persistSummary(el));
+    const grow = () => { el.style.height='auto'; el.style.height=(el.scrollHeight)+'px'; };
+    el.addEventListener('input', grow); grow();
+  });
 
   document.querySelectorAll('.cell').forEach(el => {
     const ev = el.tagName === 'SELECT' ? 'change' : 'input';

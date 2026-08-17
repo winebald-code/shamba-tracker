@@ -155,7 +155,8 @@
 .ddlink td { vertical-align:middle; }
 .ddlink .ico { width:26px; }
 .ddlink .ico span { display:inline-block; width:19px; height:19px; border-radius:50%;
-                    background:#3E7A24; color:#fff; font-size:11px; line-height:19px; text-align:center; }
+                    background:#3E7A24; text-align:center; line-height:19px; }
+.ddlink .ico svg { display:inline-block; vertical-align:-2px; }
 .ddlink .t { font-size:10.5px; font-weight:800; }
 .ddlink .d { font-size:9px; color:#6C6C6C; margin-top:1px; }
 
@@ -177,6 +178,12 @@
 .bars .fl { font-size:8px; font-weight:700; color:#6C6C6C; margin-top:5px; }
 .bars .fl.on { color:#030920; }
 .bars .dt { font-size:7.5px; color:#9A9A9A; margin-top:1px; }
+/* The count per category, under its own bar. Put inside the segments they would
+   be unreadable wherever a category has one or two areas, and this way every
+   number on the chart is legible whatever the split. */
+.bars .chips { margin-top:5px; }
+.bars .chip { display:inline-block; min-width:15px; height:15px; padding:0 3px; border-radius:4px;
+              color:#fff; font-size:8px; font-weight:800; line-height:15px; margin:0 2px 2px 0; }
 
 /* ---------------------------------------------------------------- detail */
 /* No break-inside rule: the sheets are packed in Python, so letting the
@@ -209,12 +216,13 @@
 
 @media screen and (max-width:900px) {
   /* Small screens get the same page, scaled to fit, rather than a rearranged
-     one. It is the view the downloaded PDF already gives on a phone, and it
-     keeps the document a farmer reads on their handset identical to the one
-     their agronomist sees and the one that comes out of a printer. The scale is
-     set on .paper by the script below, from the width actually available. */
-  .paper { padding:12px 0 28px; }
-  .sheet { zoom: var(--fit, 1); margin-bottom:12px; }
+     one — the view the downloaded copy already gives on a phone. The scale is a
+     transform applied by the script below rather than a zoom: a zoom changes the
+     used font size, which phone browsers then enlarge again on the assumption
+     the text is too small, and the page bursts its own margins. A transform
+     scales what has already been laid out, so nothing can second-guess it. */
+  .paper { padding:10px 0 24px; overflow-x:hidden; }
+  .sheet { margin-left:10px; margin-right:10px; }
 }
 
 </style>
@@ -334,7 +342,9 @@
   {% if flight.dronedeploy_project_url %}
   <a class="ddlink" href="{{ flight.dronedeploy_project_url }}"{% if not pdf %} target="_blank" rel="noopener"{% endif %}>
     <table><tr>
-      <td class="ico"><span>&#8599;</span></td>
+      <td class="ico"><span><svg viewBox="0 0 24 24" width="11" height="11" fill="none"
+        stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"
+        aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></span></td>
       <td>
         <div class="t">Open the interactive map</div>
         <div class="d">Pan, zoom and tap any zone in DroneDeploy to see it up close.</div>
@@ -344,90 +354,6 @@
   {% endif %}
 
   {{ pagefoot(2) }}
-</section>
-{% endif %}
-
-{# ======================================================= SEASON, WHEN THERE IS ONE #}
-{% if season_overview %}
-{% set so = season_overview %}
-<section class="sheet">
-  {{ masthead('Season to date') }}
-  <p class="mapcap">Every flight of {{ flight.season }} that has been reported on so far.
-  Areas flagged and the ground they cover, by category &mdash; a single flight is a
-  reading, and a run of them is what shows whether the field is moving.</p>
-
-  <table class="skpi"><tr>
-    <td>
-      <div class="n mono">{{ so.flights }}</div>
-      <div class="l">flights reported</div>
-    </td>
-    <td>
-      <div class="n mono">{{ so.last.count }}</div>
-      <div class="l">areas flagged on this flight</div>
-    </td>
-    <td>
-      <div class="n mono">{{ '+' if so.count_delta > 0 }}{{ so.count_delta }}</div>
-      <div class="l">against {{ so.first.count }} on flight {{ so.first.number }}</div>
-    </td>
-    <td>
-      <div class="n mono">{{ so.last.acres_text or '—' }}</div>
-      <div class="l">acres covered by this flight&rsquo;s findings</div>
-    </td>
-  </tr></table>
-
-  {{ sec('Areas flagged, flight by flight', gap=true) }}
-  <div class="chart">
-    <table class="bars"><tr>
-      {% for p in so.points %}
-      <td>
-        <div class="tot mono">{{ p.count }}</div>
-        <div class="col">
-          <div class="stack" style="height:{{ p.pct }}%">
-            {% for s in p.segments %}
-            <span class="seg" style="height:{{ s.pct }}%;background:{{ s.colour }}"></span>
-            {% endfor %}
-          </div>
-        </div>
-        <div class="fl mono{{ ' on' if p.is_current }}">Flight {{ p.number }}</div>
-        <div class="dt mono">{{ p.date.strftime('%d %b') if p.date else '' }}</div>
-      </td>
-      {% endfor %}
-    </tr></table>
-    <table class="legend" style="margin-top:11px">
-      {% for row in so.categories|batch(3, '') %}
-      <tr>
-        {% for c in row %}
-        <td>{% if c %}<div class="item"><span class="sw" style="background:{{ c[1] }}"></span><span class="lb">{{ c[0] }}</span></div>{% endif %}</td>
-        {% endfor %}
-      </tr>
-      {% endfor %}
-    </table>
-  </div>
-
-  {{ sec('Every flight this season', gap=true) }}
-  <div class="zt">
-    <table>
-      <thead><tr>
-        <th class="n">Flight</th><th>Flown</th><th class="ac">Areas</th><th class="ac">Acres</th>
-        {% for name, colour in so.categories %}<th>{{ name }}</th>{% endfor %}
-      </tr></thead>
-      <tbody>
-      {% for p in so.points %}
-      <tr{% if p.is_current %} style="background:#F7F9F4"{% endif %}>
-        <td class="n mono" data-l="Flight">{{ p.number }}</td>
-        <td class="mono" data-l="Flown">{{ p.date.strftime('%d %b %Y') if p.date else '—' }}</td>
-        <td class="ac mono" data-l="Areas">{{ p.count }}</td>
-        <td class="ac mono" data-l="Acres">{{ p.acres_text or '—' }}</td>
-        {% for name, colour in so.categories %}
-        <td class="ac mono" data-l="{{ name }}">{{ p.by_category.get(name) or '—' }}</td>
-        {% endfor %}
-      </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  {{ pagefoot(1 + map_pages + 1) }}
 </section>
 {% endif %}
 
@@ -477,25 +403,129 @@
   </div>
   {% endif %}
 
-  {{ pagefoot(1 + map_pages + season_pages + loop.index) }}
+  {{ pagefoot(1 + map_pages + loop.index) }}
 </section>
 {% endfor %}
+
+{# ======================================================= SEASON, WHEN THERE IS ONE #}
+{% if season_overview %}
+{% set so = season_overview %}
+<section class="sheet">
+  {{ masthead('Season to date') }}
+  <p class="mapcap">Every flight of {{ flight.season }} that has been reported on so far.
+  Areas flagged and the ground they cover, by category &mdash; a single flight is a
+  reading, and a run of them is what shows whether the field is moving.</p>
+
+  <table class="skpi"><tr>
+    <td>
+      <div class="n mono">{{ so.flights }}</div>
+      <div class="l">flights reported</div>
+    </td>
+    <td>
+      <div class="n mono">{{ so.last.count }}</div>
+      <div class="l">areas flagged on this flight</div>
+    </td>
+    <td>
+      <div class="n mono">{{ '+' if so.count_delta > 0 }}{{ so.count_delta }}</div>
+      <div class="l">change since flight {{ so.first.number }} ({{ so.first.count }} areas)</div>
+    </td>
+    <td>
+      <div class="n mono">{{ so.last.acres_text or '—' }}</div>
+      <div class="l">acres covered by this flight&rsquo;s findings</div>
+    </td>
+  </tr></table>
+
+  {{ sec('Areas flagged, flight by flight', gap=true) }}
+  <div class="chart">
+    <table class="bars"><tr>
+      {% for p in so.points %}
+      <td>
+        <div class="tot mono">{{ p.count }}</div>
+        <div class="col">
+          <div class="stack" style="height:{{ p.pct }}%">
+            {% for s in p.segments %}
+            <span class="seg" style="height:{{ s.pct }}%;background:{{ s.colour }}"></span>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="fl mono{{ ' on' if p.is_current }}">Flight {{ p.number }}</div>
+        <div class="dt mono">{{ p.date.strftime('%d %b') if p.date else '' }}{% if p.acres_text %} &middot; {{ p.acres_text }} ac{% endif %}</div>
+        <div class="chips">
+          {% for s in p.segments %}<span class="chip mono" style="background:{{ s.colour }}"
+            title="{{ s.name }}">{{ s.n }}</span>{% endfor %}
+        </div>
+      </td>
+      {% endfor %}
+    </tr></table>
+    <table class="legend" style="margin-top:11px">
+      {% for row in so.categories|batch(3, '') %}
+      <tr>
+        {% for c in row %}
+        <td>{% if c %}<div class="item"><span class="sw" style="background:{{ c[1] }}"></span><span class="lb">{{ c[0] }}</span></div>{% endif %}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  {{ sec('Every flight this season', gap=true) }}
+  <div class="zt">
+    <table>
+      <thead><tr>
+        <th class="n">Flight</th><th>Flown</th><th class="ac">Areas</th><th class="ac">Acres</th>
+        {% for name, colour in so.categories %}<th>{{ name }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+      {% for p in so.points %}
+      <tr{% if p.is_current %} style="background:#F7F9F4"{% endif %}>
+        <td class="n mono" data-l="Flight">{{ p.number }}</td>
+        <td class="mono" data-l="Flown">{{ p.date.strftime('%d %b %Y') if p.date else '—' }}</td>
+        <td class="ac mono" data-l="Areas">{{ p.count }}</td>
+        <td class="ac mono" data-l="Acres">{{ p.acres_text or '—' }}</td>
+        {% for name, colour in so.categories %}
+        <td class="ac mono" data-l="{{ name }}">{{ p.by_category.get(name) or '—' }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {{ pagefoot(total_pages) }}
+</section>
+{% endif %}
+
 
 </div></div>
 
 <script>
   // Fit the page to the screen instead of rearranging it. A sheet is a fixed
   // 210mm wide, so on a narrow screen it is scaled by whatever fraction of that
-  // width is actually available; on anything wide enough it is left alone.
+  // width is available; on anything wide enough it is left alone. The element
+  // still occupies its unscaled height once transformed, so the difference is
+  // pulled back off the bottom margin.
   (function () {
-    var paper = document.querySelector('.rd .paper');
-    if (!paper) return;
     var SHEET_PX = 210 / 25.4 * 96;                 // 210mm at 96dpi
     function fit() {
-      var room = paper.clientWidth - 24;
-      paper.style.setProperty('--fit', room < SHEET_PX ? (room / SHEET_PX).toFixed(4) : '1');
+      var paper = document.querySelector('.rd .paper');
+      if (!paper) return;
+      var sheets = paper.querySelectorAll('.sheet');
+      var room = paper.clientWidth - 20;
+      var scale = room < SHEET_PX ? room / SHEET_PX : 1;
+      for (var i = 0; i < sheets.length; i++) {
+        var sheet = sheets[i];
+        if (scale < 1) {
+          sheet.style.transformOrigin = 'top left';
+          sheet.style.transform = 'scale(' + scale.toFixed(4) + ')';
+          sheet.style.marginBottom = Math.round(sheet.offsetHeight * (scale - 1) + 14) + 'px';
+        } else {
+          sheet.style.transform = '';
+          sheet.style.marginBottom = '';
+        }
+      }
     }
     fit();
     window.addEventListener('resize', fit, { passive: true });
+    window.addEventListener('load', fit);
   })();
 </script>

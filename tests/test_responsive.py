@@ -41,7 +41,10 @@ page=c.get(f"/flights/{FLID}/report").data.decode()
 chk("the report has a small-screen rule", "@media screen and (max-width:900px)" in page)
 # A small screen gets the same page scaled down, not a rearranged one, so it
 # reads as the downloaded copy does.
-chk("the sheet is scaled rather than rearranged", "zoom: var(--fit, 1)" in page)
+# Scaled with a transform, not a zoom: a zoom changes the used font size, which
+# phone browsers then enlarge again and the fixed-height page bursts.
+chk("the sheet is scaled rather than rearranged",
+    "transform = 'scale('" in page and "zoom: var" not in page)
 chk("the scale comes from the width available", "SHEET_PX" in page)
 chk("viewport meta present", 'name="viewport"' in page)
 print("\n=== the report on a large screen ===")

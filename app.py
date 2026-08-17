@@ -21,7 +21,8 @@ from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError, OperationalError
 
-from models import (db, User, Farm, Flight, Finding, SiteContent, ROLES, ROLE_LABELS,
+from models import (db, User, Farm, Flight, Finding, SiteContent, SummaryEdit,
+                    ROLES, ROLE_LABELS,
                     ROLE_BLURB, ROLE_DASHBOARD, STATUS_LABELS, slugify)
 import parsing
 import integrations
@@ -349,6 +350,20 @@ def report_context(flight):
     # Every flight of this farm and season, so the report can show how the
     # season has moved rather than only what this flight found.
     season_overview = aggregation.season_overview(season_flights, flight.id)
+
+    # An agronomist's own wording for a pattern replaces the assembled sentence.
+    # Applied here rather than inside the aggregation so that layer stays a pure
+    # function of the findings and can be reasoned about on its own.
+    if agg:
+        edits = {e.category: e for e in flight.summary_edits}
+        for group in agg["groups"]:
+            edit = edits.get(group["name"])
+            group["observation_edited"] = bool(edit and (edit.observation or "").strip())
+            group["suggestion_edited"] = bool(edit and (edit.suggestion or "").strip())
+            if group["observation_edited"]:
+                group["observation"] = edit.observation.strip()
+            if group["suggestion_edited"]:
+                group["suggestion"] = edit.suggestion.strip()
     points = report_data.season_trend(flight, season_flights)
     season = report_data.season_summary(points, analysis["score"]) if points else None
 
@@ -1071,6 +1086,43 @@ def register_routes(app):
         return jsonify({"ok": True, "is_complete": f.is_complete,
                         "incomplete": f.flight.incomplete_count,
                         "can_generate": f.flight.can_generate})
+
+    @app.route("/flights/<int:flight_id>/summary", methods=["POST"])
+    @requires("edit_findings")
+    def summary_update(flight_id):
+        """
+        Store the agronomist's wording for one pattern on the summary page.
+
+        Blank text removes the override, so clearing the box restores the
+        assembled sentence rather than leaving an empty one in the report.
+
+        This clears report_generated for the same reason editing a finding does:
+        the document a farmer would receive is no longer the one on file.
+        """
+        flight = db.get_or_404(Flight, flight_id)
+        data = request.get_json(force=True)
+        category = (data.get("category") or "").strip()
+        field = data.get("field")
+        if category not in aggregation.CATEGORY_ORDER or field not in ("observation", "suggestion"):
+            abort(400)
+
+        text_value = (data.get("text") or "").strip()
+        edit = SummaryEdit.query.filter_by(flight_id=flight.id, category=category).first()
+        if edit is None:
+            if not text_value:
+                return jsonify({"ok": True, "edited": False})
+            edit = SummaryEdit(flight_id=flight.id, category=category)
+            db.session.add(edit)
+        setattr(edit, field, text_value)
+        edit.updated_by_id = current_user.id
+        if not (edit.observation or "").strip() and not (edit.suggestion or "").strip():
+            db.session.delete(edit)
+            edited = False
+        else:
+            edited = bool(text_value)
+        flight.report_generated = False
+        db.session.commit()
+        return jsonify({"ok": True, "edited": edited})
 
     @app.route("/findings/<int:finding_id>/comment", methods=["POST"])
     @requires("record_farmer_comment")

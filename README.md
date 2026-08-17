@@ -258,12 +258,12 @@ summary page:
    counts and acreage, the patterns behind them, and areas worth investigating.
 2. **Farm map** — the annotated image, with a key tying each numbered zone to
    its category.
-3. **Season to date** — added once a second flight of the season has been
-   reported: areas flagged and the ground they cover, flight by flight, split by
-   category. Plain counts rather than a score, because a number between 0 and
-   100 states a verdict the annotations do not support.
-4. **Detailed findings** — every annotation the agronomist wrote, unchanged,
+3. **Detailed findings** — every annotation the agronomist wrote, unchanged,
    grouped under the pattern it belongs to, across as many sheets as it needs.
+4. **Season to date** — added once a second flight of the season has been
+   reported: areas flagged and the ground they cover, flight by flight, split by
+   category, with every count shown. Plain figures rather than a score, because a
+   number between 0 and 100 states a verdict the annotations do not support.
 
 V1 listed all fifteen zones one after another, nine of them near-identical
 entries under a single category. That is an annotation dump rather than a
@@ -272,7 +272,13 @@ actually present in them, so the summary says *"reduced crop vigour across nine
 areas (~13.4 acres), associated with soil condition or nutrient availability"*
 once, instead of nine times.
 
-Two rules govern what the summary is allowed to say:
+The summary page is a draft, not a verdict. Before generating, the agronomist
+sees each pattern's observation and suggested area on the review page and can
+reword either: their wording is what the report then carries, and clearing the
+box restores the assembled sentence. Editing marks the report as needing
+generating again, for the same reason editing a finding does.
+
+Two rules govern what the assembled summary is allowed to say:
 
 * **It only summarises and combines what the agronomist actually wrote.** No
   cause, diagnosis or recommendation appears that is not already in the source
@@ -319,10 +325,10 @@ Two things hold that guarantee up:
 
 On a small screen the report is scaled to fit rather than rearranged, so a
 farmer opening it on a handset sees the same page their agronomist sees and the
-same one that comes out of a printer. Two details make that hold: the sheet opts
-out of the text enlargement phone browsers apply inside scaled boxes, which
-would otherwise push type past the edge of a fixed-height page; and on screen a
-sheet grows rather than clips, so nothing can be lost behind the footer. The
+same one that comes out of a printer. The scale is a transform rather than a zoom: a
+zoom changes the used font size and phone browsers enlarge it again, which
+pushed type past the edge of a fixed-height page. On screen a sheet also grows
+rather than clips, so nothing can be lost behind the footer. The
 rest of the application reflows normally.
 
 A flight with more findings than one sheet holds is paged across as many as it
