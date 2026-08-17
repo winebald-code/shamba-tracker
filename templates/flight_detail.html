@@ -32,7 +32,7 @@
       </label>
     </form>
     {% if flight.csv_filename %}<p class="mt-2.5 text-[11.5px] text-dove flex items-center gap-1.5"><span class="text-sagedeep">{{ icon('check','w-3.5 h-3.5') }}</span> {{ flight.csv_filename }} · {{ flight.findings|length }} pin(s)</p>{% endif %}
-    {% if flight.project_url %}<a href="{{ flight.project_url }}" target="_blank" class="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-sagedeep hover:underline">{{ icon('external','w-4 h-4') }} Open project in DroneDeploy</a>{% endif %}
+    {% if flight.map_link %}<a href="{{ flight.map_link }}" target="_blank" class="mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-sagedeep hover:underline">{{ icon('external','w-4 h-4') }} Open project in DroneDeploy</a>{% endif %}
   </div>
 
   <!-- map -->
@@ -185,7 +185,7 @@
   <div class="px-5 py-4 border-b border-silver flex items-center justify-between gap-3">
     <div>
       <h3 class="text-[15px] font-bold">Findings &amp; recommendations</h3>
-      <p class="text-[11.5px] text-dove mt-0.5">Edit inline — changes save automatically. Categories are suggested from what you wrote in the description; correct any that are off. Zone numbers are the ones the report and the map key use.</p>
+      <p class="text-[11.5px] text-dove mt-0.5">Edit inline — changes save automatically. Categories are suggested from what you wrote in the description; correct any that are off.</p>
     </div>
     <form method="post" action="{{ url_for('finding_add', flight_id=flight.id) }}">
       <button class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl glass-solid text-[12.5px] font-bold hover:border-sage transition whitespace-nowrap">{{ icon('plus','w-4 h-4') }} Add finding</button>
@@ -195,15 +195,11 @@
   {% if flight.findings %}
   <!-- desktop column header -->
   <div class="hidden lg:grid lg:grid-cols-[44px_118px_64px_150px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px] gap-3 px-5 py-3 border-b border-silver text-[10.5px] font-bold uppercase tracking-wider text-dove">
-    <div>Zone</div><div>Colour</div><div>Area</div><div>Category</div><div>Observation</div><div>Likely cause</div><div>Recommendation</div><div></div>
+    <div>Pin</div><div>Colour</div><div>Area</div><div>Category</div><div>Observation</div><div>Likely cause</div><div>Recommendation</div><div></div>
   </div>
 
-  {# Ordered and numbered exactly as the report does it, so a zone the
-     agronomist corrects here is the zone the farmer reads about. The order
-     the CSV happened to arrive in is not the order the report presents, and
-     showing both meant zone 2 on the report was the row numbered 1 here. #}
   <div class="divide-y divide-silver">
-    {% for f in ctx.a.findings_ordered %}
+    {% for f in flight.findings %}
     <div id="f{{ f.id }}" data-fid="{{ f.id }}"
          class="finding-row {{ '' if f.is_complete else 'incomplete' }} p-4 lg:p-0 lg:px-5 lg:py-3
                 border-l-4 lg:border-l-0 lg:grid lg:grid-cols-[44px_118px_64px_150px_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_72px] lg:gap-x-3 lg:gap-y-0 lg:items-start transition"
@@ -211,7 +207,7 @@
 
       <!-- MOBILE meta row (pin · colour · area · actions) -->
       <div class="flex items-center gap-2.5 lg:hidden mb-3">
-        <span class="w-7 h-7 rounded-lg grid place-items-center font-extrabold text-white text-[13px] tnum shrink-0" style="background: {{ f.colour_swatch }}">{{ ctx.a.numbers.get(f.id, loop.index) }}</span>
+        <span class="w-7 h-7 rounded-lg grid place-items-center font-extrabold text-white text-[13px] tnum shrink-0" style="background: {{ f.colour_swatch }}">{{ loop.index }}</span>
         <span class="text-[12px] font-semibold text-dove">{{ f.colour_meaning }}</span>
         {% if f.area_text %}<span class="text-[11.5px] font-bold text-dove tnum">· {{ f.area_text }}</span>{% endif %}
         <span class="flex-1"></span>
@@ -224,7 +220,7 @@
       <!-- DESKTOP pin -->
       <div class="hidden lg:flex items-center gap-2">
         <span class="w-1.5 h-8 rounded-full status-bar {{ 'bg-sage' if f.is_complete else '' }}" style="{{ '' if f.is_complete else 'background:#D64550' }}"></span>
-        <span class="font-bold text-[13px] tnum">{{ ctx.a.numbers.get(f.id, loop.index) }}</span>
+        <span class="font-bold text-[13px] tnum">{{ loop.index }}</span>
       </div>
       <!-- DESKTOP colour -->
       <div class="hidden lg:block">

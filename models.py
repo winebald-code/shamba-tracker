@@ -191,27 +191,6 @@ class Flight(db.Model):
     def report_filename(self):
         return f"{self.report_basename}.pdf"
 
-    @property
-    def project_url(self):
-        """
-        The DroneDeploy project the report's "Open the interactive map" link
-        points at.
-
-        The project belongs to the farm, so a flight follows the farm's link by
-        default and editing it on the farm reaches every report that farm has
-        ever produced. A flight may still carry its own — a flight flown against
-        a different map, say — and that wins wherever it is set.
-
-        This exists because the flight used to be given a *copy* of the farm's
-        link when it was created. A copy stops tracking the thing it was copied
-        from: correcting the link on the farm changed nothing in any report, and
-        the only way out was to delete the farm and enter it again.
-        """
-        own = (self.dronedeploy_project_url or "").strip()
-        if own:
-            return own
-        return (self.farm.dronedeploy_project_url or "").strip() if self.farm else ""
-
     def ensure_share_token(self):
         """
         Guarantee this flight has a public token. Rows that predate the column,
@@ -235,6 +214,21 @@ class Flight(db.Model):
 
     summary_edits = db.relationship("SummaryEdit", backref="flight", lazy=True,
                                     cascade="all, delete-orphan")
+
+    @property
+    def map_link(self):
+        """
+        Where the interactive map lives for this flight.
+
+        A flight may carry its own project link, but most do not, and those
+        follow the farm's. Reading it through here rather than copying the
+        farm's value onto the flight means changing it on the farm reaches every
+        flight that never had one of its own.
+        """
+        own = (self.dronedeploy_project_url or "").strip()
+        if own:
+            return own
+        return (self.farm.dronedeploy_project_url or "").strip() if self.farm else ""
 
     @property
     def farmer_comment_count(self):

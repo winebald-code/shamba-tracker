@@ -108,8 +108,6 @@ def ensure_schema(db):
 
     if "flights" in existing_tables:
         backfill_share_tokens(db)
-        if "farms" in existing_tables:
-            release_copied_project_urls(db)
     if "findings" in existing_tables:
         migrate_categories(db)
         reclassify_colour_guesses(db)
@@ -185,38 +183,6 @@ def reclassify_colour_guesses(db):
             print(f"[schema] re-read {moved} finding(s) whose category came from the pin colour")
     except Exception as exc:
         print(f"[schema] category re-read skipped: {exc}")
-
-
-def release_copied_project_urls(db):
-    """
-    Let a flight follow its farm's DroneDeploy link instead of holding a copy.
-
-    A flight used to be given a copy of the farm's project URL when it was
-    created. A copy stops tracking what it was copied from, so correcting the
-    link on the farm left every existing report pointing at the old one.
-
-    Only rows whose copy is *character for character* the farm's current link
-    are cleared: those resolve to the same page either way, so nothing is lost
-    and the farm becomes the one place the link lives. A flight pointing
-    somewhere else is left alone — releasing it is the farm edit's job, where a
-    person has actually asked for the change. Idempotent, so it is a no-op on a
-    database that has already been through it.
-    """
-    cleared = 0
-    try:
-        with db.engine.begin() as conn:
-            result = conn.execute(text(
-                "UPDATE flights SET dronedeploy_project_url='' "
-                "WHERE dronedeploy_project_url IS NOT NULL "
-                "  AND dronedeploy_project_url <> '' "
-                "  AND dronedeploy_project_url = ("
-                "        SELECT farms.dronedeploy_project_url FROM farms "
-                "        WHERE farms.id = flights.farm_id)"))
-            cleared = result.rowcount or 0
-        if cleared:
-            print(f"[schema] {cleared} flight(s) now follow their farm's DroneDeploy link")
-    except Exception as exc:
-        print(f"[schema] project-link release skipped: {exc}")
 
 
 def backfill_share_tokens(db):

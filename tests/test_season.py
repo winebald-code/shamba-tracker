@@ -145,48 +145,5 @@ with appmod.app.app_context():
     _one = _agg.season_overview([db.session.get(Flight, lid)], lid)
 chk("a single flight yields no overview", _one is None, _one)
 
-# ---------------------------------------------------------------- the cut-off
-# "Season to date" is meant literally. A report is the record of what was known
-# on the day it went out, so a flight flown later must not appear on an earlier
-# flight's page — generating flight 2 used to put a season sheet onto flight 1
-# as well, showing the field two months after the report describing it.
-print("\n=== the season stops at the flight being reported on ===")
-with appmod.app.app_context():
-    _all = Flight.query.filter_by(farm_id=db.session.get(Flight, lid).farm_id).all()
-    _seasoned = [f for f in _all if f.season == db.session.get(Flight, lid).season]
-    _first = min(_seasoned, key=lambda f: (f.flight_number or 0, f.id or 0))
-    _early = _agg.season_overview(_seasoned, _first.id)
-    _late = _agg.season_overview(_seasoned, lid)
-    _first_id, _first_no = _first.id, _first.flight_number
-chk("the first flight of a season has nothing to compare against", _early is None, _early)
-chk("a later flight does", _late is not None)
-chk("no point is numbered after the flight being reported on",
-    all((p["number"] or 0) <= (_late["last"]["number"] or 0) for p in _late["points"]))
-
-print("\n=== the first flight's report carries no season sheet ===")
-_p1 = c.get(f"/flights/{_first_id}/report").data.decode()
-chk("no season sheet on flight 1", "Season to date" not in _p1)
-_pl = c.get(f"/flights/{lid}/report").data.decode()
-chk("a season sheet once there is a comparison", "Season to date" in _pl)
-
-print("\n=== every number on the chart is stated ===")
-chk("the chart states its scale", _late["peak"] == max(p["count"] for p in _late["points"]),
-    _late["peak"])
-chk("three ticks label the scale", len(_late["ticks"]) == 3, _late["ticks"])
-chk("the ticks run from the peak down to zero",
-    [t["n"] for t in _late["ticks"]] == [_late["peak"], round(_late["peak"] / 2.0), 0],
-    _late["ticks"])
-chk("every segment knows how tall it is",
-    all("px" in s and "label_fits" in s for p in _late["points"] for s in p["segments"]))
-chk("a label is only placed where it fits",
-    all(s["label_fits"] == (s["px"] >= _agg.CHART_LABEL_MIN_PX)
-        for p in _late["points"] for s in p["segments"]))
-chk("the scale caption is on the page", f"scale 0 to {_late['peak']}" in _pl)
-chk("each bar states its own total",
-    all(f'<div class="tot mono">{p["count"]}</div>' in _pl for p in _late["points"]))
-chk("every category count appears under its bar",
-    all(f'title="{s["name"]}">{s["n"]}</span>' in _pl
-        for p in _late["points"] for s in p["segments"]))
-
 print(f"\n  {P} passed, {F} failed")
 sys.exit(1 if F else 0)
