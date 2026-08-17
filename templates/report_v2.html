@@ -27,7 +27,8 @@
 {% set scouted = farm.acreage or flight.acreage %}
 {% set detail_pages = (agg.detail_pages if agg else [[]]) or [[]] %}
 {% set map_pages = 1 if map_src else 0 %}
-{% set total_pages = 1 + map_pages + detail_pages|length %}
+{% set season_pages = 1 if season_overview else 0 %}
+{% set total_pages = 1 + map_pages + season_pages + detail_pages|length %}
 
 <style>
 @font-face { font-family:'AcreSans'; src:url('{{ font_base }}montserrat-latin-400-normal.woff2') format('woff2'); font-weight:400; font-style:normal; font-display:swap; }
@@ -38,7 +39,12 @@
 @page { size: A4; margin: 0; }
 
 .rd { font-family:'AcreSans','Helvetica Neue',Arial,sans-serif; color:#030920;
-      font-size:10.5px; line-height:1.55; letter-spacing:-0.004em; }
+      font-size:10.5px; line-height:1.55; letter-spacing:-0.004em;
+      /* Phone browsers enlarge text inside a scaled-down box on the assumption
+         it would otherwise be unreadable. Here it pushed the type past the edge
+         of a fixed-height page, so the sheet has to opt out and keep its own
+         proportions. */
+      -webkit-text-size-adjust:100%; text-size-adjust:100%; }
 .rd *, .rd *::before, .rd *::after { box-sizing:border-box; }
 .rd p, .rd h1, .rd h2, .rd h3, .rd table, .rd figure, .rd ul, .rd li { margin:0; padding:0; }
 .rd table { border-collapse:collapse; width:100%; }
@@ -58,10 +64,16 @@
 @media screen {
   .paper { background:#E8ECE4; padding:20px 0 40px; overflow-x:auto; }
   .sheet { margin:0 auto 18px; box-shadow:0 18px 40px -22px rgba(3,9,32,.55), 0 0 0 1px rgba(3,9,32,.07); border-radius:2px; }
+  /* On screen the page grows rather than cuts. The sheets are packed to fit A4
+     before anything is drawn, so this changes nothing in the ordinary case — it
+     means that if a run of unusually long text ever did overflow, a reader sees
+     it instead of losing it silently. */
+  .sheet { height:auto; min-height:297mm; overflow:visible; }
 }
 @media print {
   .paper { background:#fff; padding:0; }
-  .sheet { margin:0; box-shadow:none; border-radius:0; }
+  .sheet { margin:0; box-shadow:none; border-radius:0;
+           height:297mm; min-height:0; overflow:hidden; }
   .no-print { display:none !important; }
 }
 
@@ -146,6 +158,25 @@
                     background:#3E7A24; color:#fff; font-size:11px; line-height:19px; text-align:center; }
 .ddlink .t { font-size:10.5px; font-weight:800; }
 .ddlink .d { font-size:9px; color:#6C6C6C; margin-top:1px; }
+
+/* ---------------------------------------------------------------- season */
+.skpi { margin-top:11px; }
+.skpi td { width:25%; padding-right:11px; vertical-align:top; }
+.skpi td:last-child { padding-right:0; }
+.skpi .n { font-size:23px; font-weight:800; letter-spacing:-1px; line-height:1; }
+.skpi .l { font-size:8.5px; font-weight:600; color:#6C6C6C; margin-top:4px; line-height:1.35; }
+
+.chart { border:1px solid #D6DBD5; border-radius:9px; padding:12px; }
+.bars td { vertical-align:bottom; text-align:center; padding:0 4px; }
+.bars .col { height:96px; position:relative; }
+/* Capped so a season of two flights reads as two bars rather than two slabs. */
+.bars .stack { position:absolute; left:0; right:0; bottom:0; margin:0 auto; max-width:58px;
+               border-radius:3px 3px 0 0; overflow:hidden; font-size:0; min-height:3px; }
+.bars .seg { display:block; width:100%; }
+.bars .tot { font-size:9.5px; font-weight:800; margin-bottom:3px; }
+.bars .fl { font-size:8px; font-weight:700; color:#6C6C6C; margin-top:5px; }
+.bars .fl.on { color:#030920; }
+.bars .dt { font-size:7.5px; color:#9A9A9A; margin-top:1px; }
 
 /* ---------------------------------------------------------------- detail */
 /* No break-inside rule: the sheets are packed in Python, so letting the
@@ -261,16 +292,6 @@
     {% endfor %}
   </table>
 
-  {% if season and season.spark %}
-  {{ sec('This season so far', gap=true) }}
-  <p class="lede" style="margin:0 0 2px !important">
-    Across {{ season.flights_scored }} flights of {{ flight.season }}, the number of areas
-    flagged has ranged from <b class="mono">{{ season.points|map(attribute='zones')|min }}</b>
-    to <b class="mono">{{ season.points|map(attribute='zones')|max }}</b> per flight.
-    This flight recorded <b class="mono">{{ agg.total_findings }}</b>.
-  </p>
-  {% endif %}
-
   {{ sec('Suggested areas to investigate', gap=true) }}
   <div class="sug">
     <ul>{% for g in agg.groups %}<li>{{ g.suggestion }}</li>{% endfor %}</ul>
@@ -326,6 +347,90 @@
 </section>
 {% endif %}
 
+{# ======================================================= SEASON, WHEN THERE IS ONE #}
+{% if season_overview %}
+{% set so = season_overview %}
+<section class="sheet">
+  {{ masthead('Season to date') }}
+  <p class="mapcap">Every flight of {{ flight.season }} that has been reported on so far.
+  Areas flagged and the ground they cover, by category &mdash; a single flight is a
+  reading, and a run of them is what shows whether the field is moving.</p>
+
+  <table class="skpi"><tr>
+    <td>
+      <div class="n mono">{{ so.flights }}</div>
+      <div class="l">flights reported</div>
+    </td>
+    <td>
+      <div class="n mono">{{ so.last.count }}</div>
+      <div class="l">areas flagged on this flight</div>
+    </td>
+    <td>
+      <div class="n mono">{{ '+' if so.count_delta > 0 }}{{ so.count_delta }}</div>
+      <div class="l">against {{ so.first.count }} on flight {{ so.first.number }}</div>
+    </td>
+    <td>
+      <div class="n mono">{{ so.last.acres_text or '—' }}</div>
+      <div class="l">acres covered by this flight&rsquo;s findings</div>
+    </td>
+  </tr></table>
+
+  {{ sec('Areas flagged, flight by flight', gap=true) }}
+  <div class="chart">
+    <table class="bars"><tr>
+      {% for p in so.points %}
+      <td>
+        <div class="tot mono">{{ p.count }}</div>
+        <div class="col">
+          <div class="stack" style="height:{{ p.pct }}%">
+            {% for s in p.segments %}
+            <span class="seg" style="height:{{ s.pct }}%;background:{{ s.colour }}"></span>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="fl mono{{ ' on' if p.is_current }}">Flight {{ p.number }}</div>
+        <div class="dt mono">{{ p.date.strftime('%d %b') if p.date else '' }}</div>
+      </td>
+      {% endfor %}
+    </tr></table>
+    <table class="legend" style="margin-top:11px">
+      {% for row in so.categories|batch(3, '') %}
+      <tr>
+        {% for c in row %}
+        <td>{% if c %}<div class="item"><span class="sw" style="background:{{ c[1] }}"></span><span class="lb">{{ c[0] }}</span></div>{% endif %}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  {{ sec('Every flight this season', gap=true) }}
+  <div class="zt">
+    <table>
+      <thead><tr>
+        <th class="n">Flight</th><th>Flown</th><th class="ac">Areas</th><th class="ac">Acres</th>
+        {% for name, colour in so.categories %}<th>{{ name }}</th>{% endfor %}
+      </tr></thead>
+      <tbody>
+      {% for p in so.points %}
+      <tr{% if p.is_current %} style="background:#F7F9F4"{% endif %}>
+        <td class="n mono" data-l="Flight">{{ p.number }}</td>
+        <td class="mono" data-l="Flown">{{ p.date.strftime('%d %b %Y') if p.date else '—' }}</td>
+        <td class="ac mono" data-l="Areas">{{ p.count }}</td>
+        <td class="ac mono" data-l="Acres">{{ p.acres_text or '—' }}</td>
+        {% for name, colour in so.categories %}
+        <td class="ac mono" data-l="{{ name }}">{{ p.by_category.get(name) or '—' }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {{ pagefoot(1 + map_pages + 1) }}
+</section>
+{% endif %}
+
 {# ============================================================== PAGE 3 #}
 {# One sheet per detail page. A flight with enough findings needs more than one,
    and the sheet is a fixed height, so the groups are packed in Python before
@@ -372,7 +477,7 @@
   </div>
   {% endif %}
 
-  {{ pagefoot(1 + map_pages + loop.index) }}
+  {{ pagefoot(1 + map_pages + season_pages + loop.index) }}
 </section>
 {% endfor %}
 

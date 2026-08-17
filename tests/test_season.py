@@ -51,7 +51,9 @@ with appmod.app.app_context():
 w=c.get(f"/flights/{oid}/report").data.decode()
 # V2 has no season sheet: the trend appears as a line on page 1, and only once
 # more than one flight of the season carries findings.
-chk("no season line with a single flight", "This season so far" not in w)
+# One flight is a reading, not a trend, so the season sheet is absent until a
+# second flight of the season carries findings.
+chk("no season sheet with a single flight", "Season to date" not in w)
 _sheets=len(re.findall(r'<section class="sheet"', w))
 _claim=int(re.findall(r"Page \d+ of (\d+)", w)[0])
 chk("footer page count matches the sheets drawn", _sheets==_claim, f"sheets={_sheets} claims={_claim}")
@@ -64,7 +66,7 @@ with appmod.app.app_context():
     chk("two points plotted", len(s["spark"]["points"])==2, len(s["spark"]["points"]))
     chk("direction computed", s["direction"] in ("up","down","flat"), s["direction"])
 w=c.get(f"/flights/{tid}/report").data.decode()
-chk("the season line appears once there are two flights", "This season so far" in w)
+chk("the season sheet appears once there are two flights", "Season to date" in w)
 
 print("\n=== C. a flight with no findings is skipped, not plotted as zero ===")
 with appmod.app.app_context():
@@ -118,6 +120,30 @@ with appmod.app.app_context():
     chk("last season point == cover score",
         ctx["season"]["scored"][-1]["score"]==ctx["a"]["score"],
         (ctx["season"]["scored"][-1]["score"], ctx["a"]["score"]))
+
+print("\n=== G. the season sheet reports counts, not a score ===")
+# A number between 0 and 100 states a verdict the annotations do not support, so
+# the sheet plots areas flagged and the ground they cover instead.
+import aggregation as _agg
+with appmod.app.app_context():
+    _fl = db.session.get(Flight, lid)
+    _season = Flight.query.filter_by(farm_id=_fl.farm_id, season=_fl.season).all()
+    _so = _agg.season_overview(_season, _fl.id)
+chk("an overview is produced for a season of many flights", _so is not None)
+chk("every reported flight is a point", _so and _so["flights"] == len(_so["points"]),
+    _so["flights"] if _so else None)
+chk("the current flight is marked once",
+    sum(1 for p in _so["points"] if p["is_current"]) == 1)
+chk("each point carries counts and acreage",
+    all("count" in p and "acres" in p for p in _so["points"]))
+chk("bars are split by report category",
+    all(all(s["colour"] in _agg.CATEGORY_COLOURS.values() for s in p["segments"])
+        for p in _so["points"]))
+chk("only categories the season produced appear in the key",
+    all(name in _agg.CATEGORY_ORDER for name, _c in _so["categories"]), _so["categories"])
+with appmod.app.app_context():
+    _one = _agg.season_overview([db.session.get(Flight, lid)], lid)
+chk("a single flight yields no overview", _one is None, _one)
 
 print(f"\n  {P} passed, {F} failed")
 sys.exit(1 if F else 0)

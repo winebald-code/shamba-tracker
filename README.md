@@ -256,9 +256,14 @@ summary page:
 
 1. **Field scouting summary** — what was scouted, the categories found with
    counts and acreage, the patterns behind them, and areas worth investigating.
-2. **Farm map** — the annotated image, with a legend keyed by category.
-3. **Detailed findings** — every annotation the agronomist wrote, unchanged,
-   grouped under the pattern it belongs to.
+2. **Farm map** — the annotated image, with a key tying each numbered zone to
+   its category.
+3. **Season to date** — added once a second flight of the season has been
+   reported: areas flagged and the ground they cover, flight by flight, split by
+   category. Plain counts rather than a score, because a number between 0 and
+   100 states a verdict the annotations do not support.
+4. **Detailed findings** — every annotation the agronomist wrote, unchanged,
+   grouped under the pattern it belongs to, across as many sheets as it needs.
 
 V1 listed all fifteen zones one after another, nine of them near-identical
 entries under a single category. That is an annotation dump rather than a
@@ -314,8 +319,11 @@ Two things hold that guarantee up:
 
 On a small screen the report is scaled to fit rather than rearranged, so a
 farmer opening it on a handset sees the same page their agronomist sees and the
-same one that comes out of a printer. The rest of the application reflows
-normally.
+same one that comes out of a printer. Two details make that hold: the sheet opts
+out of the text enlargement phone browsers apply inside scaled boxes, which
+would otherwise push type past the edge of a fixed-height page; and on screen a
+sheet grows rather than clips, so nothing can be lost behind the footer. The
+rest of the application reflows normally.
 
 A flight with more findings than one sheet holds is paged across as many as it
 needs, because the sheet is a fixed height and anything past the bottom would be

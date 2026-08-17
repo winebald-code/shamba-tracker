@@ -346,6 +346,9 @@ def report_context(flight):
     # rather than listed one by one. The map numbers go in with them so the
     # summary, the map key and the detail tables all call a zone by one number.
     agg = aggregation.aggregate(flight.findings, analysis.get("numbers"))
+    # Every flight of this farm and season, so the report can show how the
+    # season has moved rather than only what this flight found.
+    season_overview = aggregation.season_overview(season_flights, flight.id)
     points = report_data.season_trend(flight, season_flights)
     season = report_data.season_summary(points, analysis["score"]) if points else None
 
@@ -362,6 +365,7 @@ def report_context(flight):
         "a": analysis,
         "agg": agg,
         "summary_line": aggregation.summary_sentence(agg, flight, flight.farm),
+        "season_overview": season_overview,
         "season": season,
         "season_flights": season_flights,
         "next_flight_no": flight.flight_number + 1,

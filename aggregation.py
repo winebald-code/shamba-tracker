@@ -423,6 +423,68 @@ def paginate_groups(groups, budget=DETAIL_BUDGET_PX):
     return pages
 
 
+# ----------------------------------------------------------------- the season
+def season_overview(season_flights, current_id):
+    """
+    The season so far, flight by flight, in the same terms as the report itself.
+
+    Plain counts and acreage rather than a single score: a number between 0 and
+    100 states a verdict the annotations do not support, and it cannot be traced
+    back to anything the agronomist wrote.
+
+    A flight with no findings is left out rather than drawn as zero. One whose
+    export has not been imported yet has nothing to say, and a zero column would
+    read as a field with nothing wrong with it.
+
+    Returns None until two flights carry findings, since one flight is not a
+    trend.
+    """
+    points = []
+    for flight in sorted(season_flights, key=lambda f: (f.flight_number or 0, f.id or 0)):
+        agg = aggregate(flight.findings)
+        if not agg:
+            continue
+        points.append({
+            "number": flight.flight_number,
+            "date": flight.flight_date,
+            "is_current": flight.id == current_id,
+            "count": agg["total_findings"],
+            "acres": agg["total_acres"],
+            "acres_text": agg["total_acres_text"],
+            "by_category": {g["name"]: g["count"] for g in agg["groups"]},
+        })
+    if len(points) < 2:
+        return None
+
+    # Only categories the season actually produced, in the report's own order,
+    # so a colour in the key always points at a bar somewhere.
+    present = [(name, CATEGORY_COLOURS[name]) for name in CATEGORY_ORDER
+               if any(p["by_category"].get(name) for p in points)]
+
+    peak = max(p["count"] for p in points) or 1
+    for p in points:
+        p["pct"] = round(100.0 * p["count"] / peak, 1)
+        p["segments"] = [
+            {"name": name, "colour": colour,
+             "n": p["by_category"][name],
+             "pct": round(100.0 * p["by_category"][name] / p["count"], 1)}
+            for name, colour in present if p["by_category"].get(name)
+        ]
+
+    first, last = points[0], points[-1]
+    return {
+        "points": points,
+        "categories": present,
+        "flights": len(points),
+        "first": first,
+        "last": last,
+        "count_delta": last["count"] - first["count"],
+        "acres_delta": round(last["acres"] - first["acres"], 2),
+        "fewest": min(points, key=lambda p: p["count"]),
+        "most": max(points, key=lambda p: p["count"]),
+    }
+
+
 def summary_sentence(agg, flight, farm):
     """The opening line of page one. Counts and acreage, no verdict."""
     if not agg:
