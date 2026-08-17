@@ -54,10 +54,6 @@ report:
 The colour code says *how urgent*; the category says *what kind*. They are two
 systems answering two questions, and neither is derived from the other.
 
-The link to the interactive map is read from the flight when it has one of its
-own and from the farm otherwise, so changing it on the farm reaches every flight
-that never had one — nothing needs recreating.
-
 The pins on the aerial image carry whatever colour the agronomist chose in
 DroneDeploy, because that image is their annotation, not ours to repaint. So the
 report gives the map a **zone key** instead: each category present on the flight,
@@ -75,6 +71,16 @@ same thing.
 
 Findings recorded under the older names are moved on start-up by
 `schema.migrate_categories`, so an existing flight needs no re-filing.
+
+### One zone number
+
+A zone is numbered by how much ground it covers, worst first, and **the review
+page uses that same number**. It used to number its own rows in whatever order
+the DroneDeploy export happened to list them, so the 3.76-acre area was row 1
+while the farmer's report called it zone 2 — an agronomist correcting "zone 2"
+was editing zone 3. The review page now reads in the report's order and prints
+the report's number, so a zone is the same zone on the review page, on the map
+key, in the summary and in the detailed findings.
 
 ---
 
@@ -125,8 +131,8 @@ python tests/test_report_v2.py       # pattern grouping, report voice, security 
 python tests/test_responsive.py      # every page on a phone-sized viewport
 python tests/test_categories.py      # one category list across review and report
 python tests/test_real_flight.py     # the reference flight, from its real export
-python tests/test_summary_edit.py    # rewording the summary before it is sent
-python tests/test_map_and_season.py  # the map link, zone numbering and season scope
+python tests/test_zone_numbers.py    # one zone number across the review page and the report
+python tests/test_project_link.py    # the map link following the farm
 ```
 
 ---
@@ -263,31 +269,36 @@ summary page:
 1. **Field scouting summary** — what was scouted, the categories found with
    counts and acreage, the patterns behind them, and areas worth investigating.
 2. **Farm map** — the annotated image, with a key tying each numbered zone to
-   its category. Zones are numbered in the order the areas were annotated, which
-   is the order DroneDeploy numbered them on the image, so the key and the map
-   always name the same area.
+   its category.
 3. **Detailed findings** — every annotation the agronomist wrote, unchanged,
    grouped under the pattern it belongs to, across as many sheets as it needs.
-4. **Season to date** — added once an earlier flight of the same season has been
-   reported. A report is a record of the field on the day it was flown, so it
-   covers the season up to that flight and no further: the first report of a
-   season never gains this page, even after later flights are added. It shows
-   areas flagged and the ground they cover, flight by flight, split by
-   category, with every count shown. Plain figures rather than a score, because a
-   number between 0 and 100 states a verdict the annotations do not support.
+4. **Season to date** — added only where there is something to compare against,
+   which means from the second reported flight of a season onwards. Flight 1
+   never carries it: areas flagged and the ground they cover, flight by flight,
+   split by category, with every count shown. Plain figures rather than a score,
+   because a number between 0 and 100 states a verdict the annotations do not
+   support.
 
-A flight can produce a dozen or more annotations, many of them near-identical
-entries under one category. Listing every one is an annotation dump rather than
-a report. `aggregation.py` groups a flight's findings into the few patterns
+   "To date" is literal — only flights up to and including the one being
+   reported on are counted. Generating flight 2 used to put a season page onto
+   flight 1 as well, showing the field two months after the report that claimed
+   to describe it.
+
+V1 listed all fifteen zones one after another, nine of them near-identical
+entries under a single category. That is an annotation dump rather than a
+report. `aggregation.py` groups a flight's findings into the few patterns
 actually present in them, so the summary says *"reduced crop vigour across nine
 areas (~13.4 acres), associated with soil condition or nutrient availability"*
 once, instead of nine times.
 
-The summary page is a draft, not a verdict. Before generating, the agronomist
-sees each pattern's observation and suggested area on the review page and can
-reword either: their wording is what the report then carries, and clearing the
-box restores the assembled sentence. Editing marks the report as needing
-generating again, for the same reason editing a finding does.
+The summary page is a draft, not a verdict. **Summary the farmer will read** on
+the review page carries one box per pattern for the *key observation* and one for
+the *suggested area to investigate* — the two blocks of prose on page 1 — and
+either can be reworded in place, exactly the way a finding is edited. Their
+wording is what the report then carries, a box marked *your wording* says which
+sentences are theirs rather than assembled, and clearing a box restores the
+assembled sentence rather than sending a blank. Editing marks the report as
+needing generating again, for the same reason editing a finding does.
 
 Two rules govern what the assembled summary is allowed to say:
 
@@ -295,6 +306,11 @@ Two rules govern what the assembled summary is allowed to say:
   cause, diagnosis or recommendation appears that is not already in the source
   annotations. Sentences are assembled from the agronomist's own counts,
   acreages and words — there is no model in the loop and nothing is invented.
+* **It says which zones it means.** A pattern covering several areas names them
+  — "across the eight areas in this pattern (zones 2, 3, 4, 5, 6, 8, 9 and 10,
+  ~17.3 acres)" — in the same bracket the one-area sentence already used. Without
+  it a farmer read "the eight areas in this pattern" and had to work out from the
+  zone key which eight were meant.
 * **It does not sound more certain than its source.** "Associated with", not
   "caused by". "We suggest considering", not "work through these, in this
   order". An annotation records what was seen and what the agronomist suspects,
@@ -346,6 +362,26 @@ A flight with more findings than one sheet holds is paged across as many as it
 needs, because the sheet is a fixed height and anything past the bottom would be
 clipped rather than carried over.
 
+### The link to the interactive map
+
+The DroneDeploy project belongs to the **farm**, and a flight follows it. Editing
+the link under *Farms → Edit* reaches every report that farm has ever produced,
+including ones already generated and sent, with nothing re-created.
+
+A flight used to be handed a copy of that link when it was created, and a copy
+stops tracking what it came from: correcting the farm changed nothing anywhere,
+and the only way out was to delete the farm and enter it again. Two things keep
+that from coming back:
+
+* A flight is created with **no link of its own**, so it follows the farm.
+* Editing the farm's link **releases every flight of that farm** onto the new
+  value, which repairs rows created before this rule existed.
+
+A flight may still carry its own link — one flown against a different map — and
+that wins wherever it is set. On start-up, `schema.release_copied_project_urls`
+clears a flight's link where it is character-for-character the farm's own, since
+those resolve to the same page either way.
+
 **Download** produces a real file named `Farm Name_Crop Name_Season Year_Flight No.pdf` —
 `Content-Disposition: attachment` plus a matching `download` attribute on the
 link, so it saves straight to disk with no viewer tab and no Save-as dialog.
@@ -360,7 +396,16 @@ last one in the farmer's downloads folder.
 
 The report also carries a **season page** once two or more flights of a season
 have findings: the field health score plotted flight by flight, the mix of marked
-zones per flight, and a record of every flight in the season. A single flight
+zones per flight, and a record of every flight in the season.
+
+Its chart states its own numbers rather than leaving a bar to be judged by eye.
+A value scale down the left names what the top of the column is worth, each bar
+carries its total above it, and a category's count sits inside its block of the
+bar wherever the block is tall enough to hold it. Whether it is tall enough is
+worked out in Python, so the browser and WeasyPrint place a label identically and
+a figure is never half outside the block it belongs to; anything too small to
+label is still counted in full on the chips under the bar. No number on that
+chart depends on the bar being readable. A single flight
 still reads as a baseline, and a flight whose CSV has not been imported yet is
 left out of the trend rather than plotted as a zero, which would read as a
 collapse in field health rather than as missing data.

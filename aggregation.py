@@ -230,6 +230,20 @@ def _join(items):
     return ", ".join(items[:-1]) + f" and {items[-1]}"
 
 
+def _zone_sort(zone):
+    """
+    Order zone numbers the way they are read off the map: 2 before 10.
+
+    A zone number is an integer everywhere it is generated, but a caller may
+    pass its own labels, so anything that is not a number sorts after the ones
+    that are rather than raising.
+    """
+    try:
+        return (0, int(zone), "")
+    except (TypeError, ValueError):
+        return (1, 0, str(zone))
+
+
 def _observation_sentence(group):
     """
     One pattern-level sentence, assembled from the agronomist's own words.
@@ -278,6 +292,13 @@ def _suggestion(group):
         inline += f", ~{_acres(biggest.area_acres)} acres"
         standalone += f" (~{_acres(biggest.area_acres)} acres)"
 
+    # Which zones the pattern is made of, in the order they are numbered on the
+    # map rather than by size, so a farmer can read them straight off the image.
+    # Without this a sentence said "across the nine areas in this pattern" and
+    # never named one of them — the reader had to work out from the zone key
+    # which nine were meant.
+    numbered = _join([f"{z}" for z in sorted(group["zones"], key=_zone_sort)])
+
     if not recs:
         return (f"No next step was recorded against the {group['name'].lower()} "
                 "areas, so they may be worth a closer look.")
@@ -291,8 +312,13 @@ def _suggestion(group):
     # Distinct recommendations are separated by semicolons rather than "and",
     # because several are themselves two clauses joined by "and" and chaining
     # them that way produced a sentence that ran on without a break in it.
-    acres = f" (~{group['acres_text']} acres)" if group["acres_text"] else ""
-    return (f"Across the {_count_word(group['count'])} areas in this pattern{acres}, "
+    #
+    # The bracket carries the zones and then the acreage, which is the order the
+    # one-area sentence above already uses, so the two read as the same sentence
+    # with a different number of zones in it.
+    acres = f", ~{group['acres_text']} acres" if group["acres_text"] else ""
+    return (f"Across the {_count_word(group['count'])} areas in this pattern "
+            f"(zones {numbered}{acres}), "
             f"the agronomist suggested: {'; '.join(cleaned)}. The largest, "
             f"{standalone}, may be the most useful place to start.")
 
@@ -424,7 +450,14 @@ def paginate_groups(groups, budget=DETAIL_BUDGET_PX):
 
 
 # ----------------------------------------------------------------- the season
-def season_overview(season_flights, current_id, current_number=None):
+# The season chart's own geometry, shared with report_v2.html. A bar column is
+# a fixed height, and a segment has to be at least this tall before its count
+# will sit inside it without touching the edges.
+CHART_COL_PX = 96.0
+CHART_LABEL_MIN_PX = 13.0
+
+
+def season_overview(season_flights, current_id):
     """
     The season so far, flight by flight, in the same terms as the report itself.
 
@@ -436,16 +469,25 @@ def season_overview(season_flights, current_id, current_number=None):
     export has not been imported yet has nothing to say, and a zero column would
     read as a field with nothing wrong with it.
 
-    Returns None until two flights up to this one carry findings, since a single
-    flight is a reading rather than a trend.
+    Returns None until two flights carry findings, since one flight is not a
+    trend.
+
+    "To date" is meant literally: only flights up to and including the one being
+    reported on are counted. A report is a record of what was known on the day it
+    went out, so a later flight must not appear in an earlier flight's report —
+    without this, generating flight 2 put a season page onto flight 1 as well,
+    and that page showed the field two months after the report claiming to
+    describe it.
     """
+    def _order(f):
+        return (f.flight_number or 0, f.id or 0)
+
+    current = next((f for f in season_flights if f.id == current_id), None)
+    cutoff = _order(current) if current is not None else None
+
     points = []
-    for flight in sorted(season_flights, key=lambda f: (f.flight_number or 0, f.id or 0)):
-        # The season to date, not the season in full: a report is a record of
-        # the field on the day it was flown, so a flight flown afterwards has no
-        # place in it. Without this, the first report of a season would gain a
-        # comparison page the moment a second flight was reported.
-        if current_number is not None and (flight.flight_number or 0) > current_number:
+    for flight in sorted(season_flights, key=_order):
+        if cutoff is not None and _order(flight) > cutoff:
             continue
         agg = aggregate(flight.findings)
         if not agg:
@@ -476,11 +518,29 @@ def season_overview(season_flights, current_id, current_number=None):
              "pct": round(100.0 * p["by_category"][name] / p["count"], 1)}
             for name, colour in present if p["by_category"].get(name)
         ]
+        # Whether a segment is tall enough to carry its own number. Worked out
+        # here rather than left to the renderer so the browser, the print dialog
+        # and WeasyPrint all put the label in the same place — and so a number
+        # is never drawn half outside the block it belongs to. Anything that
+        # does not fit is still stated in full on the chips under the bar, so
+        # every figure on this chart is readable whatever the split.
+        for s in p["segments"]:
+            s["px"] = round(CHART_COL_PX * (p["pct"] / 100.0) * (s["pct"] / 100.0), 1)
+            s["label_fits"] = s["px"] >= CHART_LABEL_MIN_PX
+
+    # The value scale down the left of the chart: the tallest bar, half of it,
+    # and zero. Whole areas only, because half an area is not a thing.
+    ticks = [{"n": peak, "at": 0.0},
+             {"n": round(peak / 2.0), "at": 50.0},
+             {"n": 0, "at": 100.0}]
 
     first, last = points[0], points[-1]
     return {
         "points": points,
         "categories": present,
+        "peak": peak,
+        "ticks": ticks,
+        "col_px": CHART_COL_PX,
         "flights": len(points),
         "first": first,
         "last": last,

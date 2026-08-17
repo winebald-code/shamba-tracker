@@ -346,18 +346,10 @@ def report_context(flight):
     # The findings are grouped into the few patterns actually present in them
     # rather than listed one by one. The map numbers go in with them so the
     # summary, the map key and the detail tables all call a zone by one number.
-    # Zone numbers follow the order the areas were annotated in, which is the
-    # order DroneDeploy used when it numbered them on the image the report
-    # carries. Numbering them any other way puts the key and the map at odds:
-    # a farmer reading "zone 5" would be looking at a different area from the
-    # one the report describes.
-    zone_numbers = {f.id: i + 1 for i, f in enumerate(
-        sorted(flight.findings, key=lambda f: (f.sort_order or 0, f.id or 0)))}
-    agg = aggregation.aggregate(flight.findings, zone_numbers)
+    agg = aggregation.aggregate(flight.findings, analysis.get("numbers"))
     # Every flight of this farm and season, so the report can show how the
     # season has moved rather than only what this flight found.
-    season_overview = aggregation.season_overview(season_flights, flight.id,
-                                                  flight.flight_number)
+    season_overview = aggregation.season_overview(season_flights, flight.id)
 
     # An agronomist's own wording for a pattern replaces the assembled sentence.
     # Applied here rather than inside the aggregation so that layer stays a pure
@@ -703,12 +695,20 @@ def register_routes(app):
         farm.farmer_name = request.form.get("farmer_name", "").strip()
         farm.farmer_email = request.form.get("farmer_email", "").strip()
         farm.farmer_phone = request.form.get("farmer_phone", "").strip()
-        previous_url = (farm.dronedeploy_project_url or "").strip()
+        was = (farm.dronedeploy_project_url or "").strip()
         farm.dronedeploy_project_url = request.form.get("dronedeploy_project_url", "").strip()
-        if previous_url and previous_url != farm.dronedeploy_project_url:
+        # Editing the farm's project link is an instruction about the whole
+        # farm, so every flight of it is released to follow the new value.
+        #
+        # Flights created before the link followed the farm hold a frozen copy
+        # of whatever it was that day, and a copy shadows the farm for good:
+        # that is why correcting the link changed nothing in any report and the
+        # only way out was to delete the farm and enter it again. Releasing them
+        # here fixes those rows on the next edit, without touching the data of
+        # any farm whose link nobody is changing.
+        if (farm.dronedeploy_project_url or "").strip() != was:
             for fl in farm.flights:
-                if (fl.dronedeploy_project_url or "").strip() == previous_url:
-                    fl.dronedeploy_project_url = ""
+                fl.dronedeploy_project_url = ""
         farm.notes = request.form.get("notes", "").strip()
         db.session.commit()
         flash("Farm updated.", "ok")
@@ -951,6 +951,9 @@ def register_routes(app):
             crop=request.form.get("crop", "").strip() or farm.crop,
             acreage=_float(request.form.get("acreage")) or farm.acreage,
             flight_date=_parse_date(request.form.get("flight_date")),
+            # Left empty unless this flight is against its own map: an empty
+            # value follows the farm, so correcting the farm's project link
+            # reaches this flight's report without it being re-created.
             dronedeploy_project_url=request.form.get("dronedeploy_project_url", "").strip(),
             status="Draft",
         )
@@ -1590,6 +1593,8 @@ def _apply_flight(plan, created, updated):
             crop=(v.get("crop") or "").strip() or farm.crop,
             acreage=bulk_import.clean_float(v.get("acreage")) or farm.acreage,
             flight_date=bulk_import.clean_date(v.get("flight_date")),
+            # Only what the sheet actually names. A blank follows the farm's
+            # own project link rather than freezing a copy of it.
             dronedeploy_project_url=(v.get("dronedeploy_project_url") or "").strip(),
             status=bulk_import.clean_status(v.get("status")) or "Draft",
         )
