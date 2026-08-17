@@ -247,10 +247,18 @@ def season_trend(flight, season_flights):
 
     Returns None when there is nothing to compare against, so the report can
     fall back to the single-flight view exactly as it did before.
+
+    Only flights up to and including `flight` are plotted, for the same reason
+    the report's season page stops there: the trend behind a flight cannot
+    include one flown after it.
     """
+    def _order(f):
+        return (f.flight_number or 0, f.id or 0)
+
+    here = _order(flight)
     points = []
-    for fl in sorted(season_flights, key=lambda f: (f.flight_number or 0, f.id or 0)):
-        if not fl.findings:
+    for fl in sorted(season_flights, key=_order):
+        if not fl.findings or _order(fl) > here:
             continue
         an = analyse(fl) if fl.id != flight.id else None
         score = an["score"] if an else None

@@ -173,14 +173,34 @@
 /* Capped so a season of two flights reads as two bars rather than two slabs. */
 .bars .stack { position:absolute; left:0; right:0; bottom:0; margin:0 auto; max-width:58px;
                border-radius:3px 3px 0 0; overflow:hidden; font-size:0; min-height:3px; }
-.bars .seg { display:block; width:100%; }
+.bars .seg { display:block; width:100%; position:relative; }
+/* The count inside its own block of the bar, shown only where the block is tall
+   enough to hold it. The height that decides it is worked out in Python, so the
+   browser and WeasyPrint agree and a figure is never clipped by the edge of the
+   segment it belongs to. */
+.bars .seg .v { position:absolute; left:0; right:0; top:50%; margin-top:-6px;
+                font-size:8.5px; font-weight:800; line-height:12px; color:#fff;
+                text-align:center; font-variant-numeric:tabular-nums; }
 .bars .tot { font-size:9.5px; font-weight:800; margin-bottom:3px; }
 .bars .fl { font-size:8px; font-weight:700; color:#6C6C6C; margin-top:5px; }
 .bars .fl.on { color:#030920; }
 .bars .dt { font-size:7.5px; color:#9A9A9A; margin-top:1px; }
-/* The count per category, under its own bar. Put inside the segments they would
-   be unreadable wherever a category has one or two areas, and this way every
-   number on the chart is legible whatever the split. */
+/* The value scale, and the lines it labels. A bar height means nothing on its
+   own, so the chart states what the top of the column is worth. Aligned to the
+   top of the row rather than the bottom: the bar cells carry a label, a date
+   and a chip row under the plot, so a bottom-aligned scale slides down past the
+   lines it is naming. */
+.bars .axis { width:20px; padding:0 5px 0 0; vertical-align:top; }
+.bars .axis .col { height:96px; }
+.bars .tick { position:absolute; right:0; font-size:7.5px; font-weight:700; color:#9A9A9A;
+              line-height:8px; margin-top:-4px; font-variant-numeric:tabular-nums; }
+.bars .grid { position:absolute; left:0; right:0; height:1px; background:#E9ECE6;
+              font-size:0; line-height:0; }
+.bars .scale { font-size:7.5px; font-weight:700; letter-spacing:.09em;
+               text-transform:uppercase; color:#9A9A9A; margin:0 0 7px !important; }
+/* The count per category, under its own bar. Every category is named and
+   counted here whether or not its block on the bar was tall enough to be
+   labelled, so no figure on this chart depends on the bar being readable. */
 .bars .chips { margin-top:5px; }
 .bars .chip { display:inline-block; min-width:15px; height:15px; padding:0 3px; border-radius:4px;
               color:#fff; font-size:8px; font-weight:800; line-height:15px; margin:0 2px 2px 0; }
@@ -339,8 +359,8 @@
     {% endfor %}
   </table>
 
-  {% if flight.map_link %}
-  <a class="ddlink" href="{{ flight.map_link }}"{% if not pdf %} target="_blank" rel="noopener"{% endif %}>
+  {% if flight.project_url %}
+  <a class="ddlink" href="{{ flight.project_url }}"{% if not pdf %} target="_blank" rel="noopener"{% endif %}>
     <table><tr>
       <td class="ico"><span><svg viewBox="0 0 24 24" width="11" height="11" fill="none"
         stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"
@@ -437,14 +457,24 @@
 
   {{ sec('Areas flagged, flight by flight', gap=true) }}
   <div class="chart">
+    <p class="scale">Areas flagged &middot; scale 0 to {{ so.peak }}</p>
     <table class="bars"><tr>
+      <td class="axis">
+        <div class="tot mono">&nbsp;</div>
+        <div class="col">
+          {% for t in so.ticks %}<span class="tick" style="top:{{ t.at }}%">{{ t.n }}</span>{% endfor %}
+        </div>
+      </td>
       {% for p in so.points %}
       <td>
         <div class="tot mono">{{ p.count }}</div>
         <div class="col">
+          {% for t in so.ticks %}<div class="grid" style="top:{{ t.at }}%"></div>{% endfor %}
           <div class="stack" style="height:{{ p.pct }}%">
             {% for s in p.segments %}
-            <span class="seg" style="height:{{ s.pct }}%;background:{{ s.colour }}"></span>
+            <span class="seg" style="height:{{ s.pct }}%;background:{{ s.colour }}">
+              {% if s.label_fits %}<span class="v">{{ s.n }}</span>{% endif %}
+            </span>
             {% endfor %}
           </div>
         </div>
