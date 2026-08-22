@@ -520,6 +520,15 @@
       </tbody>
     </table>
   </div>
+
+  {{ pagefoot(total_pages) }}
+</section>
+{% endif %}
+
+{# The farmer's one tap. Outside the sheets on purpose: a sheet is a fixed
+   210x297mm, so a block added inside one risks pushing its page over, and the
+   count of .sheet sections has to keep matching the pages WeasyPrint renders.
+   Screen only — it is never part of the document that gets sent. #}
 {% if public and not pdf %}
 <div class="no-print" style="max-width:210mm;margin:0 auto 18px;text-align:center" id="ackArea">
   {% if flight.acknowledged %}
@@ -534,9 +543,6 @@
   <p style="font-size:9px;color:#6C6C6C;margin-top:6px !important">One tap. It tells your agronomist the report reached you.</p>
   {% endif %}
 </div>
-{% endif %}
-  {{ pagefoot(total_pages) }}
-</section>
 {% endif %}
 
 
