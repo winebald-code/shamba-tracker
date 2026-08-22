@@ -520,7 +520,21 @@
       </tbody>
     </table>
   </div>
-
+{% if public and not pdf %}
+<div class="no-print" style="max-width:210mm;margin:0 auto 18px;text-align:center" id="ackArea">
+  {% if flight.acknowledged %}
+  <div style="display:inline-block;background:#E7F1DB;color:#3E7A24;border-radius:9px;padding:11px 18px;font-size:11.5px;font-weight:800">
+    &#10003; You confirmed you received this on {{ flight.acknowledged_at.strftime('%d %b %Y') if flight.acknowledged_at else 'file' }}
+  </div>
+  {% else %}
+  <button type="button" onclick="acknowledge()"
+          style="background:#B0D48C;color:#030920;border:0;border-radius:9px;padding:12px 22px;font-size:12.5px;font-weight:800;cursor:pointer;font-family:inherit">
+    &#10003; Confirm you received this report
+  </button>
+  <p style="font-size:9px;color:#6C6C6C;margin-top:6px !important">One tap. It tells your agronomist the report reached you.</p>
+  {% endif %}
+</div>
+{% endif %}
   {{ pagefoot(total_pages) }}
 </section>
 {% endif %}
